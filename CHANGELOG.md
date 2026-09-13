@@ -13,6 +13,17 @@ Kategorien je Eintrag: **Added** · **Changed** · **Deprecated** · **Removed**
 
 ### Changed
 
+- **Die Anmeldeseite nennt die Organisation und wird ab fünf Angeboten zur
+  Auswahl.** `oidcButtonLabel` ist wahlfrei und fiel für jede Organisation ohne
+  eigene Beschriftung auf denselben Satz zurück — eine Installation mit
+  mehreren solchen Organisationen zeigte wortgleiche Schaltflächen, die sich
+  nur in ihrer Adresse unterschieden. Der Organisationsname stand bereits in
+  der Antwort und führt die Schaltfläche jetzt an. Ab der fünften Organisation
+  treten eine Auswahlliste und ein „Weiter" an die Stelle der Schaltflächen,
+  damit das Anmeldeformular für Personen ohne Organisationskonto sichtbar
+  bleibt. Beides ist Anzeige: gewählt wird der `tenantId` der Startadresse,
+  und ob eine Organisation SSO anbietet, entscheidet unverändert der Server.
+
 - **Das Release-Modell steht fest:** jeder Push auf `main`, der die Pipeline
   grün durchläuft, ist eine stabile Fassung, und die Pipeline schreibt sie als
   Tag `vX.Y.Z` zurück. Vorher war mangels Versionsquelle jede Fassung eine
