@@ -305,12 +305,12 @@ wird, und **dann** fällt die alte Ebene weg:
 4. Die Vorlagen (`form_template.content`) verlieren dieselben zwei Schlüssel.
 5. Erst danach fallen die drei Spalten.
 
-Belegt wird das nicht zugesichert, sondern gemessen:
-`apps/api/test/settings/two-layer-migration.spec.ts` stellt den Zustand *vor*
-der Migration wieder her (die Spalten inbegriffen), rechnet mit einer im Test
-ausgeschriebenen Fassung der **alten** Dreischichtregel aus, was galt, fährt die
-Migrationsdatei Anweisung für Anweisung und vergleicht Feld für Feld mit dem,
-was die **neuen** geteilten Funktionen aus den migrierten Zeilen lesen.
+Belegt wurde das nicht zugesichert, sondern gemessen: ein eigener Test stellte
+den Zustand *vor* der Migration wieder her (die Spalten inbegriffen), rechnete
+mit einer im Test ausgeschriebenen Fassung der **alten** Dreischichtregel aus,
+was galt, fuhr die Migrationsdatei Anweisung für Anweisung und verglich Feld für
+Feld mit dem, was die **neuen** geteilten Funktionen aus den migrierten Zeilen
+lasen.
 
 ### Konsequenzen
 
