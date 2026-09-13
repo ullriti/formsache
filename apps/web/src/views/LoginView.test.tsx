@@ -292,6 +292,80 @@ describe('LoginView', () => {
       );
     });
 
+    /** Wie viele Angebote es sind, `n` Stück, stabil benannt und sortiert. */
+    function manyOffers(count: number): {
+      tenantId: string;
+      name: string;
+      shortName: string;
+      buttonLabel: string;
+    }[] {
+      return Array.from({ length: count }, (_, index) => ({
+        tenantId: `01919c3f-0000-7000-8000-0000000000${String(index).padStart(2, '0')}`,
+        name: `Ortsgruppe ${String.fromCharCode(65 + index)}dorf`,
+        shortName: `${String.fromCharCode(65 + index)}dorf`,
+        buttonLabel: DEFAULT_OIDC_BUTTON_LABEL,
+      }));
+    }
+
+    /**
+     * **Die Grenze selbst**, von beiden Seiten — der Teil, den ein Test über
+     * „viele Organisationen" allein nicht belegt. Vier Angebote bleiben
+     * Schaltflächen, fünf werden zur Auswahl; wer `SSO_BUTTON_LIMIT`
+     * verschiebt, sieht hier, dass er es getan hat.
+     */
+    it('keeps buttons up to the limit', async () => {
+      stubRoutes(manyOffers(4), emptyResponse(401));
+
+      renderWithQuery(<LoginView />);
+
+      await waitFor(() => {
+        expect(screen.getAllByRole('link')).toHaveLength(4);
+      });
+      expect(screen.queryByLabelText('Organisation')).toBeNull();
+    });
+
+    it('switches to one chooser above the limit', async () => {
+      stubRoutes(manyOffers(5), emptyResponse(401));
+
+      renderWithQuery(<LoginView />);
+
+      // Eine Auswahl mit fünf Einträgen und **ein** Anker — nicht fünf.
+      const chooser = await screen.findByLabelText('Organisation');
+      expect(screen.getAllByRole('option')).toHaveLength(5);
+      expect(screen.getAllByRole('link')).toHaveLength(1);
+      // Vorbelegt mit der ersten: der Anker ist zu jedem Zeitpunkt gültig.
+      expect((chooser as HTMLSelectElement).value).toBe(
+        '01919c3f-0000-7000-8000-000000000000',
+      );
+      expect(screen.getByRole('link').getAttribute('href')).toBe(
+        '/api/auth/oidc/start/01919c3f-0000-7000-8000-000000000000',
+      );
+    });
+
+    /**
+     * Dass die Auswahl überhaupt etwas bewirkt — und **was** sie bewirkt: sie
+     * bewegt den `:tenantId` der Startadresse, also genau das, was die
+     * Schaltfläche auch trug. Nichts sonst: die Anmeldung mit E-Mail und
+     * Passwort weiß von dieser Auswahl nichts (siehe `OidcOffer`).
+     */
+    it('points the chooser at whatever was selected', async () => {
+      stubRoutes(manyOffers(5), emptyResponse(401));
+
+      renderWithQuery(<LoginView />);
+
+      const chooser = await screen.findByLabelText('Organisation');
+      fireEvent.change(chooser, {
+        target: { value: '01919c3f-0000-7000-8000-000000000003' },
+      });
+
+      expect(screen.getByRole('link').getAttribute('href')).toBe(
+        '/api/auth/oidc/start/01919c3f-0000-7000-8000-000000000003',
+      );
+      expect(screen.getByRole('link').textContent).toBe(
+        DEFAULT_OIDC_BUTTON_LABEL,
+      );
+    });
+
     it('shows nothing when no organisation offers SSO', async () => {
       stubRoutes([], emptyResponse(401));
 
