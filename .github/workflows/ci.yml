@@ -1120,17 +1120,27 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
-      contents: read
-      # The one additional permission, and it stands here instead of at the
-      # top of the file: every other job of this pipeline gets by with
-      # `contents: read`.
+      # **`write`, and only here.** The last step of this job writes the
+      # version it has just published back as a tag — without it GitVersion
+      # would count from the previous tag and hand three different states the
+      # same `x.y.z` (GitVersion.yml, `main`). Every other job of this
+      # pipeline gets by with `contents: read`.
+      contents: write
+      # The second additional permission, and it stands here instead of at the
+      # top of the file for the same reason.
       packages: write
     steps:
       - uses: actions/checkout@v7
         with:
           # GitVersion derives the version from the history; a shallow clone
-          # has none.
+          # has none. `fetch-depth: 0` brings the tags along, and this job
+          # needs them twice: GitVersion counts from the last one, and the
+          # last step writes the next one.
           fetch-depth: 0
+          # Explicit, not just relying on the action's own default — the same
+          # pattern `dependabot-licences.yml` uses: this is what lets the
+          # plain `git push` of the tag step below authenticate.
+          persist-credentials: true
 
       # **The docs-only guard, and here it is the most important one.** On a
       # pure docs push to `main`, `test`, `e2e`, `stack` and `restore` skip
@@ -1454,6 +1464,58 @@ jobs:
           done
           [ "$fail" -eq 0 ] || exit 1
           echo "drei Images geprüft: keine .env, kein Schlüsselmaterial, keine Seed-Zugangsdaten"
+
+      # **The version is written back, and this is the second half of the
+      # release model.** `main` runs in `ContinuousDeployment` mode
+      # (GitVersion.yml): every push that gets through green is a stable
+      # version. GitVersion counts from the **last tag** though, not per
+      # commit — without this step a `fix:`, a `chore(deps):` following it and
+      # a `ci(deps):` following that would all three carry `1.0.1`, and the
+      # `x.y.z` that ADR-0009 calls immutable would be overwritten twice with
+      # different content. Measured before this step existed.
+      #
+      # **It stands behind all four proofs**, and the order is the promise: a
+      # tag in the history claims that this version is published. Standing in
+      # front it would leave the history carrying a number with nothing behind
+      # it in the registry — and the next commit would count on from it.
+      #
+      # **No loop**, for two independent reasons: this file's trigger carries
+      # `tags-ignore: ['**']`, and a push authenticated with `GITHUB_TOKEN`
+      # starts no new run anyway (the same point that forces
+      # `dependabot-licences.yml` the other way round to a PAT — there runs
+      # *should* start).
+      #
+      # **And no collision between two runs:** `cancel-in-progress` is false on
+      # `main`, so runs of that group queue. The next one checks out only once
+      # this tag stands.
+      - name: Die veröffentlichte Fassung als Tag zurückschreiben
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: |
+          set -euo pipefail
+          tag="v${APP_VERSION}"
+          # An annotated tag carries the tag object under `refs/tags/<tag>`
+          # and the commit only under `^{}`; a lightweight one knows just the
+          # first. Both are asked for — otherwise a re-run would compare an
+          # object SHA with a commit SHA and always be red.
+          existing="$(git ls-remote origin "refs/tags/$tag^{}" | cut -f1)"
+          [ -n "$existing" ] || existing="$(git ls-remote origin "refs/tags/$tag" | cut -f1)"
+          if [ -n "$existing" ]; then
+            # A re-run of the same commit is the benign case: the tag is
+            # already there, and it is right. Anything else is a real
+            # collision — two states under one version, exactly what this step
+            # exists to prevent.
+            [ "$existing" = "$GITHUB_SHA" ] || {
+              echo "::error::$tag zeigt auf $existing statt auf $GITHUB_SHA"
+              exit 1
+            }
+            echo "::notice::$tag steht bereits auf diesem Commit"
+            exit 0
+          fi
+          git -c user.name='github-actions[bot]' \
+            -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            tag -a "$tag" -m "Formsache $APP_VERSION" "$GITHUB_SHA"
+          git push origin "refs/tags/$tag"
+          echo "$tag zeigt jetzt auf $GITHUB_SHA"
 
       - if: ${{ always() && steps.docs-only.outputs.docs_only != 'true' }}
         run: docker compose -f docker-compose.prod.yml -f .github/ci/docker-compose.ci.yml down -v

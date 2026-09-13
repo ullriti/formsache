@@ -262,3 +262,105 @@ Installation aus. Die Begründung im Langen steht am `api`-Dienst von
 
 Details: `.github/workflows/ci.yml` (`publish`), `docker-compose.prod.yml`,
 `scripts/tests/compose-prod.test.sh`, `scripts/tests/publish-job.test.sh`.
+
+## Das Release-Modell: jeder grüne Push auf `main` ist eine Fassung
+
+Der Abschnitt oben beschreibt fünf Marken je Image, und drei davon hat der
+erste `main`-Lauf **nicht** vergeben. Der Grund stand nicht im Job, sondern
+daneben: es gab keinen Tag im Repository, also keine Versionsquelle. GitVersion
+nahm `next-version: 1.0.0` als Boden und hängte im Modus `ContinuousDelivery`
+die Commit-Zahl als Vorabfassungs-Nummer an.
+
+```
+FullSemVer        1.0.0-2
+PreReleaseTag     "2"        ← nicht leer
+VersionSourceSha  ""         ← keine Versionsquelle
+```
+
+Damit greift die Bedingung `[ -z "$prerelease" ]` im `publish`-Job nicht,
+`APP_ROLLING_TAGS` bleibt leer, und `latest`, `x` und `x.y` entstehen nie —
+während `docker-compose.prod.yml` dreimal auf `${APP_VERSION:-latest}`
+zurückfällt. Das ist exakt der Zustand, den Review-Runde 3 Nr. 1 beheben
+wollte: die Begründung stand im ADR, die Voraussetzung fehlte.
+
+**Entschieden: `main` ist die Freigabe**, festgehalten als `mode:
+ContinuousDeployment` für `main` in `GitVersion.yml`. Das Argument dafür ist
+kein Vertrauen in die Sorgfalt der Beitragenden, sondern der `needs:`-Block:
+`publish` läuft nur, wenn `quality`, `test`, `e2e`, `stack` und `restore` im
+**selben Lauf** grün sind. Ein roter Stand auf `main` veröffentlicht nichts,
+auch ohne Branch-Schutz. Und `docs/kb/09-betrieb.md` beschrieb dieses Modell
+ohnehin bereits („`latest` — bewegt sich mit jedem Release").
+
+⚠️ **Der Modus allein genügt nicht, und das ist der teuer gelernte Teil.**
+GitVersion zählt vom letzten Tag, nicht je Commit. Gemessen, Tag `v1.0.0` und
+fünf Commits darauf:
+
+| Commit | ohne Rückschreiben | mit Rückschreiben |
+|---|---|---|
+| `fix: ein bugfix` | 1.0.1 | 1.0.1 |
+| `chore(deps): regenerate third-party licence list` | 1.0.1 ← | 1.0.2 |
+| `ci(deps): bump actions/setup-node` | 1.0.1 ← | 1.0.3 |
+| `feat: neues feld` | 1.1.0 | 1.1.0 |
+| `fix: noch einer` | 1.1.1 | 1.1.1 |
+
+Drei verschiedene Stände unter einer Marke: `publish` hätte `1.0.1` dreimal mit
+anderem Inhalt geschoben, und „`x.y.z` bewegt sich nie" — die Zeile, auf der
+der Rückweg steht — wäre falsch geworden. Die beiden Commit-Typen sind nicht
+erfunden, sie stehen so in der Historie; nur der `docs:`-Fall fängt sich selbst
+ab, weil `ci-docs-only.sh` den ganzen Job überspringt.
+
+**Deshalb schreibt der `publish`-Job die Fassung als Tag zurück**, als letzter
+Schritt hinter allen vier Nachweisen. Ein Tag in der Historie behauptet, dass
+diese Fassung im Register liegt; vor dem Geheimnis-Scan gesetzt wäre er eine
+Behauptung, von der der nächste Commit weiterzählt.
+
+**Was daraus folgt:**
+
+- **`contents: write` am Job**, die zweite erhöhte Rechtevergabe dieser Datei
+  und aus demselben Grund am Job statt oben in der Datei.
+- **Keine Schleife**, zweifach abgesichert: der Trigger trägt
+  `tags-ignore: ['**']`, und ein Push mit dem `GITHUB_TOKEN` startet ohnehin
+  keinen Lauf. Dieselbe Eigenschaft zwingt
+  [ADR-0031](0031-dependabot-lizenz-fixup.md) umgekehrt zu einem PAT — dort
+  *sollen* Läufe starten.
+- **Keine Kollision zweier Läufe.** `cancel-in-progress` ist auf `main` falsch,
+  die Läufe stehen Schlange; der nächste checkt erst aus, wenn der Tag steht.
+- **Kein initialer Tag von Hand.** Gemessen: ohne jeden Tag liefert
+  `ContinuousDeployment` bereits `1.0.0` mit leerem `PreReleaseTag`. Der erste
+  grüne `main`-Lauf veröffentlicht also `1.0.0` samt rollender Marken und setzt
+  `v1.0.0` selbst.
+- **Dependabot-Merges erzeugen Fassungen.** Gewollt: ein Bump *ist* ein anderes
+  Artefakt, und über `x` bzw. `x.y` erreicht ein Sicherheitspatch den Betreiber
+  ohne Zutun. Der Preis steht unten.
+- **Das Restrisiko liegt zwischen den beiden Schritten**, und es ist benannt
+  statt behauptet: scheitert der Tag-Push, nachdem die Images schon im Register
+  liegen, bekommt der nächste Commit dieselbe Nummer — genau der Zustand, gegen
+  den dieser Schritt steht. Der Lauf ist dann **rot**, und die Behebung ist der
+  Wiederlauf des Jobs: er veröffentlicht dieselbe Fassung erneut (gleicher
+  Inhalt, gleiche Digests) und setzt den Tag nach. Die umgekehrte Reihenfolge —
+  erst taggen, dann veröffentlichen — tauscht dieses Risiko gegen das größere
+  ein: ein Tag, hinter dem nichts liegt.
+- **Ein `force-push` auf `main` bricht das Modell**, weil ein neuer Commit
+  dieselbe Fassung errechnen kann, während der Tag noch auf dem alten steht.
+  Der Schritt erkennt das (Tag zeigt auf eine andere SHA) und wird rot — das
+  Image ist dann allerdings schon überschrieben. `CONTRIBUTING.md` verbietet
+  den `force-push` auf `main` ohnehin; hier steht, was er zusätzlich kostet.
+
+**Verworfen: der Tag als Freigabe von Hand** (`ContinuousDelivery` bleibt, ein
+Mensch taggt). Das hätte den Vorteil, dass hinter `latest` nur ein angesehener
+Stand steht — aber die Freigabe wäre ein zweiter, händischer Schritt, und
+`tags-ignore: ['**']` macht ihn zusätzlich unbequem: ein nachgeschobener Tag
+löst keinen Lauf aus, die Veröffentlichung müsste über `workflow_dispatch` von
+Hand nachgezogen werden. Der Nutzen — ein menschliches Auge zwischen Grün und
+Registry — wiegt das bei fünf unveränderlichen Marken und einem Rückweg über
+`APP_VERSION` nicht auf.
+
+⚠️ **Der offene Preis: `CHANGELOG.md`.** Einen Versionsabschnitt je
+`fix(deps): bump …` schreibt niemand von Hand. Die Datei führt deshalb weiterhin
+nur `[Unreleased]` als kuratierte Liste dessen, was der Rede wert ist — sie ist
+damit kein Abbild der Fassungsfolge. Wer das ändern will, muss den Abschnitt im
+`publish`-Job aus den Commits erzeugen; entschieden ist das hier **nicht**.
+
+Details: `GitVersion.yml` (`branches.main`), `.github/workflows/ci.yml`
+(`publish`, letzter Schritt), `scripts/tests/publish-job.test.sh`
+(Abschnitt „Die Fassung wird als Tag zurückgeschrieben").

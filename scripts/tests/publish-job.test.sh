@@ -237,18 +237,83 @@ else
   bad 'der Scan fährt nicht über alle drei Images'
 fi
 
+printf '\n== Die Fassung wird als Tag zurückgeschrieben ==\n'
+# **Die zweite Hälfte des Release-Modells**, und ohne sie steht die Fassung
+# still. `main` läuft im Modus `ContinuousDeployment` (GitVersion.yml), also
+# ist jeder grün durchgelaufene Push eine stabile Fassung — GitVersion zählt
+# dabei aber vom **letzten Tag** und nicht je Commit. Gemessen ohne den
+# Rückschreibschritt: `fix:` → 1.0.1, das folgende `chore(deps):` → 1.0.1, das
+# folgende `ci(deps):` → 1.0.1. Drei Stände unter einer Marke, und `x.y.z`
+# wäre nicht mehr unveränderlich.
+#
+# *Reproduktion:* den Schritt entfernen → dieser Abschnitt wird rot.
+# `tag -a` und nicht `git tag -a`: die Tagger-Identität steht als `-c`-Paar
+# davor, das `git` also eine Zeile höher. Der erste Entwurf dieser Zeile suchte
+# nach `git tag` und war rot, obwohl der Schritt richtig dastand.
+if grep -qE '^ *tag -a "\$tag"' <<<"$job"; then
+  ok 'der Job legt den Tag an'
+else
+  bad 'kein Tag — drei Commits bekämen dieselbe Fassung'
+fi
+if grep -qE 'git push origin "refs/tags/\$tag"' <<<"$job"; then
+  ok 'und schiebt ihn zurück (sonst zählte der nächste Lauf wieder von vorn)'
+else
+  bad 'der Tag wird nicht gepusht — er stürbe mit dem Runner'
+fi
+# ⚠️ **Und er steht HINTER den Nachweisen.** Ein Tag behauptet, dass diese
+# Fassung veröffentlicht ist; stünde er vor dem Geheimnis-Scan, trüge die
+# Historie eine Zahl, zu der im Register nichts liegt — und der nächste Commit
+# zählte von ihr weiter. Gemessen an der Zeile, die wirklich taggt.
+tag_line="$(grep -n 'git push origin "refs/tags/' <<<"$job" | head -n 1 | cut -d: -f1)"
+scan_line="$(grep -n 'docker export' <<<"$job" | head -n 1 | cut -d: -f1)"
+if [ -n "$tag_line" ] && [ -n "$scan_line" ] && [ "$scan_line" -lt "$tag_line" ]; then
+  ok 'erst die Nachweise, dann der Tag'
+else
+  bad 'der Tag wird vor dem Geheimnis-Scan geschrieben'
+fi
+# Ohne mitgegebene Zugangsdaten scheitert der Push — und die Vorgabe der
+# Action ist nichts, worauf sich das verlassen sollte.
+if grep -qE '^ *persist-credentials: true$' <<<"$job"; then
+  ok 'der Checkout behält die Zugangsdaten (sonst scheitert der Push)'
+else
+  bad 'ohne persist-credentials kann der Tag-Push nicht authentifizieren'
+fi
+# **Der Doku-Lauf taggt nicht.** Er veröffentlicht auch nichts; ein Tag ohne
+# Image wäre die Behauptung, die dieser Abschnitt gerade ausschließt.
+if grep -A 2 'name: Die veröffentlichte Fassung als Tag' <<<"$job" |
+  grep -qF "docs-only.outputs.docs_only != 'true'"; then
+  ok 'ein reiner Doku-Push taggt nicht'
+else
+  bad 'der Doku-Push taggt — ein Tag ohne Image dahinter'
+fi
+# Und die andere Hälfte steht wirklich in GitVersion.yml: ohne
+# `ContinuousDeployment` wäre jeder Commit auf `main` eine Vorabfassung, der
+# Tag hieße `v1.0.1-3` und keine rollende Marke bewegte sich je.
+if grep -A 2 -E '^  main:$' "$ROOT/GitVersion.yml" | grep -qF 'mode: ContinuousDeployment'; then
+  ok 'main steht in GitVersion.yml auf ContinuousDeployment'
+else
+  bad 'main ist keine stabile Fassung — latest, x und x.y entstünden nie'
+fi
+
 printf '\n== Die Rechte sind so eng wie möglich ==\n'
 if grep -qE '^      packages: write$' <<<"$job"; then
   ok 'packages: write steht am Job'
 else
   bad 'der Job hat kein packages: write — das Pushen scheiterte'
 fi
+# `contents: write` ist die zweite erhöhte Rechtevergabe, und sie hat genau
+# einen Grund: den Tag-Push oben. Sie steht ebenfalls am Job.
+if grep -qE '^      contents: write$' <<<"$job"; then
+  ok 'contents: write steht am Job (für den Tag)'
+else
+  bad 'der Job darf nicht schreiben — der Tag-Push scheiterte'
+fi
 # And the permission is **not** on the file: every other job gets by with
 # `contents: read`.
 # `-q` would cut off the output before the second search sees it — the
 # first draft of this line was therefore always green.
-if grep -A 3 '^permissions:' "$WORKFLOW" | grep -q 'packages'; then
-  bad 'packages: write steht global in der Datei'
+if grep -A 3 '^permissions:' "$WORKFLOW" | grep -qE 'packages|contents: write'; then
+  bad 'ein erhöhtes Recht steht global in der Datei'
 else
   ok 'global bleibt es bei contents: read'
 fi
