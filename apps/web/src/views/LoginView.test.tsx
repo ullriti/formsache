@@ -340,6 +340,13 @@ describe('LoginView', () => {
       expect(screen.getByRole('link').getAttribute('href')).toBe(
         '/api/auth/oidc/start/01919c3f-0000-7000-8000-000000000000',
       );
+      // Der Anker trägt nur die Beschriftung, und die ist für jede Organisation
+      // ohne eigene dieselbe. Wer sich die Links dieser Seite vorlesen lässt,
+      // bekommt die Organisation über diese Verweisung dazu — sonst stünde dort
+      // „Mit Organisationskonto anmelden" ohne jede Zuordnung.
+      expect(screen.getByRole('link').getAttribute('aria-describedby')).toBe(
+        chooser.getAttribute('id'),
+      );
     });
 
     /**

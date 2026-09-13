@@ -306,54 +306,50 @@ export function LoginView({
 }
 
 /**
- * Ab wie vielen Organisationen die Auswahl an die Stelle der Schaltflächen
- * tritt.
+ * From how many organisations on the chooser takes the buttons' place.
  *
- * Vier ist keine gemessene Zahl, sondern eine Abwägung zweier echter Kosten:
- * eine Schaltfläche ist **ein** Klick und zeigt alle Angebote gleichzeitig,
- * eine Auswahl ist aufklappen, suchen, wählen, bestätigen — also mindestens
- * drei. Solange die Liste auf einen Blick zu erfassen ist, gewinnt die
- * Schaltfläche; sobald sie das Anmeldeformular unter die Falz schiebt, verliert
- * sie. Dazwischen liegt die Grenze, und sie liegt näher an „wenige" als an
- * „viele", weil die Angebote hier untereinander stehen und nicht nebeneinander.
+ * Four is not a measured number but a trade between two real costs: a button
+ * is **one** click and shows every offer at once, a chooser is open, look,
+ * pick, confirm — three at least. While the list can be taken in at a glance
+ * the button wins; once it pushes the sign-in form below the fold it loses.
+ * The line lies between, and nearer to "a few" than to "many", because these
+ * offers stand underneath each other rather than side by side.
  *
- * Wer sie verschiebt, verschiebt eine Anzeigeentscheidung und sonst nichts:
- * beide Zweige führen auf dieselbe Adresse, und keiner von beiden entscheidet
- * etwas über die Anmeldung.
+ * Whoever moves it moves a display decision and nothing else: both branches
+ * lead to the same address, and neither decides anything about the sign-in.
  */
 const SSO_BUTTON_LIMIT = 4;
 
 /**
- * Das SSO-Angebot — über dem Passwortformular, weil wer ein Organisationskonto
- * hat, es benutzt, und das lokale Formular der Rückfallweg für Personen ohne
- * eines ist.
+ * The SSO offer — above the password form, because whoever has an
+ * Organisationskonto uses it and the local form is the fallback for people
+ * without one.
  *
- * ## Zwei Darstellungen, ein Weg
+ * ## Two presentations, one way through
  *
- * Bis {@link SSO_BUTTON_LIMIT} Organisationen eine Schaltfläche je
- * Organisation, darüber eine Auswahl und ein „Weiter". Das ist **ausschließlich
- * eine Anzeigeentscheidung**, und das ist der Satz, der hier stehen bleiben
- * muss: Was gewählt wird, ist der `:tenantId` der Startadresse — also genau
- * das, was die Schaltfläche auch trug. Der Server entscheidet danach
- * unverändert selbst, ob diese Organisation SSO überhaupt anbietet
- * (`oidc-login.controller.ts`), und die Anmeldung mit E-Mail und Passwort weiß
- * von dieser Auswahl nichts: Wer zu welcher Organisation gehört, ergibt sich
- * aus der Mitgliedschaft, nie aus einer Angabe der Anmeldeseite.
+ * Up to {@link SSO_BUTTON_LIMIT} organisations one button each, above it a
+ * chooser and a single link. That is **a display decision and nothing else**,
+ * and this is the sentence that has to stay: what is chosen is the
+ * `:tenantId` of the start route — exactly what the button carried. The server
+ * still decides for itself whether that organisation offers SSO at all
+ * (`oidc-login.controller.ts`), and the password sign-in knows nothing of this
+ * selection: which organisation somebody belongs to follows from their
+ * membership, never from an assertion made by the sign-in page.
  *
- * Eine Auswahl auf einer Anmeldeseite lädt dazu ein, sie später als „Kontext"
- * mitzuschicken. Sie darf das nicht werden — das wäre eine Angabe des
- * Absenders an einer Stelle, die keine verträgt.
+ * A chooser on a sign-in page invites being passed along later as "context".
+ * It must not become that — it would be an assertion of the sender at a place
+ * that tolerates none.
  *
- * ## Warum Anker und keine Schaltflächen mit `onClick`
+ * ## Why anchors and not buttons with an `onClick`
  *
- * Das Ziel ist eine Serveradresse, die mit einer Weiterleitung zum
- * Identity-Provider antwortet und dabei das Transaktions-Cookie setzt. Beides
- * braucht eine echte Navigation, und ein Anker ist das, was Mittelklick,
- * Tastatur und Vorlesehilfe bereits verstehen.
+ * The target is a server route that answers with a redirect to the identity
+ * provider and sets the transaction cookie on the way. Both need a real
+ * navigation, and an anchor is what a middle-click, a keyboard and a screen
+ * reader all already understand.
  *
- * `rel="nofollow"`: die Adresse startet eine Anmeldung, in die kein Crawler
- * hineinlaufen soll. Kein `target`, also auch keine `noopener`-Frage — das
- * bleibt im selben Tab, auf unserer eigenen Herkunft.
+ * `rel="nofollow"`: the address starts a login, so it is not something a
+ * crawler should walk into. No `target`, no `noopener` question — this stays
+ * in the same tab, on our own origin.
  */
 function OidcOffer({
   offers,
@@ -363,24 +359,21 @@ function OidcOffer({
   const chooserId = useId();
   const [chosen, setChosen] = useState('');
 
-  // **Während des Renderns abgeleitet, nicht in einem `useEffect` nachgezogen.**
-  // Die Liste trifft asynchron ein, ein Anfangswert aus `useState` könnte sie
-  // also gar nicht kennen; und eine Organisation kann zwischen zwei Abfragen
-  // verschwinden (SSO abgeschaltet, Organisation gelöscht). Beide Fälle enden
-  // hier auf demselben Rückfall statt auf einer Auswahl, die auf nichts zeigt —
-  // ohne zweiten Renderdurchlauf und ohne einen Moment, in dem der Anker eine
-  // Adresse trägt, die es nicht mehr gibt.
-  //
+  // **Derived during the render, not pulled along in a `useEffect`.** The list
+  // arrives asynchronously, so an initial value from `useState` could not know
+  // it; and an organisation can disappear between two queries (SSO switched
+  // off, organisation deleted). Both cases end on the same fallback rather than
+  // on a selection pointing at nothing — without a second render pass, and
+  // without a moment in which the anchor carries an address that is gone.
   const selected =
     offers.find((offer) => offer.tenantId === chosen) ?? offers[0];
 
-  // **„Keine Organisation bietet SSO an" wird hier entschieden und nur hier.**
-  // Der Aufrufer prüfte das früher ein zweites Mal, und zwei Stellen für
-  // dieselbe Frage sind eine Stelle zu viel — zumal `noUncheckedIndexedAccess`
-  // ohnehin recht behält: dass `offers` nicht leer ist, war eine Zusage des
-  // Aufrufers, die der Typ nicht kannte und die ein dritter Aufrufer nicht
-  // hätte einhalten müssen. Jetzt trägt die Bedingung, die den Wert braucht,
-  // auch seine Prüfung.
+  // **"No organisation offers SSO" is decided here and only here.** The caller
+  // used to ask the same question a second time, and two places for one
+  // question are one too many — the more so as `noUncheckedIndexedAccess` is
+  // right either way: that `offers` is non-empty was an assurance of the
+  // caller's that the type did not know about and a third caller would not
+  // have had to keep. The branch that needs the value now carries its check.
   if (selected === undefined) {
     return null;
   }
@@ -396,37 +389,35 @@ function OidcOffer({
             rel="nofollow"
           >
             {/*
-              **Der Organisationsname, und er ist der wichtigere der beiden
-              Texte** — deshalb steht er oben und trägt das Gewicht.
+              **The organisation name, and it is the more important of the two
+              texts** — so it stands on top and carries the weight.
 
-              Er reist seit jeher im `OidcProvider` mit und wurde hier nicht
-              gerendert; das ging gut, solange eine Installation eine
-              Organisation mit SSO hatte. Es geht nicht mehr gut, sobald sie
-              mehrere hat: `oidcButtonLabel` ist optional und fällt auf
-              `DEFAULT_OIDC_BUTTON_LABEL` zurück — auf *denselben Satz* für jede
-              Organisation, die keine eigene Beschriftung gepflegt hat.
+              It has always travelled in `OidcProvider` and was simply not
+              rendered; that went well while an installation had one
+              organisation with SSO. It stops going well the moment it has
+              several: `oidcButtonLabel` is optional and falls back to
+              `DEFAULT_OIDC_BUTTON_LABEL` — to *the same sentence* for every
+              organisation that never set a caption of its own.
 
-              Der Name statt `shortName`: der Kurzname ist ein Handle für
-              Adressen und Tabellen, der Name ist, wie die Organisation sich
-              nennt. Wer hier sucht, sucht den Namen.
+              The name rather than `shortName`: the short name is a handle for
+              addresses and tables, the name is what the organisation calls
+              itself. Whoever searches here searches for the name.
             */}
             <span className="login__sso-tenant">{offer.name}</span>
             {/*
-              **Ein echtes Leerzeichen, kein Layout-Abstand.** Der zugängliche
-              Name eines Ankers wird aus seinen Textknoten aneinandergehängt,
-              ohne Rücksicht darauf, dass die beiden Spans optisch in zwei
-              Zeilen stehen: ohne dieses Zeichen liest eine Vorlesehilfe
-              „Ortsgruppe MusterstadtMit Organisationskonto anmelden" am Stück.
-              Im Flex-Container ist es folgenlos — reiner Leerraum zwischen
-              Flex-Kindern erzeugt kein anonymes Element.
+              **A real space, not a layout gap.** An anchor's accessible name is
+              concatenated from its text nodes regardless of the two spans
+              standing on separate lines: without this character a screen reader
+              reads "Ortsgruppe MusterstadtMit Organisationskonto anmelden" in
+              one go. Inside the flex container it is inconsequential — white
+              space between flex children produces no anonymous item.
             */}{' '}
             {/*
-              Die Beschriftung ist die *Handlung*, nicht die Kennung — und
-              bleibt deshalb unverändert die des Servers. Der Rückfall auf die
-              Vorgabe wird weiterhin **einmal** angewendet, dort
-              (`oidc-login.service.ts`); hier eine zweite Formulierung zu
-              erfinden wäre genau die Dopplung, die `DEFAULT_OIDC_BUTTON_LABEL`
-              vermeidet.
+              The caption is the *action*, not the identity — and therefore
+              stays the server's, unchanged. The fallback to the shipped default
+              is still applied **once**, there (`oidc-login.service.ts`);
+              inventing a second wording here would be exactly the duplication
+              `DEFAULT_OIDC_BUTTON_LABEL` exists to avoid.
             */}
             <span className="login__sso-action">{offer.buttonLabel}</span>
           </a>
@@ -438,12 +429,12 @@ function OidcOffer({
               Organisation
             </label>
             {/*
-              Ein natives `<select>` und keine selbstgebaute Combobox: es ist
-              auf dem Telefon der Auswahldialog des Systems, am Rechner mit der
-              Tastatur bedienbar und mit Vorlesehilfen erprobt — alles, was ein
-              Eigenbau erst wieder herstellen müsste. Tippen zum Filtern kann es
-              nicht; das wird ab einigen Dutzend Organisationen zum Thema und
-              ist dann eine eigene Entscheidung, keine Fußnote hier.
+              A native `<select>` and not a hand-built combobox: it is the
+              system picker on a phone, keyboard-operable on a desktop and
+              proven with screen readers — everything a rebuild would have to
+              re-establish first. What it cannot do is filter as you type; that
+              becomes a question at some dozens of organisations and is then a
+              decision of its own, not a footnote here.
             */}
             <select
               className="login__input"
@@ -461,24 +452,33 @@ function OidcOffer({
             </select>
           </div>
           {/*
-            **Vorbelegt mit der ersten Organisation**, damit dieser Anker zu
-            jedem Zeitpunkt ein gültiger Anker ist: fokussierbar, mittelklickbar
-            und für eine Vorlesehilfe ein Link. Die Alternative — eine
-            „bitte wählen"-Option und ein Anker ohne `href` — wäre genau das
-            nicht: ein Anker ohne `href` ist kein Link, liegt nicht in der
-            Tabreihenfolge, und wer sich mit der Tastatur bewegt, fände an
-            dieser Stelle nichts vor.
+            **Pre-filled with the first organisation**, so this anchor is a
+            valid anchor at every moment: focusable, middle-clickable, and a
+            link to a screen reader. The alternative — a "please choose" option
+            and an anchor without an `href` — would be precisely none of that:
+            an anchor without an `href` is not a link, does not sit in the tab
+            order, and whoever moves by keyboard would find nothing at this
+            spot.
 
-            Die Fehlbedienung, die das zulässt, ist folgenlos: Wer ohne
-            Hinsehen auf „Weiter" klickt, landet beim Identity-Provider einer
-            fremden Organisation, meldet sich dort nicht an und geht zurück.
-            Die Liste ist serverseitig stabil nach `shortName` sortiert, die
-            Vorbelegung springt also nicht zwischen zwei Abfragen.
+            The misoperation this permits is harmless: whoever clicks without
+            looking lands at a foreign organisation's identity provider, does
+            not sign in there and goes back. The list is sorted server-side by
+            `shortName` and stable, so the pre-fill does not jump between two
+            queries.
+
+            **`aria-describedby` on the chooser** and not a second copy of the
+            name in the link text: the caption alone („Mit Organisationskonto
+            anmelden", for every organisation that set none) says nothing about
+            *which* one, and a screen reader listing the links of this page
+            would read exactly that caption with no organisation attached. The
+            reference hands it the chosen value, which stands directly above
+            anyway — so the page says it once and reads it twice.
           */}
           <a
             className="login__sso-button"
             href={oidcStartUrl(selected.tenantId)}
             rel="nofollow"
+            aria-describedby={chooserId}
           >
             {selected.buttonLabel}
           </a>
