@@ -632,6 +632,67 @@ describe('Nutzerrechte (Tenant-Ebene)', () => {
     });
 
     /**
+     * **Derselbe Satz wäre für ein SSO-Konto falsch** — und das ist der Fall,
+     * aus dem die Unterscheidung überhaupt entstand (Review-Runde 3 Nr. 13).
+     *
+     * Die Lage: `user.email` ist installationsweit eindeutig, es gibt also
+     * **ein** Konto, und eine zweite Organisation hängt sich nur eine
+     * Mitgliedschaft daran (ADR-0012 Nr. 3). Die Bindung bleibt das Paar
+     * *(Issuer, Subject)*, das beim ersten Login entstand — trägt diese
+     * Organisation einen anderen Anmeldedienst ein, erreicht deren
+     * Schaltfläche dieses Konto nie (`oidc-identity.service.ts`: „a second
+     * provider cannot claim it"). Die Person meldet sich weiter dort an, wo
+     * das Konto entstand, und wechselt danach hierher.
+     *
+     * „Die Anmeldung läuft mit dem vorhandenen Passwort" wäre für ein solches
+     * Konto schlicht falsch: es hat keines. Wer der Meldung glaubte, wartete
+     * auf ein Passwort, das nie kommt, und suchte den Fehler in der eigenen
+     * SSO-Einrichtung.
+     *
+     * Der Zweig stand ungetestet; dieser Test ist sein Regressionstest.
+     */
+    it('nennt bei einem vorhandenen SSO-Konto den Anmeldedienst statt eines Passworts', async () => {
+      routeFetch({
+        onMemberPost: () =>
+          jsonResponse(200, {
+            userId: '00000000-0000-4000-8000-0000000000cb',
+            email: 'sso-schon-da@musterstadt-stuttgart.de',
+            name: 'SSO Schon Da',
+            accountKind: 'oidc',
+            invited: false,
+            group: editorGroup(),
+          }),
+      });
+      renderWithQuery(
+        <TenantMembersTab tenantId={TENANT_ID} currentUserId={YOU_ID} />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Name')).toBeDefined();
+      });
+      fireEvent.change(screen.getByLabelText('Name'), {
+        target: { value: 'SSO Schon Da' },
+      });
+      fireEvent.change(screen.getByLabelText('E-Mail-Adresse'), {
+        target: { value: 'sso-schon-da@musterstadt-stuttgart.de' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Hinzufügen' }));
+
+      await waitFor(() => {
+        expect(screen.getByText(/wurde hinzugefügt/u)).toBeDefined();
+      });
+      expect(
+        screen.getByText(
+          /meldet sich weiterhin über den Anmeldedienst an, bei dem es entstanden ist/u,
+        ),
+      ).toBeDefined();
+      // **Das Gegenteil ist der Punkt:** ein SSO-Konto hat kein Passwort, und
+      // die Meldung darf keines versprechen.
+      expect(screen.queryByText(/vorhandenen Passwort/u)).toBeNull();
+      expect(screen.queryByText(/Einladung per Mail bekommen/u)).toBeNull();
+    });
+
+    /**
      * **The expanded role select could not be read** (finding 14).
      *
      * The „Person hinzufügen" box stands on `--color-ink`, and its fields set
