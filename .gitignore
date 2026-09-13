@@ -1,0 +1,39 @@
+# Secrets / local config
+.env
+.env.*
+!.env.example
+!.env.prod.example
+.claude/settings.local.json
+
+# Uploaded files of a local installation (FILE_STORAGE_DIR, ADR-0014).
+# `scripts/dev-setup.sh` points the variable here and creates the directory;
+# what lands in it is participants' attachments, never repository content.
+/var/
+
+# Dependencies / build artifacts (extend per stack)
+node_modules/
+dist/
+build/
+target/
+__pycache__/
+.venv/
+*.log
+
+# TypeScript / Vite / Vitest
+*.tsbuildinfo
+.vite/
+coverage/
+
+# Playwright
+playwright-report/
+test-results/
+blob-report/
+.playwright/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+# .vscode/ is intentionally checked in (shared recommendations); ignore only local leftovers:
+.vscode/*.local

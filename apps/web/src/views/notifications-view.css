@@ -1,0 +1,529 @@
+/*
+ * Benachrichtigungen (handoff) — list on the left, editor on the right.
+ *
+ * Every colour, spacing step, radius and type size is a token; the file spells
+ * no literal (`tokens.test.ts` and `formsache/no-hardcoded-colors` check that, and
+ * Tenant-Branding is switched at runtime through exactly these variables).
+ *
+ * **Below 1180 px the two panes stack** — the list first, then the editor, in
+ * the reading order of the markup, so the off-canvas layout needs no second
+ * source of truth about which comes first.
+ */
+
+.notifications {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: var(--layout-container-max);
+  margin: 0 auto;
+  padding: var(--space-9) var(--space-9) 70px;
+  min-width: 0;
+}
+
+.app-shell--compact .notifications {
+  padding: var(--space-7) var(--space-6) 80px;
+}
+
+/* --- state / links ------------------------------------------------------ */
+
+.notifications__state {
+  margin: 0;
+  padding: 48px var(--space-7);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  text-align: center;
+  font-size: var(--font-size-body);
+  color: var(--color-text-muted);
+}
+
+.notifications__link {
+  border: none;
+  background: none;
+  padding: 0;
+  /* An underlined text button, so WCAG 1.4.3 applies and 4.5:1 is the bar —
+     `--color-accent-strong` is a surface colour and reaches 3.54:1 with the
+     Dachorganisation's accent colour. `--color-accent-ink` is the same hue, dark enough to be
+     read whatever an organisation typed in (`tokens.css`). */
+  color: var(--color-accent-ink);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* --- head --------------------------------------------------------------- */
+
+.notifications__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.notifications__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+}
+
+.notifications__title-form {
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-muted);
+}
+
+.notifications__head-actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.notifications__button {
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  padding: var(--space-3) var(--space-5);
+  font-size: var(--font-size-body);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.notifications__button:hover {
+  background: var(--color-surface-sunken);
+}
+
+.notifications__lead {
+  margin: 0;
+  font-size: var(--font-size-body);
+  color: var(--color-text-muted);
+  line-height: var(--line-height-body);
+}
+
+/* --- layout ------------------------------------------------------------- */
+
+.notifications__layout {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.app-shell--compact .notifications__layout {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.notifications__list-pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.notifications__new {
+  border: 1px solid var(--color-accent-strong);
+  border-radius: var(--radius-control);
+  background: var(--gradient-accent);
+  padding: var(--space-3) var(--space-5);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-on-accent);
+  cursor: pointer;
+}
+
+.notifications__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.notifications__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-control-lg);
+  background: var(--color-surface);
+  padding: var(--space-4);
+  cursor: pointer;
+}
+
+.notifications__item:hover {
+  background: var(--color-surface-sunken);
+}
+
+.notifications__item--current {
+  border-color: var(--color-accent-strong);
+  background: var(--color-accent-tint);
+}
+
+.notifications__item-name {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+}
+
+.notifications__item-meta {
+  font-size: var(--font-size-caption);
+  color: var(--color-text-subtle);
+}
+
+.notifications__empty,
+.notifications__placeholder {
+  margin: 0;
+  padding: var(--space-5);
+  border: 1px dashed var(--color-hairline);
+  border-radius: var(--radius-card);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-muted);
+  background: var(--color-surface-sunken);
+}
+
+/* --- editor ------------------------------------------------------------- */
+
+.notifications__editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  padding: var(--space-7);
+  min-width: 0;
+}
+
+.notifications__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-6);
+}
+
+.app-shell--compact .notifications__row {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.notifications__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.notifications__field--fieldset {
+  border: 1px solid var(--color-hairline-faint);
+  border-radius: var(--radius-control-lg);
+  padding: var(--space-5);
+  margin: 0;
+  gap: var(--space-4);
+}
+
+.notifications__label {
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+}
+
+.notifications__sublabel {
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-muted);
+}
+
+.notifications__input,
+.notifications__textarea {
+  width: 100%;
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  padding: var(--space-3) var(--space-4);
+  font: inherit;
+  font-size: var(--font-size-body);
+  color: var(--color-text);
+}
+
+.notifications__textarea {
+  resize: vertical;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-body-sm);
+  line-height: var(--line-height-body);
+}
+
+.notifications__radios {
+  display: flex;
+  gap: var(--space-5);
+}
+
+.notifications__radio,
+.notifications__switch {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--font-size-body);
+  color: var(--color-text);
+}
+
+.notifications__hint {
+  margin: 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-muted);
+  line-height: var(--line-height-body);
+}
+
+.notifications__warning {
+  margin: 0;
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-control);
+  background: var(--color-warning-bg);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-warning);
+  line-height: var(--line-height-body);
+}
+
+/* --- templates ---------------------------------------------------------- */
+
+/*
+  The row of delivered templates, above the name field — visible only while the
+  body is empty (`NotificationEditor`, module note 4). Same shape as the
+  placeholder chips below and deliberately so: both are „hier klicken, dann
+  steht es im Feld", and a second visual language for the same gesture would
+  have to be learned twice. The rule below separates it from the fields it
+  writes into.
+*/
+.notifications__templates {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  border-bottom: 1px solid var(--color-hairline-faint);
+  padding-bottom: var(--space-5);
+}
+
+/* --- chips -------------------------------------------------------------- */
+
+.notifications__chips {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  border-top: 1px solid var(--color-hairline-faint);
+  padding-top: var(--space-5);
+}
+
+.notifications__chips-hint,
+.notifications__chips-empty {
+  margin: 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-muted);
+}
+
+.notifications__chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.notifications__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-sunken);
+  padding: var(--space-1) var(--space-4);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.notifications__chip:hover {
+  background: var(--color-panel-raised);
+}
+
+.notifications__chip--on {
+  border-color: var(--color-accent-strong);
+  background: var(--color-accent-tint);
+  font-weight: var(--font-weight-bold);
+}
+
+.notifications__chip-token {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-subtle);
+}
+
+/* --- preview ------------------------------------------------------------ */
+
+.notifications__preview {
+  /*
+   * How tall a rendered body gets before it scrolls. Declared **once** here
+   * and read by both bodies below: the text preview caps its `<pre>` with it,
+   * the HTML preview sets its iframe's fixed height from it. The two carried
+   * the same literal `320px` and a comment saying "kept equal to" — which is
+   * the coupling this project has paid for three times now (`pickDefaultColumns`,
+   * `ADDRESS_QUESTION_TYPES`, the placeholder grammar). A comment is not a
+   * mechanism; a custom property is.
+   *
+   * Component-scoped rather than a global design token: it is one component's
+   * one measurement, and `tokens.css` is the vocabulary of the whole
+   * application.
+   */
+  --notifications-preview-body-height: 320px;
+
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-sunken);
+  padding: var(--space-5);
+}
+
+.notifications__preview-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.notifications__preview-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-title-sm);
+  color: var(--color-text-strong);
+}
+
+.notifications__preview-note {
+  margin: 0;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-subtle);
+}
+
+.notifications__preview-warning {
+  margin: 0;
+  border-radius: var(--radius-control);
+  background: var(--color-warning-bg);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-warning);
+}
+
+.notifications__preview-fields {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  font-size: var(--font-size-body-sm);
+}
+
+.notifications__preview-fields dt {
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-subtle);
+}
+
+.notifications__preview-fields dd {
+  margin: 0;
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+
+.notifications__preview-body {
+  margin: 0;
+  border: 1px solid var(--color-hairline-faint);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  padding: var(--space-4);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-body-sm);
+  line-height: var(--line-height-body);
+  color: var(--color-text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: var(--notifications-preview-body-height);
+  overflow-y: auto;
+}
+
+/*
+ * The iframe cannot report its rendered content height back to us — an empty
+ * `sandbox` gives its document an opaque origin on purpose (see the component
+ * comment). So the height here is fixed rather than measured, and the mail
+ * content scrolls inside it instead of the frame growing to fit it. The value
+ * comes from `--notifications-preview-body-height` on `.notifications__preview`,
+ * the same one the text preview caps itself with — so the two formats take up
+ * the same space because they read the same declaration, not because a comment
+ * asks someone to keep them in step.
+ */
+.notifications__preview-body-frame {
+  display: block;
+  width: 100%;
+  height: var(--notifications-preview-body-height);
+  max-height: none;
+  padding: 0;
+}
+
+/* --- problems / actions ------------------------------------------------- */
+
+.notifications__problems {
+  margin: 0;
+  padding: var(--space-4) var(--space-4) var(--space-4) var(--space-8);
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-control);
+  background: var(--color-warning-bg-soft);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text);
+}
+
+.notifications__alert {
+  margin: 0;
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-control);
+  background: var(--color-danger-bg-soft);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-danger);
+}
+
+.notifications__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.notifications__save-state {
+  margin-left: auto;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-subtle);
+}
+
+.notifications__save {
+  border: 1px solid var(--color-accent-strong);
+  border-radius: var(--radius-control);
+  background: var(--gradient-accent);
+  padding: var(--space-3) var(--space-6);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-on-accent);
+  cursor: pointer;
+}
+
+.notifications__save:disabled,
+.notifications__delete:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.notifications__delete {
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-control);
+  background: var(--color-danger-bg-soft);
+  padding: var(--space-3) var(--space-5);
+  font-size: var(--font-size-body);
+  color: var(--color-danger);
+  cursor: pointer;
+}

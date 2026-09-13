@@ -1,0 +1,83 @@
+/*
+ * `ConfirmPrompt` (handoff's „mit Bestätigung", e.g. „🗑 Papierkorb leeren").
+ *
+ * Its own file rather than living inside `tenant-admin-view.css`: the
+ * component moved out of the tenant administration's own file when the trash
+ * (`TrashView.tsx`) and the Superadmin-Übersicht started using it too — a
+ * shared component whose styles only one of its three callers imported would
+ * have rendered unstyled the moment a second caller reached for it.
+ *
+ * **Two tones, and the difference is the whole point.** The red box with the
+ * filled red button is what an *irreversible* act looks like. „× Löschen" on
+ * the Dashboard and „Löschen" in the answer detail move something into the
+ * trash for 30 days, and dressing that in the same alarm makes the
+ * distinction unreadable — the one distinction Konzept no. 65 spends a decision
+ * on. The reversible tone therefore differs in all three of the things that
+ * were measured as identical: the box, the button's fill, and its weight.
+ */
+
+.tenant-admin__confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-control);
+  background: var(--color-danger-bg);
+}
+
+/* The reversible tone: a plain notice, not an alarm. */
+.tenant-admin__confirm--reversible {
+  border-color: var(--color-hairline);
+  background: var(--color-surface-sunken);
+}
+
+.tenant-admin__confirm-text {
+  flex: 1 1 220px;
+  margin: 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-strong);
+}
+
+.tenant-admin__confirm-actions {
+  display: flex;
+  flex: none;
+  gap: var(--space-3);
+}
+
+.tenant-admin__confirm-yes,
+.tenant-admin__confirm-no {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-control);
+  font: inherit;
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+}
+
+.tenant-admin__confirm-yes {
+  border: 1px solid var(--color-danger-strong);
+  background: var(--color-danger-strong);
+  /* Not `--color-on-accent`: that is the ink of the gold brand surface, and on
+     this red it measures 2.09:1. See `--color-on-danger` in `tokens.css`. */
+  color: var(--color-on-danger);
+}
+
+.tenant-admin__confirm--reversible .tenant-admin__confirm-yes {
+  border-color: var(--color-ink);
+  background: var(--color-ink);
+  color: var(--color-on-ink);
+  font-weight: var(--font-weight-regular);
+}
+
+.tenant-admin__confirm-yes:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.tenant-admin__confirm-no {
+  border: 1px solid var(--color-field-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}

@@ -1,0 +1,14 @@
+/*
+ * Single stylesheet entry point of the web app. Tokens first, then the
+ * self-hosted `@font-face` declarations the type tokens point at, base styles
+ * last — the base layer only ever references tokens.
+ *
+ * `switch.css` is the one *component* here, and it is here because two views
+ * use it (form settings and the builder) — see its own comment for
+ * why it is no longer copied into both view stylesheets.
+ */
+@import './tokens.css';
+@import './fonts.css';
+@import './base.css';
+@import './utilities.css';
+@import './switch.css';

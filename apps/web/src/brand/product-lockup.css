@@ -1,0 +1,48 @@
+/*
+ * The product mark (ADR-0019). Its three colour roles come from the
+ * `--brand-mark-*` tokens and **not** from the `--color-*` ones: the reason
+ * why this single mark belongs to the software rather than to the organisation
+ * on screen is written next to the tokens themselves.
+ *
+ * `ProductLockup.test.tsx` reads the three `fill` declarations below and fails
+ * on any token that is not one of the three — a mark painted in
+ * `--color-accent` would follow whatever colour an admin typed in, which is
+ * exactly what that ADR decides against.
+ */
+
+.product-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.product-lockup__signet {
+  display: block;
+  flex: none;
+  width: var(--layout-product-mark);
+  height: var(--layout-product-mark);
+}
+
+.product-lockup__ground {
+  fill: var(--brand-mark-ground);
+}
+
+.product-lockup__letter {
+  fill: var(--brand-mark-ink);
+}
+
+.product-lockup__lines {
+  fill: var(--brand-mark-accent);
+}
+
+.product-lockup__word {
+  font-family: var(--font-display);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-title-sm);
+  line-height: var(--line-height-tight);
+  color: var(--color-text);
+  /* The name stands on a form line — the same line the signet is built from.
+     Part of the design, not an underline. */
+  border-bottom: 2px solid var(--brand-mark-accent);
+  padding-bottom: var(--space-1);
+}

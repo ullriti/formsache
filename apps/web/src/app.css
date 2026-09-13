@@ -1,0 +1,12 @@
+/* The brief state between "app started" and "we know who you are". */
+
+.app-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--space-7);
+  background: var(--color-shell);
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-body);
+}

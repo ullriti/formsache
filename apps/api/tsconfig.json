@@ -1,0 +1,31 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "types": ["node"],
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    // Type checking and linting read @formsache/shared from source, so a broken
+    // wire contract shows up immediately (ADR-0007). The emitting config
+    // below resets this and resolves the built artifact instead.
+    "paths": {
+      "@formsache/shared": ["../../packages/shared/src/index.ts"],
+      // The one OpenID provider of the suite. `moduleResolution:
+      // "Node"` here ignores package `exports`, so the mapping is what makes
+      // `@formsache/test-idp` resolve for `test/auth/*` — and it resolves to the
+      // source, like everything else this workspace shares.
+      "@formsache/test-idp": ["../../packages/test-idp/src/index.ts"]
+    }
+  },
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.ts",
+    "prisma/**/*.ts",
+    "vitest.config.ts",
+    "prisma.config.ts"
+  ]
+}

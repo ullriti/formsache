@@ -1,0 +1,24 @@
+# Build output and dependencies
+node_modules/
+dist/
+build/
+coverage/
+playwright-report/
+test-results/
+pnpm-lock.yaml
+
+# Editor/agent configuration is maintained by hand and by tooling.
+.claude/
+.vscode/
+
+# The design handoff is a verbatim copy of the prototype and must not be
+# rewritten.
+docs/specs/0001-formularsystem/design-handoff/
+
+# Markdown is hand-written German prose with deliberate line breaks.
+*.md
+
+# Die Liste der Drittkomponenten wird erzeugt (tools/licences.ts) und trägt
+# fremde Lizenztexte im Wortlaut — Prettier würde sie umformatieren und damit
+# den Vergleich in `--check` gegen sich selbst laufen lassen.
+apps/web/public/drittanbieter-lizenzen.json

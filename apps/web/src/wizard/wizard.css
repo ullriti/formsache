@@ -1,0 +1,274 @@
+/*
+ * The setup wizard (ADR-0022, continuation 2026-08-18).
+ *
+ * The same formal language as the login and the earlier setup mask — shell
+ * background, card with colour stripe, PT Serif title, accent gradient on
+ * the primary button. What the old `setup-view.css` brought along in the way
+ * of field, caption and error classes of its own is **gone**: the fields
+ * within a step are the shared building blocks from
+ * `settings-view.css` (`SettingsSectionCard`, `TextSetting`, `ToggleSetting`,
+ * `SettingsSaveBar`), so that a step looks exactly like the setting it later
+ * leads to. All that stands here is the frame around them.
+ *
+ * Tokens only, no fixed colours: this flow stands outside every organisation
+ * theme — at the first step there is no organisation yet.
+ */
+
+.wizard {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--space-7) var(--space-5);
+  background: var(--color-shell);
+}
+
+.wizard__card {
+  width: 100%;
+  /* Wider than the login: whole settings cards stand in here. Deliberately
+     **without** `overflow: hidden` — for the reason `login-view.css` writes
+     out: clipping is no better than a scrollbar, only quieter. */
+  max-width: var(--layout-settings-max);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card-hover);
+}
+
+.wizard__stripe {
+  height: var(--space-3);
+  border-radius: var(--radius-card-lg) var(--radius-card-lg) 0 0;
+  background: var(--gradient-stripe);
+}
+
+.wizard__body {
+  padding: var(--space-8) var(--space-7) var(--space-7);
+}
+
+.wizard__banner {
+  margin: 0 0 var(--space-4);
+}
+
+.wizard__title {
+  margin: var(--space-1) 0 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-title);
+  color: var(--color-text);
+}
+
+.wizard__intro {
+  margin: var(--space-3) 0 0;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  color: var(--color-text-muted);
+}
+
+/* The step list runs horizontally as long as it fits, and wraps otherwise —
+   seven steps at 360 px are seven lines and no scrolling. */
+.wizard__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  margin: var(--space-6) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wizard__step {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-control);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-subtle);
+}
+
+/*
+  Die Polsterung sitzt seit Review-Runde 3 Nr. 6 **innen** — am Text oder an
+  der Schaltfläche, nicht am `<li>`. Bliebe sie außen, endete das antippbare
+  Feld vor dem Rand des Kastens, und auf einem Telefon träfe man den Schritt
+  neben dem gemeinten.
+*/
+.wizard__step > * {
+  padding: var(--space-2) var(--space-3);
+}
+
+/*
+  Ein anspringbarer Schritt ist eine Schaltfläche, die aussieht wie der Text
+  daneben: derselbe Kasten, dieselbe Schrift — nur unterstrichen bei
+  Zeigerkontakt und mit sichtbarem Fokusring. Ein Schritt, der sich nicht
+  anspringen lässt, ist gar keine Schaltfläche (siehe `WizardFrame`) und
+  bekommt damit auch keinen Zeiger, der etwas verspricht.
+*/
+.wizard__step-jump {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  /* Antippbar: ein Schritt in einer Reihe von acht ist der klassische
+     Danebengriff auf dem Telefon. */
+  min-height: var(--touch-target-min);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  font: inherit;
+  font-size: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wizard__step-jump:hover .wizard__step-title {
+  text-decoration: underline;
+}
+
+.wizard__step-jump:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/*
+  „— zu diesem Schritt springen": nur für Bildschirmleser. Sichtbar steht auf
+  der Schaltfläche „4 Adressen offen", und daraus geht nicht hervor, dass ein
+  Klick dorthin führt. Die übliche Bauform, damit der Text im
+  Barrierefreiheitsbaum steht und nicht auf dem Bildschirm.
+*/
+.wizard__step-hint {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.wizard__step--current {
+  border-color: var(--color-focus);
+  background: var(--color-surface-sunken);
+  color: var(--color-text);
+  font-weight: var(--font-weight-bold);
+}
+
+.wizard__step--done {
+  border-color: var(--color-success);
+  color: var(--color-text-muted);
+}
+
+.wizard__step-number {
+  font-variant-numeric: tabular-nums;
+}
+
+/* The word carries the state; the colour is the addition. */
+.wizard__step-status {
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-subtle);
+}
+
+.wizard__step-panel {
+  margin-top: var(--space-7);
+}
+
+.wizard__position {
+  margin: 0;
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.wizard__step-heading {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-subheading);
+  color: var(--color-text);
+}
+
+/* The focus is visible although the heading is not a control: it receives it
+   at every change of step, and an invisible focus would be a jump that nobody
+   sees. */
+.wizard__step-heading:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: var(--space-1);
+}
+
+.wizard__consequence {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-3) var(--space-4);
+  border-left: 3px solid var(--color-accent);
+  background: var(--color-surface-sunken);
+  font-size: var(--font-size-body-sm);
+  line-height: var(--line-height-body);
+  color: var(--color-text-muted);
+}
+
+.wizard__content {
+  margin-top: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.wizard__error {
+  margin: var(--space-5) 0 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-control);
+  background: var(--color-danger-bg-soft);
+  color: var(--color-danger-strong);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+}
+
+/* Wraps on narrow devices instead of pushing the buttons out of the card —
+   „Überspringen" and „Weiter" together are wider than 360 px. */
+.wizard__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+.wizard__spacer {
+  flex: 1 1 auto;
+}
+
+.wizard__primary {
+  padding: var(--space-4) var(--space-6);
+  border: none;
+  border-radius: var(--radius-control-lg);
+  background: var(--gradient-accent);
+  box-shadow: var(--shadow-accent-button);
+  color: var(--color-on-accent);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+}
+
+.wizard__back,
+.wizard__skip {
+  padding: var(--space-4) var(--space-6);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+}
+
+.wizard__back:hover,
+.wizard__skip:hover {
+  border-color: var(--color-focus);
+}
+
+.wizard__primary:disabled,
+.wizard__back:disabled,
+.wizard__skip:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}

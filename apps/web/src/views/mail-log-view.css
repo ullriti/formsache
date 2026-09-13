@@ -1,0 +1,495 @@
+/*
+ * Mail log (handoff): KPI tiles, table, status chips.
+ *
+ * **The three status colours of the handoff are already tokens** —
+ * `--color-success-bg`/`--color-success-alt` (sent, `#e4f1e4`/`#1c6b2e`),
+ * `--color-danger-bg`/`--color-danger` (failed, `#f6e4e4`/`#8f1d1d`) and
+ * `--color-warning-bg`/`--color-warning` (queued, `#fdf0d8`/`#8a6a12`). They
+ * were tokenised with this very view in mind (see the comment at
+ * `--color-success-alt` in `tokens.css`), so nothing here spells a literal and
+ * nothing new had to be invented.
+ *
+ * The table scrolls **inside its own container** below the breakpoint, so the
+ * page body never scrolls sideways.
+ */
+
+.mail-log {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  /* Wider than the shared container: the table is the
+     content here, and it wants more room than a card grid. */
+  max-width: var(--layout-container-max-wide);
+  margin: 0 auto;
+  padding: var(--space-9) var(--space-9) 70px;
+  min-width: 0;
+}
+
+.app-shell--compact .mail-log {
+  padding: var(--space-7) var(--space-6) 80px;
+}
+
+.mail-log__state {
+  margin: 0;
+  padding: 48px var(--space-7);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  text-align: center;
+  font-size: var(--font-size-body);
+  color: var(--color-text-muted);
+}
+
+.mail-log__link {
+  border: none;
+  background: none;
+  padding: 0;
+  /* An underlined text button, so WCAG 1.4.3 applies and 4.5:1 is the bar —
+     `--color-accent-strong` is a surface colour and reaches 3.54:1 with the
+     Dachorganisation's accent colour. `--color-accent-ink` is the same hue, dark enough to be
+     read whatever an organisation typed in (`tokens.css`). */
+  color: var(--color-accent-ink);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* --- head --------------------------------------------------------------- */
+
+.mail-log__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.mail-log__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+}
+
+.mail-log__filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-sunken);
+  padding: var(--space-1) var(--space-4);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-muted);
+}
+
+.mail-log__button {
+  margin-left: auto;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  padding: var(--space-3) var(--space-5);
+  font-size: var(--font-size-body);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+/* --- KPI tiles ---------------------------------------------------------- */
+
+.mail-log__kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.app-shell--compact .mail-log__kpis {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.mail-log__kpi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  padding: var(--space-5);
+  text-align: left;
+  cursor: pointer;
+}
+
+.mail-log__kpi:hover {
+  background: var(--color-surface-sunken);
+}
+
+.mail-log__kpi--active {
+  border-color: var(--color-accent-strong);
+  background: var(--color-accent-tint);
+}
+
+.mail-log__kpi-value {
+  font-family: var(--font-display);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+}
+
+.mail-log__kpi-label {
+  font-size: var(--font-size-caption);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+}
+
+/* --- notes -------------------------------------------------------------- */
+
+.mail-log__retention,
+.mail-log__count {
+  margin: 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-muted);
+}
+
+.mail-log__alert {
+  margin: 0;
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-control);
+  background: var(--color-danger-bg-soft);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-danger);
+}
+
+.mail-log__empty {
+  margin: 0;
+  padding: var(--space-8) var(--space-5);
+  border: 1px dashed var(--color-hairline);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-sunken);
+  text-align: center;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-muted);
+}
+
+/* --- table -------------------------------------------------------------- */
+
+.mail-log__table-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+.mail-log__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-body-sm);
+}
+
+.mail-log__table th {
+  text-align: left;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-table-border);
+  font-size: var(--font-size-label);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+  white-space: nowrap;
+}
+
+.mail-log__table td {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-hairline-faint);
+  vertical-align: top;
+  color: var(--color-text);
+}
+
+.mail-log__recipient {
+  overflow-wrap: anywhere;
+}
+
+/*
+ * The erased-row text (`recipient`/`subject === null`, left behind by
+ * physical deletion's personal-data erasure) — muted and italic so it
+ * reads as „nothing is here" rather than as data, in the table cell and in
+ * the detail panel's `<dd>` alike.
+ */
+.mail-log__erased {
+  color: var(--color-text-subtle);
+  font-style: italic;
+}
+
+.mail-log__subject,
+.mail-log__notification,
+.mail-log__error {
+  display: block;
+}
+
+.mail-log__notification {
+  font-size: var(--font-size-caption);
+  color: var(--color-text-subtle);
+}
+
+.mail-log__error {
+  margin-top: var(--space-1);
+  font-size: var(--font-size-caption);
+  color: var(--color-danger);
+  overflow-wrap: anywhere;
+}
+
+/*
+ * This class sits on the `<td>` itself (`MailLogView.tsx`), not on a wrapper
+ * inside it. It used to read `display: flex; flex-direction: column;` —
+ * which replaces a table cell's UA-mandated `display: table-cell` with
+ * `flex`, and a cell that is no longer `table-cell` drops out of the row's
+ * table layout. It stopped stretching to the row's height like its sibling
+ * `<td>`s and its `border-bottom` (from `.mail-log__table td` below) then sat
+ * at the bottom of its own, differently sized content box — one column short
+ * of where the row's shared divider actually was. `display` is deliberately
+ * left unset here so the cell stays `table-cell`; the chip/attempts/retry
+ * stack as ordinary block boxes instead, sized to their content so the pill
+ * shape and button do not stretch to the column's width.
+ */
+.mail-log__status-cell > * {
+  display: block;
+  width: fit-content;
+}
+
+.mail-log__status-cell > * + * {
+  margin-top: var(--space-2);
+}
+
+.mail-log__chip {
+  display: inline-block;
+  border-radius: var(--radius-pill);
+  padding: var(--space-1) var(--space-4);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  white-space: nowrap;
+}
+
+.mail-log__chip--sent {
+  background: var(--color-success-bg);
+  color: var(--color-success-alt);
+}
+
+.mail-log__chip--failed {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.mail-log__chip--queued {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.mail-log__attempts {
+  font-size: var(--font-size-caption);
+  color: var(--color-text-subtle);
+}
+
+.mail-log__retry {
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-control-sm);
+  background: var(--color-surface);
+  padding: var(--space-1) var(--space-4);
+  font-size: var(--font-size-caption);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.mail-log__retry:hover {
+  background: var(--color-surface-sunken);
+}
+
+.mail-log__retry:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/*
+ * The subject turned into the row's „open detail" control (Punkt 4:
+ * „Die gerenderte Mail ansehen"). Unstyled as a button beyond that — it has to
+ * keep reading as the subject text it already was, not announce itself as a
+ * button before it announces itself as a subject.
+ */
+.mail-log__subject-button {
+  display: block;
+  /* The subject line **is** the button that opens the mail — at 360 px it
+     measured 160.4 × 18.8 px, that is one line of text without any hit area
+     (a review finding). */
+  min-height: var(--touch-target-min);
+  border: none;
+  background: none;
+  margin: 0;
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mail-log__subject-button:hover .mail-log__subject {
+  text-decoration: underline;
+}
+
+.mail-log__subject-button:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* --- detail slide-in (Punkt 4) ------------------------------------- */
+
+/*
+ * The same behaviour as `.responses__detail` (`responses-view.css`) — a
+ * modal slide-in, not a second design for one row's worth of fields. Its own
+ * class names rather than shared ones: the two views are not allowed to reach
+ * into each other's stylesheets (`CONTRIBUTING.md`, one module per domain), and a
+ * few short declarations are cheaper than that coupling.
+ */
+.mail-log__detail {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.mail-log__detail-scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--color-scrim);
+}
+
+.mail-log__detail-panel {
+  position: relative;
+  width: min(640px, 92vw);
+  height: 100%;
+  overflow-y: auto;
+  background: var(--color-panel-raised);
+  box-shadow: -18px 0 44px var(--color-scrim);
+  animation: mail-log-slide-in var(--motion-pop);
+  /* Read by `.mail-log__detail-body-frame` below — one declaration, so the
+     iframe and (if it ever needs one) any sibling both take up the same
+     amount of room instead of drifting apart one edit at a time. */
+  --mail-log-detail-body-height: 420px;
+}
+
+@keyframes mail-log-slide-in {
+  from {
+    transform: translateX(6%);
+    opacity: 0;
+  }
+
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.mail-log__detail-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-7);
+  background: var(--color-header-bg);
+  color: var(--color-on-ink);
+}
+
+.mail-log__detail-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-title-sm);
+}
+
+.mail-log__detail-close {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-control);
+  background: var(--color-on-ink-surface);
+  font: inherit;
+  font-size: var(--font-size-subheading);
+  line-height: 1;
+  color: var(--color-on-ink);
+  cursor: pointer;
+}
+
+.mail-log__detail-close:hover {
+  background: var(--color-on-ink-surface-hover);
+}
+
+.mail-log__detail-close:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-on-ink);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.mail-log__detail-note {
+  margin: 0;
+  padding: var(--space-6) var(--space-7);
+  font-size: var(--font-size-body);
+  color: var(--color-text-muted);
+}
+
+.mail-log__detail-body {
+  padding: var(--space-3) var(--space-7) 30px;
+}
+
+.mail-log__detail-fields {
+  margin: 0 0 var(--space-5);
+}
+
+.mail-log__detail-fields dt {
+  margin-top: var(--space-4);
+  margin-bottom: var(--space-1);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+}
+
+.mail-log__detail-fields dt:first-child {
+  margin-top: 0;
+}
+
+.mail-log__detail-fields dd {
+  margin: 0;
+  font-size: var(--font-size-body);
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+}
+
+.mail-log__detail-text {
+  margin: 0;
+  border: 1px solid var(--color-hairline-faint);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  padding: var(--space-4);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-body-sm);
+  line-height: var(--line-height-body);
+  color: var(--color-text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: var(--mail-log-detail-body-height);
+  overflow-y: auto;
+}
+
+/*
+ * Fixed height, not measured — the same reason `NotificationPreview`'s frame
+ * gives (`notifications-view.css`): an empty `sandbox` gives the iframe's
+ * document an opaque origin, so its content height cannot be read from here.
+ * Content scrolls inside the frame instead of the frame growing to fit it.
+ */
+.mail-log__detail-body-frame {
+  display: block;
+  width: 100%;
+  height: var(--mail-log-detail-body-height);
+  border: 1px solid var(--color-hairline-faint);
+  border-radius: var(--radius-control);
+}

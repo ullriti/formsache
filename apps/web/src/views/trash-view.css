@@ -1,0 +1,343 @@
+/*
+ * Trash (handoff §Screens/Views 10).
+ *
+ * Measurements follow the prototype's `renderTrash()`: a centred column
+ * capped at 860 px, two section cards stacked, each row a flex line that
+ * wraps its action buttons under the text rather than overflowing — the
+ * shape a 360 px viewport needs (AGENTS.md's responsive rule) without a
+ * separate mobile stylesheet.
+ */
+
+.trash {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: 860px;
+  margin: 0 auto;
+  padding: var(--space-9) var(--space-9) 70px;
+  min-width: 0;
+}
+
+.app-shell--compact .trash {
+  padding: var(--space-7) var(--space-6) 80px;
+}
+
+/* --- loading / error ---------------------------------------------------- */
+
+.trash__state {
+  margin: 0;
+  padding: 48px var(--space-7);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  text-align: center;
+  font-size: var(--font-size-body);
+  color: var(--color-text-muted);
+}
+
+.trash__link {
+  border: none;
+  background: none;
+  /* An underlined text button, so WCAG 1.4.3 applies and 4.5:1 is the bar —
+     `--color-accent-strong` is a surface colour and reaches 3.54:1 with the
+     Dachorganisation's accent colour. `--color-accent-ink` is the same hue, dark enough to be
+     read whatever an organisation typed in (`tokens.css`). */
+  color: var(--color-accent-ink);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* --- head ----------------------------------------------------------------- */
+
+/*
+ * A row again since the requirement landed: title and subtitle on the left,
+ * „🗑 Papierkorb leeren" on the right where `canPurge` allows it
+ * (`TrashView.tsx`) — the same head/action split `superadmin-view.css` uses.
+ */
+.trash__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.trash__head-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+/*
+ * „⊗ Papierkorb leeren" (finding 14, second part).
+ *
+ * It is an outline button in the danger colour, exactly like the „Endgültig
+ * löschen" of every single row (`.trash-row__purge`) — and it nevertheless
+ * carried a larger geometry of its own: more padding and the large radius that
+ * otherwise belongs to filled primary actions. Together with the colour emoji,
+ * which came from a different font, the one button of this page stood there
+ * distinctly more massive than everything it triggers. Padding and radius are
+ * now those of the row buttons.
+ *
+ * **The font size stays `--font-size-body-sm`**: the button stands next to the
+ * page heading and not in a row, and `--font-size-caption` there would read as
+ * a footnote to the title.
+ */
+.trash__empty-open {
+  flex: none;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-danger-strong);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.trash__empty-confirm {
+  margin: 0;
+}
+
+/* --- result of „Papierkorb leeren" ----------------------------------------- */
+
+.trash__empty-result {
+  margin: 0;
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-control-lg);
+  background: var(--color-panel);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-strong);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.trash__empty-result p {
+  margin: 0;
+}
+
+.trash__empty-result--warning {
+  background: var(--color-danger-bg);
+  color: var(--color-danger-strong);
+  font-weight: var(--font-weight-bold);
+}
+
+/* Focusable via `tabIndex={-1}` after a restore (see `TrashView.tsx`) — the
+   default `:focus-visible` ring of `base.css` is the whole styling it needs. */
+.trash__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-title);
+  color: var(--color-text);
+}
+
+.trash__subtitle {
+  margin: 0;
+  font-size: var(--font-size-body);
+  color: var(--color-text-subtle);
+}
+
+/* --- empty state ------------------------------------------------------------ */
+
+.trash__empty {
+  padding: 60px var(--space-7);
+  border: 1px dashed var(--color-hairline-soft);
+  border-radius: var(--radius-card-lg);
+  background: var(--color-surface);
+  text-align: center;
+}
+
+.trash__empty-icon {
+  display: block;
+  font-size: 34px;
+  margin-bottom: var(--space-3);
+  opacity: 0.5;
+}
+
+.trash__empty-title {
+  margin: 0;
+  font-size: var(--font-size-subheading);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-muted);
+}
+
+.trash__empty-hint {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-body);
+  color: var(--color-text-faint);
+}
+
+/* --- sections ---------------------------------------------------------------- */
+
+.trash__sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.trash__section {
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card-lg);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.trash__section-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-6);
+  background: var(--color-panel-raised);
+  border-bottom: 1px solid var(--color-hairline-faint);
+}
+
+.trash__section-title {
+  margin: 0;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+}
+
+.trash__count {
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-subtle);
+  background: var(--color-panel);
+  padding: 1px var(--space-4);
+  border-radius: var(--radius-pill);
+}
+
+.trash__section-empty {
+  margin: 0;
+  padding: var(--space-6) var(--space-6);
+  font-size: var(--font-size-body);
+  color: var(--color-text-faint);
+}
+
+/* --- rows ---------------------------------------------------------------------- */
+
+.trash-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6);
+  border-top: 1px solid var(--color-hairline-faint);
+}
+
+.trash-row__icon {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-control);
+  background: var(--color-panel);
+  font-size: var(--font-size-subheading);
+}
+
+.trash-row__icon--response {
+  border-radius: var(--radius-circle);
+}
+
+.trash-row__body {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.trash-row__title {
+  margin: 0;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trash-row__meta {
+  margin: 2px 0 0;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-subtle);
+}
+
+.trash-row__error {
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-danger-strong);
+}
+
+.trash-row__actions {
+  /*
+   * `flex: 0 1 auto` and `min-width: 0` — **not** `flex: none` any more, and
+   * both parts are load-bearing, measured rather than assumed
+   * (`e2e/trash-mobile.spec.ts` reading `<main>`'s own scroll width, the
+   * technique `app-flows.ts` built precisely because `overflow-x: hidden`
+   * hides an overflow like this from the document entirely).
+   *
+   * Two buttons live here since the requirement added „Endgültig löschen"
+   * next to „Wiederherstellen", and `flex-wrap: wrap` alone did not fix the
+   * 360 px overflow it looks like it should: a `flex: none` item never
+   * shrinks (`flex-shrink: 0`), so its own „auto" flex-basis stays pinned to
+   * its max-content width — both buttons side by side — and *that* is the
+   * box `flex-wrap` had to work with, regardless of how little room
+   * `.trash-row` actually gave it. `flex-shrink: 1` lets the box itself be
+   * narrowed to the row's available width; `min-width: 0` removes the flex
+   * item's own default floor (`min-width: auto`, which resolves to the same
+   * max-content size and would silently cancel the shrink). Only once the
+   * box can genuinely become narrower than „both buttons unwrapped" does its
+   * `flex-wrap` have anything to wrap.
+   */
+  flex: 0 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-left: auto;
+}
+
+.trash-row__restore {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.trash-row__restore:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.trash-row__purge {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-danger-strong);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.trash-row__purge:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Its own line under the row's icon/text/actions, the same technique
+   `tenant-admin__row-confirm` uses for the identical shape. */
+.trash-row__confirm {
+  flex-basis: 100%;
+}

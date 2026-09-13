@@ -1,0 +1,114 @@
+/*
+ * Tenant selection, shown on the dark chrome of the header popover and of the
+ * mobile sheet. Both places are ink-coloured, so the text tokens are the
+ * "on ink" ones.
+ */
+
+.tenant-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tenant-list__row {
+  min-width: 0;
+  border-radius: var(--radius-surface);
+}
+
+.tenant-list__row--active {
+  background: var(--color-on-ink-surface);
+}
+
+/*
+ * The row *is* the control. A button rather than a clickable list
+ * item: it is reachable by Tab, it answers Enter and Space without a keydown
+ * handler of our own, and a screen reader announces it as something one can
+ * activate. All of that would have to be rebuilt by hand on an <li>.
+ */
+.tenant-list__select {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-radius: var(--radius-surface);
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tenant-list__select:hover:not(:disabled) {
+  background: var(--color-on-ink-surface);
+}
+
+/* The list sits inside the dark header popover, so the ring is the on-ink
+   variant: the focus blue would land at ~2.2:1 on that surface. */
+.tenant-list__select:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-on-ink);
+  outline-offset: -2px;
+}
+
+/*
+ * The active row is disabled, and a "not-allowed" cursor would read as a
+ * refusal. It is not one — it is the tenant one is already in.
+ */
+.tenant-list__select:disabled {
+  cursor: default;
+}
+
+.tenant-list__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tenant-list__name {
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-on-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tenant-list__meta {
+  font-size: var(--font-size-label);
+  color: var(--color-on-ink-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tenant-list__badge {
+  margin-left: auto;
+  flex: none;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-accent);
+}
+
+.tenant-list__note,
+.tenant-list__empty {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-3) var(--space-3) var(--space-1);
+  border-top: 1px solid var(--color-on-ink-border);
+  font-size: var(--font-size-label);
+  line-height: var(--line-height-body);
+  color: var(--color-on-ink-subtle);
+}
+
+.tenant-list__empty {
+  border-top: none;
+}
+
+/* The unscoped session is a state the user has to be able to act on, not a
+   footnote — so it is the brighter "on ink" text, still on the dark chrome. */
+.tenant-list__note--warning {
+  color: var(--color-on-ink-muted);
+}

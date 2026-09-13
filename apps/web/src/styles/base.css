@@ -1,0 +1,126 @@
+/*
+ * Reset and base styles. Mirrors the prototype's `<helmet>` block, with two
+ * deliberate deviations noted below. Colours, sizes and fonts come from
+ * `tokens.css` only — see the requirement.
+ *
+ * Web fonts: the prototype pulls PT Serif/PT Sans from the Google Fonts CDN.
+ * We do not — a CDN request would leak every visitor's IP to a third party,
+ * which the public fill-out views cannot justify under GDPR.
+ * PT Serif ships with the bundle instead (`fonts.css`), body text uses the
+ * system sans.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--color-shell);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  /* Keeps form controls and scrollbars in the light palette the tokens
+     describe; a dark-mode variant is not part of the handoff. */
+  color-scheme: light;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  margin: 0;
+}
+
+h1 {
+  font-size: var(--font-size-title);
+}
+
+h2 {
+  font-size: var(--font-size-heading);
+}
+
+h3 {
+  font-size: var(--font-size-subheading);
+}
+
+a {
+  color: var(--color-danger);
+}
+
+a:hover {
+  color: var(--color-accent-strong);
+}
+
+input,
+select,
+textarea,
+button {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+img,
+svg {
+  max-width: 100%;
+}
+
+/*
+ * Deviation from the prototype: it clears `outline` on every focused control
+ * and only tints the border. That leaves keyboard users without a focus
+ * indicator, so we keep a visible ring. `:focus-visible` means pointer users
+ * still do not see it.
+ */
+:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-scrollbar-thumb);
+  border-radius: var(--radius-control-sm);
+}
+
+/* Spinner and popover entrance of the handoff ("Animations"). */
+@keyframes fs-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fs-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

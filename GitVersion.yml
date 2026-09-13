@@ -1,0 +1,42 @@
+# GitVersion — the application version is derived from the git history, not
+# maintained by hand.
+#
+# Read by the `version` job of `.github/workflows/ci.yml`; the result tags the
+# Docker images and is the string `GET /api/health` reports.
+
+# Short-lived branches off `main`, which is exactly how this repository works
+# . GitFlow would expect a `develop` branch that does not exist.
+workflow: GitHubFlow/v1
+
+# There is no release tag yet, so this is the floor the first one starts from.
+# This repository was runnable from its first commit, with no 0.x phase to
+# reflect; once a tag exists
+# the history decides and this line only matters for a repository without tags.
+next-version: 1.0.0
+
+# Conventional Commits drive the increment. Without these three
+# patterns GitVersion looks for its own `+semver:` markers, and the commit type
+# would be pure decoration — `feat:` has to raise the minor, or the convention
+# promises something the tooling does not deliver.
+#
+# `(?i)` because the check should not hinge on capitalisation, and the optional
+# `(...)` group is the Conventional Commits scope: `feat(web):` counts like
+# `feat:`.
+major-version-bump-message: '(?i)^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([\w\s\-\./]*\))?!:|^.*\n\n(.*\n)*BREAKING CHANGE:\s'
+minor-version-bump-message: '(?i)^feat(\([\w\s\-\./]*\))?:'
+patch-version-bump-message: '(?i)^(fix|perf)(\([\w\s\-\./]*\))?:'
+
+branches:
+  # The branch names this project actually uses. GitHubFlow/v1 only recognises
+  # `feature/…`; `fix/…` is the other half of the convention documented in
+  # CONTRIBUTING.md ("Commits und Branches"), and `claude/…` is what the agent
+  # environment creates. A branch that matches
+  # no configuration makes GitVersion fail the whole pipeline for a reason that
+  # has nothing to do with the change.
+  feature:
+    # The `(?<BranchName>…)` group is not decoration: GitHubFlow labels a
+    # feature build `{BranchName}`, and without the capture group the
+    # placeholder stays in the version verbatim — `0.1.0-{BranchName}.1`, which
+    # is neither a version nor a usable image tag. Observed before the group
+    # was added.
+    regex: '^(features?|feat|fix|chore|claude)[/-](?<BranchName>.+)'

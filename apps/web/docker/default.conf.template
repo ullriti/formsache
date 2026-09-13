@@ -1,0 +1,158 @@
+# nginx configuration of the web image (see ../Dockerfile).
+#
+# The image entrypoint renders this template with envsubst before nginx starts;
+# `${API_UPSTREAM}` is filled from the environment, `$uri` and the other nginx
+# variables survive because envsubst only replaces names that exist in the
+# environment.
+
+server {
+    # 8080, not 80: this image runs unprivileged and cannot bind a port below
+    # 1024.
+    listen       8080;
+    server_name  _;
+
+    # -------------------------------------------------------------------------
+    # Wessen Adresse ist `$remote_addr`?
+    #
+    # ⚠️ **Diese drei Zeilen sind der Unterschied zwischen einem wirksamen
+    # Rate-Limit und einem, das alle Nutzer in einen Eimer wirft.**
+    #
+    # In der Basis-Gestalt steht der Frontdoor vorn: `$remote_addr` **ist** der
+    # Aufrufer, und `${TRUSTED_PROXY_CIDR}` steht auf `127.0.0.1/32` — also
+    # praktisch auf „niemandem". Es wird nichts geglaubt, was hereingereicht
+    # wird, und das ist richtig, denn hereingereicht wird es aus dem Internet.
+    #
+    # In der Produktions-Gestalt (`docker-compose.prod.yml`) steht ein
+    # TLS-Vorschaltproxy davor. Der **hängt** den Aufrufer an
+    # `X-Forwarded-For` an; `$remote_addr` wäre ohne diese Zeilen seine eigene
+    # Adresse, und die API zählte für jeden Aufrufer dieselbe.
+    #
+    # ⚠️ **`real_ip_recursive off`, und der Weg dahin ist ein Review-Befund.**
+    #
+    # Der erste Entwurf stand auf `on` mit der Begründung, nginx überspringe
+    # von rechts jede vertraute Adresse, ein gefälschter Eintrag stehe also
+    # links und komme nie zum Zug. **Der zweite Satz folgt nicht aus dem
+    # ersten:** nginx nimmt die letzte *nicht* vertraute Adresse — liegt der
+    # Peer, den der TLS-Proxy gesehen hat, selbst im vertrauten Bereich (und
+    # `172.16.0.0/12` umfasst jedes Docker-Netz), wird er übersprungen, und
+    # **der vom Angreifer gesetzte Eintrag gewinnt**.
+    #
+    # Mit `off` nimmt nginx genau den rechtesten Eintrag. Bei **einem**
+    # anhängenden Vorschaltproxy — und das ist die Topologie, die dieses Repo
+    # baut — ist das immer die Adresse, die der Proxy selbst gesehen hat; ein
+    # hereingereichter Wert kann strukturell nicht gewinnen, unabhängig davon,
+    # wie weit `TRUSTED_PROXY_CIDR` steht. Die Zusage hängt damit an der Form
+    # der Kette und nicht mehr an der Enge einer Liste.
+    #
+    # Wer eine zweite anhängende Schicht einzieht, braucht `on` **und** eine
+    # Liste, die genau die eigenen Proxys nennt — dann ist die Voraussetzung
+    # der rekursiven Auflösung wieder erfüllt.
+    #
+    # **Warum nicht `$proxy_add_x_forwarded_for` weiter unten?** Das wäre der
+    # naheliegende Weg gewesen und hätte `TRUST_PROXY_HOPS` in der Produktion
+    # auf 2 gehoben — zwei Zahlen für zwei Gestalten, von denen eine still
+    # falsch ist, sobald jemand die Topologie ändert. So bleibt es **eine**
+    # Zahl: die API sieht immer genau einen Sprung, den Frontdoor.
+    # -------------------------------------------------------------------------
+    set_real_ip_from  ${TRUSTED_PROXY_CIDR};
+    real_ip_header    X-Forwarded-For;
+    real_ip_recursive off;
+
+    root  /usr/share/nginx/html;
+    index index.html;
+
+    # **Kein `Referer` verlässt diese Anwendung.** Zwei Adressen tragen ihre
+    # Berechtigung im Pfad — der Bearbeiten-Link und die Entwurfs-Adresse —,
+    # und ohne diese Zeile stellt der Browser sie jedem zu, den ein Teilnehmer
+    # von der Seite aus anklickt. Begründung für `no-referrer` statt der
+    # Browser-Vorgabe: apps/api/src/common/no-store.ts.
+    #
+    # ⚠️ **In jedem `location` mit eigenem `add_header` wiederholt.** nginx
+    # erbt `add_header` nur, solange die tiefere Ebene *keinen* eigenen setzt;
+    # ein einzelner Eintrag hier verschwände lautlos für `/assets/` und `/` —
+    # also genau für das Dokument, um dessen Adresse es geht. `always`, damit
+    # die Zeile auch an einer Fehlerantwort hängt.
+    add_header Referrer-Policy "no-referrer" always;
+
+    # Die Richtlinie der Seite und `nosniff`. Beide **auch**
+    # hier, obwohl die CSP im Dokument steht: `X-Content-Type-Options` lässt
+    # sich per `<meta>` gar nicht setzen, und ein Header gilt auch für
+    # Antworten, die kein HTML sind. Dieselbe Wiederholungspflicht je
+    # `location` wie oben.
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'" always;
+    add_header X-Content-Type-Options "nosniff" always;
+
+    # The application is one origin, and `/api` is part of it — no rewrite, so
+    # a URL means the same thing here as it does behind `vite preview` in
+    # development (`app.module.ts`, GLOBAL_API_PREFIX).
+    location /api {
+        # **nginx' Vorgabe ist 1 MiB**, und ohne diese Zeile scheitert im
+        # Container-Stack jeder Upload darüber an der Frontdoor — mit nginx'
+        # eigener HTML-Seite und ohne einen Grund, den ein Teilnehmer lesen
+        # kann. Der Wert liegt bewusst **über** der größten Dateigrenze der
+        # Anwendung (10 MiB, `MAX_UPLOAD_BYTES` in `@formsache/shared`), damit die
+        # Ablehnung aus der Anwendung kommt und etwas sagt (ADR-0014 Nr. 18).
+        #
+        # Zwei Schreibweisen derselben Zahl sind eine Drift, und sie ist nicht
+        # der Aufmerksamkeit überlassen: `nginx-body-limit.test.ts` liest diese
+        # Zeile und vergleicht sie mit der Konstante.
+        client_max_body_size 12m;
+
+        # No URI part after the host, so nginx passes the request path through
+        # unchanged. Adding a trailing slash here would strip `/api` and the
+        # API would answer 404 for every route.
+        proxy_pass ${API_UPSTREAM};
+
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        # **Overwritten, not appended.** `$proxy_add_x_forwarded_for` would
+        # keep whatever the caller sent and append the peer address, so a
+        # forged header would end up in front of the real one — and the login
+        # rate limit counts per address (`login-rate-limit.ts`). With the
+        # header replaced here, `TRUST_PROXY_HOPS=1` in the API is safe.
+        #
+        # ⚠️ **Und `$remote_addr` ist hier der *aufgelöste* Wert**, nicht
+        # der Netzwerk-Peer: `real_ip` oben ersetzt ihn durch die erste Adresse
+        # der Kette, der nicht vertraut wird. Deshalb trägt diese Zeile auch
+        # hinter einem TLS-Vorschaltproxy den Aufrufer — und `TRUST_PROXY_HOPS`
+        # bleibt in **beiden** Gestalten 1.
+        proxy_set_header X-Forwarded-For   $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # The API answers `Cache-Control: no-store` on every route; this stops
+        # nginx from adding a buffer of its own in front of it.
+        proxy_buffering off;
+    }
+
+    # Hashed asset file names: the content of a given URL never changes, so it
+    # may be cached for a year. `index.html` deliberately is not — it is the
+    # file that points at the current hashes.
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        add_header Referrer-Policy "no-referrer" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'" always;
+        add_header X-Content-Type-Options "nosniff" always;
+    }
+
+    # Single-page application: every unknown path is a client-side route and
+    # has to be answered with the shell, not with a 404.
+    location / {
+        try_files $uri $uri/ /index.html;
+
+        # `index.html` is the file that names the current asset hashes, so a
+        # cached copy outlives the assets it points at — the deploy looks fine
+        # and the browser asks for files that no longer exist. `no-cache` is
+        # not "do not store": it stores and revalidates, which is exactly what
+        # a document with a stable URL and changing content needs.
+        add_header Cache-Control "no-cache";
+        add_header Referrer-Policy "no-referrer" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'" always;
+        add_header X-Content-Type-Options "nosniff" always;
+    }
+
+    # Serving the version of nginx to every visitor is free reconnaissance,
+    # exactly like `X-Powered-By` on the API side (`app-setup.ts`).
+    server_tokens off;
+}

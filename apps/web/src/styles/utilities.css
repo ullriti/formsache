@@ -1,0 +1,19 @@
+/*
+ * A single utility: text that only assistive technology reads.
+ *
+ * The handoff labels several controls with Unicode glyphs alone (☰, ✕, ▦).
+ * A glyph is not a name — screen readers announce "black square" or nothing —
+ * so those controls carry a real label and hide the glyph from the a11y tree.
+ */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

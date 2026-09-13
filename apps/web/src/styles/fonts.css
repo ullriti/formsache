@@ -1,0 +1,55 @@
+/*
+ * Self-hosted web fonts — the requirement.
+ *
+ * The prototype pulled PT Serif from the Google Fonts CDN. We do not: the
+ * public fill-out views are reachable without a login, so a CDN request would
+ * hand every participant's IP address to a third party. The
+ * files ship with the bundle instead and nothing here touches the network.
+ * Provenance, licence and the no-subsetting rule: `../assets/fonts/README.md`.
+ *
+ * The `url()`s are relative to this stylesheet, which is what makes them work
+ * in both worlds: the dev server resolves them against `/src/styles/`, and
+ * `vite build` rewrites them to the hashed file it emits into `dist/assets/`.
+ * An absolute `/src/...` path would survive the dev server and break the
+ * build silently, so keep them relative.
+ *
+ * ## Which cuts ship, and why not more
+ *
+ * Upright Regular (400) and Bold (700) — 90.6 kB + 77.6 kB. Every serif title
+ * in the handoff sits at one of those two weights: `h1`/`h2` inherit the UA's
+ * bold, while the confirmation title of the public view is a plain `div` and
+ * therefore 400. Dropping the 400 face would not fail loudly — the browser
+ * would quietly render that title with the 700 file. No view uses serif
+ * italic, so italic and bold-italic would add ~170 kB of glyphs nobody asks
+ * for, on a connection that is partly mobile.
+ *
+ * ## font-display: fallback
+ *
+ * Deliberate middle path, and the reason the alternatives lost:
+ * - `swap` repaints every title in a different face once the font lands. On a
+ *   registration page that late reflow is the most visible flaw we could ship.
+ * - `block` hides the titles for up to three seconds — worse than the wrong
+ *   face is no face at all.
+ * - `optional` never swaps, but it also skips the font entirely on a slow
+ *   first visit. Participants typically open such a form exactly once, so
+ *   that would quietly undercut B11 for the very audience it is meant for.
+ * `fallback` gives a ~100 ms invisibility window that a cache hit or any
+ * decent link wins outright, allows the swap only inside the following three
+ * seconds, and otherwise stays on the fallback stack for that page load.
+ */
+
+@font-face {
+  font-family: 'PT Serif';
+  font-style: normal;
+  font-weight: 400;
+  font-display: fallback;
+  src: url('../assets/fonts/pt-serif-regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'PT Serif';
+  font-style: normal;
+  font-weight: 700;
+  font-display: fallback;
+  src: url('../assets/fonts/pt-serif-bold.woff2') format('woff2');
+}

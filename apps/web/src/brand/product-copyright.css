@@ -1,0 +1,21 @@
+/*
+ * Die Software-Zeile (`ProductCopyright`).
+ *
+ * Ohne eigene Abstände und ohne eigene Farbe: sie steht in zwei verschiedenen
+ * Fußzeilen — der öffentlichen (`legal-footer__copyright`) und der der
+ * angemeldeten Oberfläche (`app-shell__footer`) —, und beide setzen ihren
+ * Rahmen selbst. Was hier steht, ist allein der Umbruch.
+ */
+.product-copyright {
+  margin: 0;
+}
+
+/* Der Urheberrechtsvermerk bricht als Ganzes um, nicht zwischen Zeichen und
+   Name. */
+.product-copyright__holder {
+  white-space: nowrap;
+}
+
+.product-copyright a {
+  color: var(--color-info);
+}

@@ -1,0 +1,343 @@
+/*
+ * „✦ KI-Formular" — the modal of the prototype (`AI MODAL`, lines 512–556 of
+ * `Formular-Builder.dc.html`).
+ *
+ * The prototype's dark head with the golden ✦, the 560 px panel and the pill
+ * examples are taken over as they are; every colour, radius and step comes from
+ * `tokens.css`, so an organisation whose accent is Musterstadt red gets a red ✦ and a red
+ * generate button without this file knowing that Organisationen exist.
+ *
+ * The **preview** block has no counterpart in the prototype — it is the step we
+ * add — and is styled after the publish notice's lists, which
+ * is the surface it is the sibling of: a decision taken over an overview.
+ */
+
+.ai-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* The gutter that keeps the panel off the window edge at 360 px — together
+     with `width: min(...)` below it is why this cannot widen the page. */
+  padding: var(--space-4);
+}
+
+.ai-dialog__scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--color-scrim);
+}
+
+.ai-dialog__panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 100%);
+  max-height: 86vh;
+  overflow: hidden;
+  border-radius: var(--radius-card-lg);
+  background: var(--color-panel-raised);
+  box-shadow: var(--shadow-sheet);
+  animation: ai-dialog-appear var(--motion-pop);
+}
+
+@keyframes ai-dialog-appear {
+  from {
+    transform: scale(0.98);
+    opacity: 0;
+  }
+
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+/* The dark bar of the prototype — fixed ink, not the tenant's header colour:
+   it is the chrome of an overlay, the same surface the mobile sheet uses. */
+.ai-dialog__head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-ink);
+  color: var(--color-on-ink);
+}
+
+.ai-dialog__mark {
+  font-size: var(--font-size-subheading);
+  color: var(--color-accent);
+}
+
+.ai-dialog__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-title-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-on-ink);
+}
+
+.ai-dialog__subtitle {
+  margin: 0;
+  font-size: var(--font-size-caption);
+  color: var(--color-on-ink-subtle);
+}
+
+.ai-dialog__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-5);
+}
+
+.ai-dialog__label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+}
+
+.ai-dialog__prompt,
+.ai-dialog__title-field {
+  width: 100%;
+  padding: var(--space-3);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font: inherit;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  color: var(--color-text);
+}
+
+.ai-dialog__prompt {
+  resize: vertical;
+}
+
+.ai-dialog__prompt:focus-visible,
+.ai-dialog__title-field:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.ai-dialog__counter {
+  margin: var(--space-1) 0 0;
+  text-align: right;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-faint);
+}
+
+.ai-dialog__examples-label {
+  margin: var(--space-4) 0 var(--space-2);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-muted);
+}
+
+.ai-dialog__examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.ai-dialog__example {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-sunken);
+  font: inherit;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.ai-dialog__example:hover {
+  border-color: var(--color-accent);
+}
+
+.ai-dialog__example:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.ai-dialog__note {
+  margin: var(--space-3) 0 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-muted);
+}
+
+/* ---- working phase ---- */
+
+.ai-dialog__working {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+}
+
+.ai-dialog__spinner {
+  flex: none;
+  width: var(--space-5);
+  height: var(--space-5);
+  border: 3px solid var(--color-hairline);
+  border-top-color: var(--color-accent);
+  border-radius: var(--radius-circle);
+  animation: ai-dialog-spin 0.8s linear infinite;
+}
+
+@keyframes ai-dialog-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Somebody who has switched motion off gets a static ring rather than a
+   spinner; the sentence beside it is what carries the state anyway. */
+@media (prefers-reduced-motion: reduce) {
+  .ai-dialog__spinner {
+    animation: none;
+  }
+
+  .ai-dialog__panel {
+    animation: none;
+  }
+}
+
+.ai-dialog__working-title {
+  margin: 0;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+}
+
+/* ---- preview ---- */
+
+.ai-dialog__lead {
+  margin: 0 0 var(--space-4);
+  font-size: var(--font-size-body);
+  color: var(--color-text);
+}
+
+.ai-dialog__pages {
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ai-dialog__page {
+  margin-bottom: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-hairline-faint);
+}
+
+.ai-dialog__page-title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+  overflow-wrap: anywhere;
+}
+
+.ai-dialog__questions {
+  margin: 0;
+  padding-left: var(--space-5);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text);
+}
+
+.ai-dialog__questions li {
+  margin-bottom: var(--space-1);
+  /* A caption a model wrote can be a whole sentence; it wraps rather than
+     pushing the panel wider than the window. */
+  overflow-wrap: anywhere;
+}
+
+.ai-dialog__question-type {
+  margin-left: var(--space-2);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-muted);
+}
+
+/* ---- problem / quota ---- */
+
+.ai-dialog__problem {
+  margin: var(--space-4) 0 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-warning-bg-soft);
+  border-radius: var(--radius-surface);
+  background: var(--color-warning-bg);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-warning);
+}
+
+.ai-dialog__failure,
+.ai-dialog__failure-detail {
+  margin: 0;
+}
+
+.ai-dialog__failure-detail {
+  margin-top: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-caption);
+  overflow-wrap: anywhere;
+}
+
+.ai-dialog__quota {
+  margin: var(--space-4) 0 0;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-hairline-faint);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-faint);
+}
+
+/* ---- actions ---- */
+
+.ai-dialog__actions {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: 0 var(--space-5) var(--space-5);
+}
+
+.ai-dialog__cancel,
+.ai-dialog__confirm {
+  flex: none;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font: inherit;
+  color: var(--color-text-strong);
+  cursor: pointer;
+}
+
+.ai-dialog__cancel:hover {
+  background: var(--color-surface-sunken);
+}
+
+.ai-dialog__confirm {
+  border-color: transparent;
+  background: var(--gradient-accent);
+  color: var(--color-on-accent);
+  font-weight: var(--font-weight-bold);
+  box-shadow: var(--shadow-accent-button);
+}
+
+.ai-dialog__cancel:disabled,
+.ai-dialog__confirm:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.ai-dialog__cancel:focus-visible,
+.ai-dialog__confirm:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}

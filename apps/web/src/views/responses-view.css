@@ -1,0 +1,1052 @@
+/*
+ * Antworten (Handoff): title and export, a toolbar with search and the
+ * column menu, the table in its own card, and the slide-in for one answer.
+ *
+ * The measurements follow the prototype's `renderResponses()`: centred page
+ * container, 11 px uppercase table head over 13.5 px rows, card surfaces on
+ * the shell tone, and a right-anchored slide-in over a scrim.
+ */
+
+.responses {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  /* Wider than the dashboard on purpose: the table is the
+     content here, and it wants more room than a card grid. */
+  max-width: var(--layout-container-max-wide);
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-9) 60px;
+  min-width: 0;
+}
+
+.app-shell--compact .responses {
+  padding: var(--space-7) var(--space-6) 60px;
+}
+
+/* --- loading / error ---------------------------------------------------- */
+
+/*
+ * A card rather than a bare line of text: the states sit in the same page
+ * container as the table, so arriving content does not shift the page.
+ */
+.responses__state {
+  margin: 0;
+  padding: 48px var(--space-7);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  text-align: center;
+  font-size: var(--font-size-body);
+  color: var(--color-text-muted);
+}
+
+.responses__link {
+  border: none;
+  background: none;
+  /* An underlined text button, so WCAG 1.4.3 applies and 4.5:1 is the bar —
+     `--color-accent-strong` is a surface colour and reaches 3.54:1 with the
+     Dachorganisation's accent colour. `--color-accent-ink` is the same hue, dark enough to be
+     read whatever an organisation typed in (`tokens.css`). */
+  color: var(--color-accent-ink);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.responses__link:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* --- head --------------------------------------------------------------- */
+
+.responses__head {
+  /* The anchor of the export popover **below the breakpoint**; why it cannot
+     hang off its own button there is written at
+     `.responses__export-menu`. */
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.responses__title {
+  margin: 0;
+  min-width: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-title);
+  line-height: var(--line-height-tight);
+  color: var(--color-text);
+}
+
+/* The form title is context, not the page's own name — hence the lighter
+   weight and colour inside one and the same heading. */
+.responses__title-form {
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-subtle);
+}
+
+.responses__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+/* --- buttons ------------------------------------------------------------ */
+
+.responses__button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: none;
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font: inherit;
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.responses__button:hover {
+  background: var(--color-surface-sunken);
+}
+
+.responses__button:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* The export is the page's primary action, so it carries the accent. */
+.responses__button--accent {
+  border-color: transparent;
+  background: var(--gradient-accent);
+  color: var(--color-on-accent);
+  box-shadow: var(--shadow-accent-button);
+}
+
+.responses__button--accent:hover {
+  background: var(--gradient-accent);
+  filter: brightness(1.04);
+}
+
+/* „Zurücksetzen" is a way back out of the search, not an offer — it recedes. */
+.responses__button--quiet {
+  border-color: var(--color-hairline);
+  background: var(--color-panel);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-muted);
+}
+
+/*
+ * What stands where the export menu would be when the role has no `can_export`.
+ *
+ * Sized and coloured like the surrounding chrome rather than like an error: a
+ * missing right is not a failure, and a red box would send someone looking for
+ * a fault. `max-width` keeps the sentence from pushing the heading off its row
+ * on a narrow desktop window.
+ */
+.responses__no-export {
+  margin: 0;
+  align-self: center;
+  max-width: 34ch;
+  font-size: var(--font-size-body-sm);
+  line-height: var(--line-height-body);
+  color: var(--color-text-muted);
+}
+
+/* --- export menu -------------------------------------------------------- */
+
+/*
+ * The anchor of the export popover.
+ *
+ * Anchored to this wrapper rather than to the page header, so the menu sits
+ * under its own button — unlike the field menu next door, which hangs off the
+ * whole toolbar because its button wraps into a narrow row below the
+ * breakpoint. This one keeps its place in `responses__actions`, and the right
+ * edge is pinned instead (see below).
+ */
+.responses__export {
+  position: relative;
+  display: inline-flex;
+}
+
+.responses__export-menu {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  /* Right-aligned: the button sits at the end of the header row, so a
+     left-anchored menu would hang off the viewport on a narrow screen (B12). */
+  right: 0;
+  z-index: 30;
+  width: min(300px, calc(100vw - 2 * var(--space-6)));
+  padding: var(--space-2);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-surface);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-popover);
+  text-align: left;
+}
+
+/*
+ * **Below the breakpoint it does hang off the header area after all** — the requirement, measured on 2026-08-10.
+ *
+ * The reasoning above („the button sits at the end of the header row, a
+ * left-anchored menu hung off the viewport") holds exactly as long as the
+ * button also sits there. At 360 px `.responses__actions` wraps, „⭳ Export"
+ * stands in the middle of the row, and `right: 0` laid the menu's 300 px from
+ * there towards the left: measured left edge **−51 px**. The format links lay
+ * partly outside the viewport, a tap on „Excel" hit nothing — and no overflow
+ * measurement could see that, because content protruding to the left does not
+ * enlarge `scrollWidth`.
+ *
+ * Repaired with the pattern the column selection next door has long used and
+ * which `.responses__toolbar` explains: the anchor becomes the **full** header
+ * area, the width is capped to it. The menu thus opens below the header row
+ * instead of below the button and lies entirely within the viewport.
+ */
+@media (max-width: 1179px) {
+  .responses__export {
+    position: static;
+  }
+
+  .responses__export-menu {
+    width: min(300px, 100%);
+  }
+}
+
+.responses__export-legend {
+  margin: 0 0 var(--space-1);
+  padding: 0 var(--space-3);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+}
+
+/* The column count behind a choice — informative, never the label itself. */
+.responses__export-count {
+  color: var(--color-text-subtle);
+}
+
+.responses__export-hint {
+  display: block;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-faint);
+}
+
+/*
+ * „Die Auswahl betrifft nur die Spalten."
+ *
+ * Set as a full paragraph rather than a footnote mark, and placed between the
+ * choice and the download, because it answers the question a reader has at
+ * exactly that moment: whether „alle Spalten" also means „alle Antworten".
+ */
+.responses__export-note {
+  margin: var(--space-2) 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-control-sm);
+  background: var(--color-surface-sunken);
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-body);
+  color: var(--color-text-muted);
+}
+
+/*
+ * The line that says the file is a selection.
+ *
+ * The same box shape as the line above it, but in the handoff's warning colour
+ * instead of in grey: it only stands there when questions really are missing,
+ * and a second grey box would not be distinguishable next to the first.
+ */
+.responses__export-gap {
+  margin: 0 0 var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-control-sm);
+  border-left: 3px solid var(--color-warning);
+  background: var(--color-warning-bg);
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-body);
+  color: var(--color-text-strong);
+}
+
+.responses__export-formats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-hairline-faint);
+}
+
+/*
+ * ⚠️ `--color-accent-ink`, not `--color-accent-strong` (a review finding, 2026-08-12).
+ *
+ * This is the same mistake that was fixed in seven views, and for the same
+ * reason: `--color-accent-strong` is a **surface** colour, its legibility hangs
+ * on what an organisation has typed into its branding. Three format
+ * links in bold type on a white ground — axe reported `color-contrast`
+ * as *serious* as soon as the checker opened the popover at all. That is
+ * exactly what it could not do until this finding: the check list knew only
+ * addresses, and a popover has none.
+ */
+.responses__export-format {
+  display: block;
+  padding: var(--space-3);
+  border-radius: var(--radius-control-sm);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-accent-ink);
+  text-decoration: none;
+}
+
+.responses__export-format:hover {
+  background: var(--color-surface-sunken);
+}
+
+.responses__export-format:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* --- toolbar ------------------------------------------------------------ */
+
+.responses__toolbar {
+  /* The anchor of the column popover; see `ResponsesToolbar` for why the menu
+     hangs off the toolbar and not off its own button. */
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.responses__search {
+  flex: 1 1 220px;
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font: inherit;
+  font-size: var(--font-size-body);
+  color: var(--color-text);
+}
+
+.responses__search::placeholder {
+  color: var(--color-text-faint);
+}
+
+.responses__search:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: 0;
+  /* The border sits directly under the ring, so it follows the same token —
+     two colours a pixel apart read as a rendering fault. */
+  border-color: var(--color-focus);
+}
+
+.responses__count {
+  flex: none;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-subtle);
+}
+
+.responses__caret {
+  font-size: var(--font-size-label);
+  opacity: 0.6;
+}
+
+.responses__fields-menu {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  /* Above the sticky table head, which claims the low z-indices below. */
+  z-index: 30;
+  /* Never wider than the toolbar, so a 360 px viewport cannot be tipped
+     sideways by an open menu. */
+  width: min(260px, 100%);
+  max-height: 320px;
+  overflow-y: auto;
+  padding: var(--space-2);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-surface);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-popover);
+}
+
+.responses__fields-title {
+  margin: 0 0 var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+}
+
+/* The heading of the retired group sits inside the list, so it needs air above
+   it that the menu's own title does not. */
+.responses__fields-title--retired {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-hairline-faint);
+  color: var(--color-text-faint);
+}
+
+.responses__fields-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control-sm);
+  font-size: var(--font-size-body);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.responses__fields-item:hover {
+  background: var(--color-surface-sunken);
+}
+
+.responses__fields-item input {
+  flex: none;
+  /* 13 × 13 px in the browser's default — the same spot where an earlier
+     correction already enlarged the Mehrfachauswahl, only in the popover
+     and therefore never measured by the page gates (a review finding). */
+  width: var(--touch-target-min);
+  height: var(--touch-target-min);
+  accent-color: var(--color-accent-strong);
+}
+
+/* --- empty state -------------------------------------------------------- */
+
+.responses__empty {
+  margin: 0;
+  padding: 48px var(--space-7);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  text-align: center;
+  font-size: var(--font-size-body);
+  color: var(--color-text-faint);
+}
+
+/* --- table -------------------------------------------------------------- */
+
+/*
+ * The card is the scroll container in both axes.
+ *
+ * Vertically because `position: sticky` follows the nearest scrolling
+ * ancestor: leave the vertical scrolling to the page and the sticky head
+ * scrolls away with it. Horizontally because a form with thirty columns must
+ * not widen the page — the overflow measurement of the requirement reads
+ * `<main>`, and a table that pushed the layout sideways would be caught there.
+ * This keeps it from happening in the first place.
+ */
+.responses__table-card {
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  overflow: auto;
+  max-height: min(68vh, 720px);
+  overscroll-behavior: contain;
+}
+
+.responses__table {
+  width: 100%;
+  /* `separate`, not `collapse`: a collapsed border model drops the borders of
+     sticky cells in several engines, and both the head and the first column
+     are sticky here. Every rule below is drawn per cell instead. */
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--font-size-body);
+}
+
+.responses__th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 2px solid var(--color-table-border);
+  background: var(--color-panel);
+  text-align: left;
+  white-space: nowrap;
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+}
+
+.responses__table td {
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--color-hairline-faint);
+  background: var(--color-surface);
+  text-align: left;
+  vertical-align: top;
+  color: var(--color-text);
+}
+
+.responses__table tbody tr:last-child > td {
+  border-bottom: none;
+}
+
+/*
+ * A column of a question that is no longer asked.
+ *
+ * The muted head is the quiet half of the marking; the loud half is the note
+ * below it, which is words. Colour alone would be no marking at all for a
+ * reader who cannot distinguish these two greys — and it would be nothing
+ * whatsoever to a screen reader.
+ */
+.responses__th--retired {
+  color: var(--color-text-faint);
+}
+
+.responses__retired {
+  display: block;
+  margin-top: var(--space-1);
+  /* The head sets `nowrap` so a label never breaks mid-column; inherited here
+     the note would become the column's *minimum* width — „nicht mehr gefragt"
+     is twice „Telefon", and the column would be sized by its footnote. It is
+     allowed to wrap instead; it is the one line here that may. */
+  white-space: normal;
+  /* Case comes from the surrounding head/`dt`, which is already uppercase, so
+     the note matches without the text being written twice in two spellings. */
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-faint);
+}
+
+/*
+ * The identity column stays put while the rest scrolls sideways.
+ *
+ * `sticky` only engages once the card actually overflows, so this is invisible
+ * on a wide screen and is what makes ten columns readable on a phone: the row
+ * being read never loses its name. The head cell is sticky on both axes, which
+ * is why it needs the higher stacking order — it is the corner.
+ */
+.responses__table td:first-child,
+.responses__th:first-child {
+  position: sticky;
+  left: 0;
+}
+
+.responses__table td:first-child {
+  z-index: 1;
+}
+
+.responses__th:first-child {
+  z-index: 3;
+}
+
+/*
+ * **The identity is the first column with content**, not the first column.
+ *
+ * Since the Mehrfachauswahl there may be a column of tick
+ * boxes in front of it. Without these two rules the bold identity styling — and
+ * the sticky position that keeps a row's name on screen while ten columns
+ * scroll past — would land on the checkbox, and the name would scroll away with
+ * the rest. The offset is the width of the box column, so the two stick side by
+ * side rather than on top of each other.
+ */
+.responses__select-cell + td,
+.responses__th--select + .responses__th {
+  position: sticky;
+  left: var(--responses-select-width);
+}
+
+.responses__select-cell + td {
+  z-index: 1;
+}
+
+.responses__th--select + .responses__th {
+  z-index: 3;
+}
+
+/* The first column carries the row's identity, as the handoff shows it. */
+.responses__table td:first-child:not(.responses__select-cell),
+.responses__select-cell + td {
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+}
+
+/* --- Mehrfachauswahl  ---------------------------------- */
+
+.responses {
+  /*
+   * Declared on the view rather than in `tokens.css`: it is not a design token,
+   * it is the one number the box column's width and the identity column's
+   * sticky offset both have to be — two literals here is how the identity
+   * column comes to sit half under the checkboxes.
+   */
+  --responses-select-width: 2.75rem;
+}
+
+.responses__th--select,
+.responses__select-cell {
+  width: var(--responses-select-width);
+  padding-right: 0;
+  text-align: center;
+}
+
+.responses__select {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /*
+   * The whole cell is the target, not the 13-px box inside it: a tick box is
+   * the smallest control in this application and it sits in a row that opens a
+   * slide-in when missed.
+   */
+  min-height: 1.75rem;
+  cursor: pointer;
+}
+
+/*
+ * **24 px, and the number comes from the token** .
+ *
+ * An unstyled `<input type="checkbox">` renders 16 × 16 px, and these boxes —
+ * introduced by the Mehrfachauswahl itself — were the newest of the
+ * four controls under the AA minimum of WCAG 2.5.8. The enclosing `<label>`
+ * was already a wide target, which is why this went unnoticed: a label does
+ * not lend its size to the box, and `mobile-targets.spec.ts` measures the
+ * control, not what forwards a click to it.
+ */
+.responses__select input {
+  width: var(--touch-target-min);
+  height: var(--touch-target-min);
+  accent-color: var(--color-accent-strong);
+  cursor: pointer;
+}
+
+/*
+ * The dark action bar of the handoff — above the table, only while something is
+ * selected.
+ *
+ * `flex-wrap` and nothing else is what makes it work on 360 px: the count keeps
+ * its line and the two buttons drop underneath instead of being cut off. No
+ * media query, so the Mobile-Feinschliff has a layout to tune rather
+ * than a component to rebuild.
+ */
+.responses__selection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.responses__selection-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-surface);
+  background: var(--color-ink);
+  color: var(--color-on-ink);
+}
+
+.responses__selection-count {
+  /* Pushes the buttons to the far end while it has room, and lets them wrap
+     under it when it has not. */
+  flex: 1 1 auto;
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+}
+
+.responses__selection-button {
+  flex: none;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-on-ink-border);
+  border-radius: var(--radius-control);
+  background: var(--color-on-ink-surface);
+  font-family: inherit;
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-on-ink-muted);
+  cursor: pointer;
+}
+
+.responses__selection-button:hover:not(:disabled) {
+  background: var(--color-on-ink-surface-hover);
+}
+
+.responses__selection-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* The ring token written for dark chrome — `--color-focus` is a blue that
+   disappears on `--color-ink`. */
+.responses__selection-button:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-on-ink);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.responses__selection-button--danger {
+  border-color: transparent;
+  background: var(--color-danger);
+  color: var(--color-on-danger);
+}
+
+.responses__selection-button--danger:hover:not(:disabled) {
+  background: var(--color-danger-strong);
+}
+
+.responses__selection-error {
+  margin: 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-danger);
+}
+
+.responses__cell {
+  display: block;
+  max-width: 22rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.responses__row {
+  cursor: pointer;
+}
+
+/*
+ * `> td` and not the row: the sticky first cell paints its own background, so
+ * a highlight on the `<tr>` alone would leave that one cell behind.
+ * `focus-within` gives the keyboard the same feedback the mouse gets.
+ */
+.responses__row:hover > td,
+.responses__row:focus-within > td {
+  background: var(--color-surface-sunken);
+}
+
+/*
+ * `min-height`, because the button is otherwise as tall as its 11-px caption:
+ * the whole header cell is the sort control, but its rendered box was 17 px
+ * high and therefore under WCAG 2.5.8 . The cell grows with it,
+ * which is the point — a header row that is easier to hit is the same row.
+ */
+.responses__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: var(--touch-target-min);
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.responses__sort:hover {
+  color: var(--color-text-muted);
+}
+
+.responses__sort:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.responses__sort-icon {
+  flex: none;
+  font-size: var(--font-size-caption);
+  color: var(--color-accent-strong);
+}
+
+/* The "this can be sorted" hint — present, but never louder than the label. */
+.responses__sort-icon--idle {
+  font-size: var(--font-size-label);
+  color: var(--color-text-faint);
+  opacity: 0.6;
+}
+
+/* The opener sits at the row's end and never shrinks below its own control. */
+.responses__open-cell,
+.responses__th--open {
+  width: 1%;
+  text-align: right;
+}
+
+/*
+ * `position: relative`, and it is not cosmetics — without this one line the
+ * **whole page** scrolls a good thousand pixels sideways at 360 px.
+ *
+ * Measured on 2026-08-05 with a form of five text questions: the table is
+ * 1373 px wide, `.responses__table-card` scrolls it correctly within itself,
+ * `<main>` clips on top of that — and `documentElement.scrollWidth` still
+ * reported 1367 px and `window.scrollX` reached 1007. The cause is the
+ * screen-reader label „Ansehen" in this button: `.visually-hidden` is
+ * `position: absolute` (`styles/utilities.css`), the button was static, the
+ * cell and the card likewise — so their containing block was the **viewport**.
+ * An absolutely positioned box whose containing block lies outside the
+ * scrolling card is **not** clipped by that card's `overflow`
+ * (confirmed: `overflow: hidden` on the card changes nothing, `contain: paint`
+ * on the other hand changes everything) and enlarges the document's scrolling
+ * area up to its position — here x = 1366 in the last table column.
+ *
+ * A positioned button pulls the label back into the card. The assurance for
+ * that is `e2e/responses-mobile.spec.ts`; without this line it is red, with it
+ * green — which is why it stands here and not in the test.
+ */
+.responses__open {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control-sm);
+  background: none;
+  font: inherit;
+  font-size: var(--font-size-subheading);
+  line-height: 1;
+  color: var(--color-text-faint);
+  cursor: pointer;
+}
+
+.responses__row:hover .responses__open {
+  border-color: var(--color-hairline);
+  background: var(--color-surface);
+  color: var(--color-accent-strong);
+}
+
+.responses__open:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* --- detail slide-in ---------------------------------------------------- */
+
+.responses__detail {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.responses__detail-scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--color-scrim);
+}
+
+.responses__detail-panel {
+  position: relative;
+  width: min(440px, 92vw);
+  height: 100%;
+  overflow-y: auto;
+  background: var(--color-panel-raised);
+  box-shadow: -18px 0 44px var(--color-scrim);
+  animation: responses-slide-in var(--motion-pop);
+}
+
+@keyframes responses-slide-in {
+  from {
+    transform: translateX(6%);
+    opacity: 0;
+  }
+
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+/* The dark bar of the handoff, and it stays put while the answers scroll. */
+.responses__detail-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-7);
+  background: var(--color-header-bg);
+  color: var(--color-on-ink);
+}
+
+.responses__detail-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-title-sm);
+}
+
+.responses__detail-meta {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-caption);
+  color: var(--color-on-ink-subtle);
+}
+
+.responses__detail-head-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.responses__detail-close {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-control);
+  background: var(--color-on-ink-surface);
+  font: inherit;
+  font-size: var(--font-size-subheading);
+  line-height: 1;
+  color: var(--color-on-ink);
+  cursor: pointer;
+}
+
+.responses__detail-close:hover {
+  background: var(--color-on-ink-surface-hover);
+}
+
+.responses__detail-close:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-on-ink);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* „Löschen" — the same on-ink pill as „Schließen" above,
+   whose contrast against `--color-header-bg` is already proven; the danger
+   colour lives in the 🗑 itself rather than in a new token for this one bar. */
+.responses__detail-delete {
+  flex: none;
+  /* 93.1 × 23.5 px measured — the height comes from `line-height: 1` plus
+     padding and stayed half a pixel under the promise. */
+  min-height: var(--touch-target-min);
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  border-radius: var(--radius-control);
+  background: var(--color-on-ink-surface);
+  font: inherit;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  color: var(--color-on-ink);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.responses__detail-delete:hover {
+  background: var(--color-on-ink-surface-hover);
+}
+
+.responses__detail-delete:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-on-ink);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.responses__detail-delete:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.responses__detail-confirm {
+  padding: var(--space-4) var(--space-7) 0;
+}
+
+.responses__detail-delete-error {
+  margin: 0;
+  padding: var(--space-3) var(--space-7) 0;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-danger-strong);
+}
+
+/* Shown in place of the field list when the row names a version the payload
+   does not carry — see `ResponseDetailPanel`. */
+.responses__detail-note {
+  margin: 0;
+  padding: var(--space-6) var(--space-7);
+  font-size: var(--font-size-body);
+  color: var(--color-text-muted);
+}
+
+.responses__detail-list {
+  margin: 0;
+  padding: var(--space-3) var(--space-7) 30px;
+}
+
+.responses__detail-row {
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--color-hairline-faint);
+}
+
+.responses__detail-row:last-child {
+  border-bottom: none;
+}
+
+.responses__detail-row dt {
+  margin-bottom: var(--space-1);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+}
+
+.responses__detail-row dd {
+  margin: 0;
+  font-size: var(--font-size-body);
+  color: var(--color-text);
+  /* Multi-line answers keep their line breaks here — this is the one place
+     that shows a free-text answer in full. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/*
+ * **Veranstaltungsfelder as chips** (handoff).
+ *
+ * A list, so a screen reader announces „2 Einträge" instead of running two
+ * registrations into one sentence — the `list-style` is off because the pills
+ * already separate them visually.
+ *
+ * `white-space: normal` undoes the `pre-wrap` of the surrounding `dd`: that
+ * rule is there so a free-text answer keeps its line breaks, and inherited
+ * here it would put the space between „Sommerfest ·" and „3 Personen" at the
+ * mercy of the JSX's own formatting.
+ */
+.responses__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  white-space: normal;
+}
+
+.responses__chip {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--color-panel);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-accent-strong);
+}
+
+/*
+ * The attachment of an answer, as a link.
+ *
+ * Underlined rather than only coloured: it sits inside a table cell among plain
+ * text, and colour alone is not a distinction everybody can see. The address it
+ * points at is `GET /api/responses/files/:ref`, behind the guard chain — see
+ * `AttachmentLinks.tsx` for why it is on this screen and in no exported file.
+ */
+.responses__attachment {
+  text-decoration: underline;
+}

@@ -1,0 +1,2601 @@
+// Data model of Formsache.
+//
+// Scope of this file: the tenancy and authentication core only. Forms,
+// responses, notifications and the mail queue follow later; the sketch in
+// `docs/specs/0001-formularsystem/konzept.md` §5 lists them and this schema is
+// laid out so they can be added without reshaping what is here.
+//
+// Conventions
+// - Prisma models are PascalCase, tables and columns snake_case via
+//   `@@map`/`@map`. `user` and `group` are reserved words in PostgreSQL;
+//   Prisma always quotes identifiers, and hand-written SQL must do the same.
+// - UUIDv7 rather than v4: the values are time-ordered, so inserts stay at the
+//   right edge of the primary-key index instead of scattering across it.
+// - Every domain table carries `tenant_id` and every domain query filters on
+//   it. The two exceptions are deliberate and explained at
+//   `Tenant` and `User` below.
+
+generator client {
+  // The deprecated JS generator is used on purpose: it emits into
+  // `node_modules/.prisma/client`, whereas Prisma 7's `prisma-client`
+  // generator writes TypeScript into the repository. Generated sources under
+  // `apps/api/src` would be picked up by `pnpm lint` (typescript-eslint
+  // `strictTypeChecked`), `pnpm typecheck` and `tsc -p tsconfig.build.json` —
+  // three gates that would then police code nobody wrote. Revisit together
+  // with an ESLint ignore entry when the generator is finally removed.
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  // No `url` here: Prisma 7 reads the migration connection from
+  // `apps/api/prisma.config.ts`, the runtime one from the driver adapter in
+  // `src/prisma/prisma.service.ts`.
+}
+
+/// An organisation (or the umbrella association itself) — the tenancy boundary.
+///
+/// Has no `tenant_id` because it *is* the tenant: the row is the scope every
+/// other table points at.
+model Tenant {
+  id        String @id @default(uuid(7)) @db.Uuid
+  /// Kurzname — stable, URL-safe handle shown next to the name in the
+  /// superadmin overview. Unique across the installation.
+  shortName String @unique @map("short_name")
+  name      String
+
+  // --- Branding (design handoff § "Erscheinungsbild & Login") -------------
+  // Colours are stored as the `#rrggbb` literals the colour pickers emit.
+  // That sentence is enforced twice and by one predicate
+  // (`packages/shared/src/branding.ts`): once when a save is accepted and once
+  // before a value reaches a payload — a stored string is still an arbitrary
+  // string, and a value can reach this column past the API.
+  /// Reference to the logo asset — one of the delivered
+  /// `TENANT_LOGO_REFS` today.
+  ///
+  /// It does **not** become a foreign key to `file`: ADR-0014 Nr. 12 turns
+  /// the column into a discriminated union (`{ kind: 'asset' } | { kind:
+  /// 'upload' }`) instead, because the delivered assets have to stay
+  /// selectable next to an uploaded Logo and a foreign key cannot express
+  /// „either of two kinds of reference". Written together with the
+  /// ownership check this change requires.
+  logoRef      String?  @map("logo_ref")
+  /// True for wide word marks (Dachorganisation), false for a square logo.
+  logoWide     Boolean  @default(false) @map("logo_wide")
+  /// The organisation's colours, in the display order of the header stripe.
+  ///
+  /// **The one colour list there is.** Until Befund 8 a second column
+  /// `brand_colors` stood next to this one — the „Organisationsfarbe" — which nothing ever
+  /// rendered: the stripe reads *this* column, and the only reader of the other
+  /// was a button in the appearance tab that copied it here. The migration
+  /// `20260815140000_drop_brand_colors` dropped it and carried its values over
+  /// wherever this list was empty.
+  stripeColors String[] @map("stripe_colors")
+  accentColor  String   @map("accent_color")
+  headerColor  String   @map("header_color")
+  canvasColor  String   @map("canvas_color")
+
+  /// Optimistic lock of the branding above.
+  ///
+  /// Its **own** counter next to `form_defaults_revision` rather than a shared
+  /// one, and the reason is the tab layout: branding and the form standards are
+  /// two tabs of the Organisations-Verwaltung, edited by the same two or three admins
+  /// of an organisation but never in the same request. A shared counter would make a
+  /// colleague's change to the form standards reject a colour change that has
+  /// nothing to do with it — the same over-blocking that keeps `form.revision`
+  /// and `form.settings_revision` apart.
+  ///
+  /// The alternative — no counter, last write wins — was considered and
+  /// rejected: the branding is written as a whole document, so the second saver
+  /// silently discards the first one's colours, and nothing on the page says so.
+  brandingRevision Int @default(1) @map("branding_revision")
+
+  // --- OIDC (ADR-0005) ----------------------------------------------------
+  // Applies to editors and admins only; filling out a form never requires a
+  // login. Standard discovery, so any provider works — no Keycloak specifics.
+  oidcEnabled      Boolean  @default(false) @map("oidc_enabled")
+  oidcIssuer       String?  @map("oidc_issuer")
+  oidcClientId     String?  @map("oidc_client_id")
+  /// Ciphertext of the client secret, never the secret itself (ADR-0005).
+  /// `Bytes` rather than `String` so that a plaintext value cannot be written
+  /// here by accident. The key comes from the environment.
+  oidcClientSecret Bytes?   @map("oidc_client_secret_encrypted")
+  oidcScopes       String[] @map("oidc_scopes")
+  oidcButtonLabel  String?  @map("oidc_button_label")
+
+  /// Which claim of the **signed ID token** carries the e-mail address, and
+  /// which one has to vouch for it. Both `NOT NULL` with the
+  /// values that were hard-coded until now, so every existing row keeps the
+  /// behaviour it had.
+  ///
+  /// `oidc_email_verified_claim` may be the **empty string**, and that is a
+  /// decision rather than a missing value: the address then counts without a
+  /// counter-check. Nullable columns would have to carry both „noch nie
+  /// gespeichert" and „bewusst abgewählt" in one `NULL`, and the second of
+  /// those switches a security check off.
+  oidcEmailClaim         String @default("email") @map("oidc_email_claim")
+  oidcEmailVerifiedClaim String @default("email_verified") @map("oidc_email_verified_claim")
+
+  /// Tenant-wide defaults for the four inherited form settings sections —
+  /// *Zugriff & Sicherheit*, *Nach dem Absenden*, *Darstellung*,
+  /// *Versandbudget*. JSONB, because the sections are a product surface that
+  /// changes without a migration (ADR-0003); the shape is `{ overridden,
+  /// values }` and is validated by `tenantFormDefaultsSchema` in
+  /// `@formsache/shared` on the way in and read back through
+  /// `parseTenantFormDefaults`, which treats `{}` and a missing key as „nichts
+  /// entschieden" — the shipped constant.
+  ///
+  /// ⚠️ **Never *Verfügbarkeit*** (ADR-0011, Fortschreibung 2026-08-14): a
+  /// deadline, a time limit and a participant limit are properties of one form
+  /// and have no organisation-wide meaning. The shared schema has no such keys
+  /// at all, so a row carrying `closeAt` fails to parse rather than storing a
+  /// deadline nobody can see or edit. The migration
+  /// `20260814120000_two_layer_form_settings` moved the values that were there
+  /// into the forms that were inheriting them.
+  ///
+  /// The access word inside is stored **sealed**, never in clear — see
+  /// `settings-secrets.ts`. The column itself predates this feature: it was
+  /// laid out with the tenancy core early on, so no migration was needed for it.
+  formDefaults Json @default("{}") @map("form_defaults")
+
+  /// Optimistic lock of {@link formDefaults} .
+  ///
+  /// Its own counter, not `updatedAt`: a timestamp is not a value a client can
+  /// compare without agreeing on precision and clock, and PostgreSQL's
+  /// millisecond truncation makes two writes in the same millisecond look like
+  /// none.
+  formDefaultsRevision Int @default(1) @map("form_defaults_revision")
+
+  /// This organisation's sending identity (ADR-0013). Shape:
+  /// `mailIdentitySchema` in `@formsache/shared` — `{ source: 'system' }` or a
+  /// complete `{ source: 'own', host, port, secure, auth, from }`, with
+  /// `auth.password` sealed by `MailSecretsService`.
+  ///
+  /// **NULL is the canonical spelling of „System".** The application writes
+  /// NULL when an organisation inherits and a document when it does not; a hand-written
+  /// `{"source":"system"}` reads as the same value, which is tolerated and not
+  /// how it is written. A *mixed* document is refused rather than partially
+  /// used — the row it would have sent goes `failed` with a readable reason
+  /// (ADR-0013 Nr. 4), because „System-Transport mit fremder Absenderadresse"
+  /// is signed forgery and not a configuration with gaps.
+  ///
+  /// There is **no fallback to the system block** when an own transport fails.
+  /// Otherwise a network error would send under the installation's identity
+  /// what somebody deliberately wanted to send under their own.
+  smtp Json? @map("smtp")
+
+  /// Where **this organisation** is reachable, overriding the installation's own
+  /// address. NULL = use the system value.
+  ///
+  /// Explicitly *not* part of the indivisible mail block: an own address and
+  /// the system's mail server is the normal case (ADR-0013 Nr. 3).
+  publicBaseUrl String? @map("public_base_url")
+
+  /// Die Antwortadresse dieser Organisation (`Reply-To`), NULL = die Systemvorgabe
+  /// gilt. Shape: `replyToAddressSchema` in
+  /// `@formsache/shared` — dieselbe Prüfung wie die Absenderadresse des Blocks.
+  ///
+  /// **Neben `smtp`, nicht darin**, und aus demselben Grund, aus dem
+  /// `public_base_url` daneben steht: der Block ist unteilbar, *weil er ein
+  /// Geheimnis trägt*. Läge die Antwortadresse in ihm, könnte eine Organisation sie
+  /// nicht ändern, ohne das SMTP-Passwort zur Hand zu haben — und eine Organisation,
+  /// der über das System sendet, hätte gar keinen Block, in den sie passte.
+  replyTo String? @map("reply_to")
+
+  /// Die Rechtstexte **dieser Organisation** — Anbieterangaben und
+  /// Datenschutzhinweise (ADR-0027). Form: `tenantLegalPagesSchema` in
+  /// `@formsache/shared`.
+  ///
+  /// **Warum es sie zusätzlich zu denen der Installation gibt**, und warum die
+  /// eine die andere nicht ersetzen kann: die Organisation ist Verantwortliche
+  /// für die Antworten (Art. 4 Nr. 7 DSGVO), der Betrieb ist Diensteanbieter
+  /// für die Seite (§ 5 DDG). Die Datenschutzerklärung des Betreibers kann die
+  /// Informationspflicht der Organisation nach Art. 13 DSGVO nicht erfüllen —
+  /// sie kennt weder Zweck noch Rechtsgrundlage noch Frist eines fremden
+  /// Formulars (`docs/legal/README.md` Abschnitt 2.3).
+  ///
+  /// NULL heißt „nichts hinterlegt". Die öffentliche Seite zeigt dann den
+  /// Mangel **und** den technischen Teil, der für jede Organisation gleich und
+  /// nachprüfbar ist — er ist wahr, unabhängig davon, ob jemand etwas
+  /// eingetragen hat, und steht deshalb fest im Code statt in dieser Spalte.
+  legalPages Json? @map("legal_pages")
+
+  /// Optimistischer Zähler von {@link legalPages}, neben
+  /// {@link brandingRevision} und {@link formDefaultsRevision} — ein eigener,
+  /// aus demselben Grund wie dort.
+  legalRevision Int @default(1) @map("legal_revision")
+
+  /// **Papierkorb für eine ganzen Organisation** .
+  ///
+  /// Unlike `Form.deletedAt` and `Response.deletedAt` this column arrives with
+  /// the code that reads it, because it is a column no query may forget: a
+  /// deleted Organisation is „sofort unsichtbar und unbenutzbar", and that is six
+  /// filters — Anmeldung, Sitzungsauflösung, Tenant-Wechsler,
+  /// Superadmin-Übersicht, öffentliche Formularadresse, Mail-Worker. Laying it
+  /// down empty ahead of them would have meant a nullable column that half the
+  /// application ignores, which is the state this column exists to end rather
+  /// than to create.
+  ///
+  /// Written from the injected clock (`MailClock`), never from `new Date()`:
+  /// the 30 days of {@link TRASH_RETENTION_DAYS} are counted from this instant,
+  /// and a purge proven at „29 Tage bleibt, 31 Tage ist weg" needs the *route*
+  /// to be able to produce a 31-day-old row.
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  /// **Das KI-Kontingent dieser Organisation: Aufrufe je Kalendermonat** (/// ADR-0015 Nr. 7).
+  ///
+  /// Die **Kontingentzeile** aus ADR-0015 Nr. 7 ist diese Zeile: der Zähler
+  /// sperrt sie mit `SELECT … FOR UPDATE`, zählt die Aufrufe des Monats und
+  /// schreibt seine `ai_usage`-Zeile in derselben Transaktion. Eine eigene
+  /// Tabelle je Organisation und Monat wäre ein zweiter Ort, an dem eine Zeile fehlen
+  /// kann — und „keine Zeile" hieße dort entweder „kein Kontingent" oder „noch
+  /// nichts verbraucht", zwei Zustände in einem Loch.
+  ///
+  /// **Aufrufe, nicht Token** (ADR-0015 Nr. 7): Token sind erst *nach* dem
+  /// Aufruf bekannt und könnten den teuren Aufruf, der sie reißt, gar nicht
+  /// verhindern. Ein Aufruf ist vor dem Aufruf bekannt und deshalb die einzige
+  /// Größe, die eine Sperre tragen kann.
+  ///
+  /// **`0` ist der Aus-Schalter je Organisation** und ein gültiger Wert, kein leerer:
+  /// deshalb `NOT NULL` mit Vorgabe statt nullable. Ein `NULL` müsste „nie
+  /// gesetzt" und „bewusst abgeschaltet" in einem Wert tragen, und der zweite
+  /// dieser Zustände schaltet einen Kostenhebel. Der Vorgabewert ist
+  /// `DEFAULT_AI_MONTHLY_CALL_LIMIT` aus `@formsache/shared`, wo auch steht, warum er
+  /// nicht 0 ist.
+  ///
+  /// Gesenkt wird er ohne Rückwirkung: bereits verbrauchte Aufrufe bleiben
+  /// verbraucht, `used > limit` ist damit ein erreichbarer und harmloser
+  /// Zustand (der Rest ist `max(0, limit − used)`).
+  aiMonthlyCallLimit Int @default(50) @map("ai_monthly_call_limit")
+
+  /// **Der eigene Schalter dieser Organisation — die dritte der drei Schichten**
+  /// .
+  ///
+  /// Drei Fragen, drei Orte, und sie sind **monoton**: jede Schicht kann nur
+  /// wegnehmen. *Kann diese Installation KI?* steht in `system_setting`;
+  /// *darf dieser Organisation?* ist {@link aiMonthlyCallLimit} eine Spalte weiter oben
+  /// und **nur** vom Superadmin änderbar; *will dieser Organisation?* ist
+  /// diese Spalte, und sie gehört der Organisation-Admin.
+  ///
+  /// **NULL heißt „erbt die System-Vorgabe"** — ein dritter Zustand und kein
+  /// Boolean mit Vorgabewert, weil die beiden nur so lange dasselbe sind, bis
+  /// jemand die Installation umstellt: eine Organisation, der im Moment des Schreibens
+  /// `true` kopiert hätte, behielte es, nachdem die Installation abgeschaltet
+  /// hat — und „er kann sich nichts geben, was er nicht hat" wäre beim ersten
+  /// Mal falsch, an dem es darauf ankäme.
+  ///
+  /// Anders als {@link aiMonthlyCallLimit}, das aus genau dem umgekehrten Grund
+  /// `NOT NULL` ist: dort **ist** `0` der Aus-Schalter und damit ein gesetzter
+  /// Wert; hier gibt es eine Ebene darüber, von der geerbt werden kann.
+  aiEnabled Boolean? @map("ai_enabled")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  groups             Group[]
+  memberships        Membership[]
+  activeSessions     Session[]
+  forms              Form[]
+  formVersions       FormVersion[]
+  responses          Response[]
+  notifications      Notification[]
+  mailLog            MailLog[]
+  formPermissions    FormPermission[]
+  files              File[]
+  eventRegistrations EventRegistration[]
+  responseDrafts     ResponseDraft[]
+  formTemplates      FormTemplate[]
+  aiUsage            AiUsage[]
+
+  /// The purge asks „welche Organisationen sind seit 30 Tagen gelöscht"
+  /// over a table where almost every row is `NULL`; a partial index answers it
+  /// without walking the live ones. The six read filters go the other way
+  /// (`deleted_at IS NULL`) and are served by the primary key or by
+  /// `short_name`, so this index exists for the sweep and not for them.
+  @@index([deletedAt])
+  @@map("tenant")
+}
+
+/// A person who logs in — editor, admin or superadmin.
+///
+/// Deliberately without `tenant_id`: reach across tenants is expressed by
+/// `Membership` alone, because the same person can serve several Organisationen (the
+/// tenant switcher in the header is exactly this case). Putting a tenant on
+/// the user would either duplicate the person per tenant or make the switcher
+/// a lie. Nothing here is domain data — a user row grants no access by
+/// itself; every domain query starts from `Membership`.
+model User {
+  id    String @id @default(uuid(7)) @db.Uuid
+  /// Stored lower-cased so that the unique index is the case-insensitive
+  /// comparison the login performs — normalisation happens in the service,
+  /// not in the query.
+  email String @unique
+  name  String
+
+  /// Argon2id hash in PHC string format (salt and parameters included), or
+  /// null for a user who authenticates through OIDC (ADR-0005).
+  passwordHash String? @map("password_hash")
+  /// `sub` claim, meaningful only together with the issuer that minted it.
+  oidcSubject  String? @map("oidc_subject")
+  oidcIssuer   String? @map("oidc_issuer")
+
+  /// **Vier Formen, nicht drei** (ADR-0012 §3, ADR-0024):
+  /// ein lokales Konto (`password_hash`), ein gebundenes SSO-Konto
+  /// (`oidc_issuer` + `oidc_subject`), eine **unbeanspruchte SSO-Einladung**
+  /// — Issuer allein, kein Subject, kein Passwort — und seit ADR-0024 eine
+  /// **frisch eingeladene lokale Person**: alle drei Spalten leer, bis sie
+  /// ihren Einladungslink einlöst und damit ihr erstes Passwort setzt.
+  ///
+  /// Zwei handgeschriebene CHECKs halten die Linie (sie sind für Prismas Diff
+  /// unsichtbar und stehen deshalb nur im SQL):
+  /// `user_oidc_identity_complete` — ein Subject verlangt einen Issuer, nie
+  /// umgekehrt, weil ein `sub` nur innerhalb seines Issuers eindeutig ist; und
+  /// seit der Migration `20260818090000_account_invitations`
+  /// `user_local_or_oidc` — **Passwort oder Issuer, nie beides**. Der zweite
+  /// hat `user_has_credentials` abgelöst („Passwort **oder** Subject **oder**
+  /// Issuer"), der an der vierten Form scheiterte; warum der Tausch die
+  /// schärfere Zusage ist, steht in der Migration.
+
+  /// Cross-tenant administration. Never granted by a group —
+  /// a per-form restriction can lower a role, never raise one.
+  isSuperadmin Boolean @default(false) @map("is_superadmin")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  memberships     Membership[]
+  sessions        Session[]
+  formPermissions FormPermission[]
+
+  /// Offene und eingelöste Rücksetz-Links dieser Person (ADR-0020).
+  /// `Cascade` auf der anderen Seite: ein gelöschtes Konto darf keinen
+  /// einlösbaren Link hinterlassen.
+  passwordResets PasswordResetToken[]
+
+  /// Die KI-Aufrufe, die diese Person ausgelöst hat.
+  ///
+  /// `ON DELETE SET NULL` auf der anderen Seite: die Zeile ist ein Kostenbeleg
+  /// und überlebt das Konto, verliert dabei aber ihren Personenbezug.
+  aiUsage AiUsage[]
+
+  /// A subject is unique per issuer, not globally: two providers may well
+  /// hand out the same `sub`.
+  @@unique([oidcIssuer, oidcSubject])
+  @@map("user")
+}
+
+/// Group inside one tenant, carrying the six permission flags.
+///
+/// Evaluating the flags happens elsewhere; this is
+/// the data model only.
+model Group {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  name     String
+  /// `#rrggbb` tint of the group card and of the role pills.
+  color    String
+  /// Higher wins when roles are compared. The handoff defaults are
+  /// admin 100, editor 60, viewer 20.
+  rank     Int
+
+  /// The five permissions from the handoff: Bearbeiten, Antworten ansehen,
+  /// Export, Einstellungen, Nutzer verwalten — plus the sixth of ADR-0021.
+  canBuild              Boolean @default(false) @map("can_build")
+  canViewResponses      Boolean @default(false) @map("can_view_responses")
+  canExport             Boolean @default(false) @map("can_export")
+  /// Einstellungen der **Organisation**: Formular-Standards, Erscheinungsbild,
+  /// Versandidentität, SSO.
+  canManageSettings     Boolean @default(false) @map("can_manage_settings")
+  /// Einstellungen **eines Formulars**: Formular-Einstellungen,
+  /// Benachrichtigungen, Versandprotokoll, Nutzerrechte je Formular
+  /// (ADR-0021). Bewusst getrennt von `can_manage_settings`, damit „wer baut,
+  /// stellt auch ein" nicht die Vorgaben der ganzen Organisation aufsperrt.
+  ///
+  /// `@default(false)` wie bei den anderen fünf, und die Migration setzt
+  /// Bestandsgruppen genau dann auf `true`, wenn sie `can_manage_settings`
+  /// halten — siehe `20260815120000_form_settings_permission`.
+  canManageFormSettings Boolean @default(false) @map("can_manage_form_settings")
+  canManageUsers        Boolean @default(false) @map("can_manage_users")
+
+  /// System groups (the `admin` group) always hold every permission and can
+  /// neither be edited nor deleted.
+  isSystem Boolean @default(false) @map("is_system")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  memberships     Membership[]
+  formPermissions FormPermission[]
+
+  @@unique([tenantId, name])
+  /// Not a business rule but the target of the composite foreign key on
+  /// `Membership` — PostgreSQL requires a unique index on the referenced
+  /// columns. See the comment there.
+  @@unique([id, tenantId])
+  @@index([tenantId])
+  @@map("group")
+}
+
+/// user ↔ tenant, with the group that grants the permissions.
+///
+/// This table is the tenant boundary: a request may only see a tenant's data
+/// if a membership ties the session's user to that tenant.
+model Membership {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  userId   String @map("user_id") @db.Uuid
+  groupId  String @map("group_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Composite foreign key `(group_id, tenant_id)` instead of `(group_id)`.
+  ///
+  /// This makes tenant isolation a database guarantee rather than an
+  /// application promise: a membership physically cannot point at a group of
+  /// another tenant, no matter what a future service method does. The guard
+  /// chain stays the primary defence — this is the floor under it.
+  ///
+  /// `NoAction` and not `Restrict`, although the intent is "a group in use
+  /// cannot be deleted": `RESTRICT` is checked immediately and would abort
+  /// even a *tenant* deletion, where group and membership rows disappear
+  /// together in one statement. `NO ACTION` defers the check to the end of the
+  /// statement and so rejects exactly the case meant here.
+  group Group @relation(fields: [groupId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: NoAction)
+
+  /// One membership per person and tenant — the group is the role.
+  @@unique([tenantId, userId])
+  @@index([tenantId])
+  @@index([userId])
+  @@index([groupId])
+  @@map("membership")
+}
+
+/// Server-side login session behind an httpOnly cookie (ADR-0005).
+///
+/// Two decisions worth stating:
+///
+/// **The raw token is not stored.** The cookie carries 256 bits of
+/// CSPRNG output; the database keeps only its SHA-256 digest, so a database
+/// dump or a leaked backup cannot be replayed as a login. SHA-256 and not
+/// Argon2id — deliberately: the input is full-entropy random, not a
+/// human-chosen password, so there is no dictionary to slow down. A per-request
+/// KDF would instead buy an attacker a cheap CPU-exhaustion vector, and
+/// because lookup happens *by* the digest, a per-row salt would rule out the
+/// index lookup altogether.
+///
+/// **Sessions are revocable server-side.** `revokedAt` makes logout a
+/// state change rather than a client-side hint: a replayed cookie hits a row
+/// that says "no". A session counts as valid only while `revokedAt` is null
+/// and `expiresAt` lies in the future. Rows are kept until a purge job clears
+/// the expired ones — they hold no personal data beyond the user reference.
+model Session {
+  id        String @id @default(uuid(7)) @db.Uuid
+  /// SHA-256 of the session token. 32 bytes, unique — see the note above.
+  tokenHash Bytes  @unique @map("token_hash")
+  userId    String @map("user_id") @db.Uuid
+
+  /// Tenant this session is currently working in — the tenant switcher writes
+  /// it, the guard chain reads it as the scope of every domain query.
+  /// Nullable, because a session exists before a tenant is chosen and a
+  /// superadmin may work outside any single tenant. Null must therefore mean
+  /// "no tenant scope", never "all tenants".
+  activeTenantId String? @map("active_tenant_id") @db.Uuid
+
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastSeenAt DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz(3)
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// `SetNull`, not `Cascade` — the column is a *scope*, not an owner.
+  ///
+  /// Cascading here would delete the session **row** of every person who
+  /// happened to be working in an organisation when that organisation is deleted, and the
+  /// column is nullable precisely because "no scope" is a legitimate state.
+  /// The people hit hardest would be the ones with reach across organisations: a
+  /// superadmin who had merely switched into the tenant to look at it would be
+  /// signed out of the whole installation, not just out of that one organisation.
+  /// Setting the column to null is the narrower and more accurate answer —
+  /// the session survives without a scope, and the guard chain treats null as
+  /// "no tenant", never as "all tenants" (see `activeTenantId` above).
+  ///
+  /// `user` above stays `Cascade` for the opposite reason: a session belongs
+  /// to its user, and a deleted user must not leave a usable one behind.
+  activeTenant Tenant? @relation(fields: [activeTenantId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  /// Supports the purge job that removes dead sessions — `JobKind.session_purge`.
+  /// Der Kommentar versprach ihn ein halbes Jahr, bevor
+  /// es ihn gab; bis dahin wuchs die Tabelle monoton.
+  @@index([expiresAt])
+  /// Dieselbe Frage von der anderen Seite: der Purge sucht auch nach
+  /// widerrufenen Zeilen, und ohne diesen Index läse er die Tabelle voll.
+  @@index([revokedAt])
+  @@map("session")
+}
+
+/// Wozu ein Link ausgestellt wurde — **eine Spalte, nicht eine zweite Tabelle**
+/// (ADR-0024).
+///
+/// Die Einladung eines frisch angelegten Kontos trägt Zeichen für Zeichen
+/// dieselben Zusagen wie eine Rücksetzung: einmal einlösbar über `used_at` im
+/// `WHERE`, Token aus der Kennung und dem Installationsschlüssel gebildet,
+/// Entwertung **aller** offenen Links bei jeder Passwortänderung, derselbe
+/// Aufräumlauf, dieselbe `mail_log_id` für den Versandschritt. Eine zweite
+/// Tabelle hieße, jede dieser Zusagen ein zweites Mal zu schreiben — und die
+/// wichtigste davon ist die, die über **beide** Sorten laufen muss: ein
+/// Einladungslink, der eine Passwortänderung überlebt, wäre genau der
+/// Zweitschlüssel, den `invalidateOpenTokens` beseitigt. Mit einer Spalte ist
+/// das eine Anweisung ohne `kind` im `WHERE`; mit zwei Tabellen wären es zwei,
+/// von denen jemand die zweite vergisst.
+///
+/// Was die Sorte unterscheidet, ist deshalb wenig und steht an genau drei
+/// Stellen: die Frist (`ACCOUNT_INVITATION_TTL_DAYS` gegen
+/// `PASSWORD_RESET_TTL_MINUTES`), der Text der Mail und die Adresse, unter der
+/// die Oberfläche den Link einlöst (`/invitation/` gegen `/password/`). Das
+/// **Einlösen selbst** liest die Spalte nicht — es gibt keinen Weg, der für
+/// die eine Sorte erlaubt wäre und für die andere nicht.
+enum PasswordResetKind {
+  reset
+  invitation
+
+  @@map("password_reset_kind")
+}
+
+/// Ein ausgestellter Rücksetz-Link — „Passwort vergessen" (ADR-0020).
+///
+/// ## Die Zeile weiß nicht, wie das Token lautet
+///
+/// Gespeichert ist nur `token_hash`, der SHA-256 des Werts aus dem Link — wie
+/// bei `Session.tokenHash` und aus demselben Grund: ein Datenbankabzug darf
+/// keine Anmeldung sein. SHA-256 und nicht Argon2id, weil die Eingabe volle
+/// Entropie trägt und kein Wörterbuch existiert, das zu verlangsamen wäre.
+///
+/// ## Warum diese Tabelle **keine** Vorgabe für `id` hat
+///
+/// Das Token ist `HMAC-SHA256(Signierschlüssel, id)`, base64url — es entsteht
+/// aus der Kennung dieser Zeile und dem Installationsschlüssel, der in der
+/// Umgebung liegt und nie in der Datenbank. Das ist der Grund für zwei
+/// ungewöhnliche Dinge:
+///
+/// 1. **Der Versand kann das Token wiederherstellen, ohne dass es irgendwo
+///    steht.** Der Rumpf einer Rücksetz-Mail trägt deshalb nur eine Marke
+///    (`PASSWORD_RESET_LINK_MARK`), und die Adresse entsteht erst beim
+///    Zustellen. Ohne das läge die Vollmacht in `mail_log.body_text` — einer
+///    Spalte, die das Versandprotokoll einer Organisation anzeigt.
+/// 2. **`id` hat keine `@default`-Vorgabe.** Sie wird beim Anlegen mitgegeben,
+///    weil Hash und Kennung zusammen entstehen müssen; eine Zeile, deren
+///    Kennung die Datenbank vergibt, trüge einen Hash zu einem anderen Wert und
+///    wäre still unbrauchbar. Was hier fehlt, ist also keine Nachlässigkeit,
+///    sondern die Bedingung dafür, dass beide Werte aus einer Hand kommen.
+///
+/// ## Einmal einlösbar, und die Bedingung steht im `WHERE`
+///
+/// `used_at` wird gesetzt, während dieselbe Anweisung `used_at IS NULL`
+/// verlangt — zwei gleichzeitige Einlösungen sind damit ein Zähler von 1 und
+/// einer von 0, nicht zwei Erfolge. Die Zeile wird nicht gelöscht: „wann wurde
+/// mein Passwort zurückgesetzt" ist eine Frage, die Tage später kommt, und der
+/// Aufräumlauf nimmt sie nach `PASSWORD_RESET_RETENTION_DAYS` mit
+/// (`auth/purge/session-purge.service.ts`).
+///
+/// (Dieser Block stand eine Zeitlang **vor** `PasswordResetKind` und
+/// dokumentierte damit die Aufzählung statt der Tabelle, die er beschreibt —
+/// ein Review-Befund. Verschoben, nicht neu geschrieben.)
+model PasswordResetToken {
+  /// **Ohne Vorgabe, und das ist die Bedingung des Verfahrens** — siehe oben.
+  id String @id @db.Uuid
+
+  /// Rücksetzung oder Einladung — siehe {@link PasswordResetKind}.
+  ///
+  /// Mit Vorgabe, anders als `id`: `reset` ist die Sorte, die es zuerst gab,
+  /// und sie ist die **engere** von beiden (kurze Frist, und das Einlösen
+  /// verlangt ein Konto, das schon eines hat). Eine vergessene Angabe fällt
+  /// damit auf die vorsichtigere Seite.
+  kind PasswordResetKind @default(reset)
+
+  userId String @map("user_id") @db.Uuid
+
+  /// SHA-256 des Werts aus dem Link. 32 Bytes, `unique` — der Nachschlagepfad
+  /// beim Einlösen und das Einzige, was diese Tabelle über das Token weiß.
+  tokenHash Bytes @unique @map("token_hash")
+
+  /// Die Protokollzeile der Mail, die diesen Link trägt — oder NULL.
+  ///
+  /// Der Versand liest sie von der anderen Seite: er hat die `mail_log`-Zeile
+  /// in der Hand und sucht die Rücksetz-Zeile dazu, um das Token neu zu bilden.
+  /// `SetNull` wie überall dort, wo eine Protokollzeile verschwindet: der
+  /// 90-Tage-Purge des Versandprotokolls darf keine Anmeldezeile mitreißen —
+  /// wobei die hier ohnehin lange vorher weg ist.
+  mailLogId String? @unique @map("mail_log_id") @db.Uuid
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(3)
+  /// Wann eingelöst — NULL heißt „noch offen". Siehe oben, warum die Zeile
+  /// bleibt statt zu verschwinden.
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(3)
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mailLog MailLog? @relation(fields: [mailLogId], references: [id], onDelete: SetNull)
+
+  /// „Alle offenen Links dieser Person entwerten" — bei jeder Passwortänderung,
+  /// auf jedem der drei Wege.
+  @@index([userId])
+  /// Der Aufräumlauf sucht nach abgelaufenen Zeilen.
+  @@index([expiresAt])
+  @@map("password_reset")
+}
+
+// ---------------------------------------------------------------------------
+// Forms, their published versions and the answers to them.
+// ---------------------------------------------------------------------------
+
+/// Draft or published — the two states the dashboard shows as a badge.
+enum FormStatus {
+  draft
+  active
+
+  @@map("form_status")
+}
+
+/// A form of one organisation.
+///
+/// The definition lives in `draft_schema` as JSONB, because a form's content
+/// is a product surface that changes without a migration (ADR-0003); its shape
+/// is the shared Zod schema in `packages/shared/src/form-schema.ts` and is
+/// validated on the way in — a JSONB column accepts any JSON, so "the database
+/// checks it" is never true here.
+///
+/// The draft is *not* what participants see. Publishing snapshots it into an
+/// immutable `FormVersion`, and `publishedVersionId` points at the snapshot in
+/// force. That separation is what lets an editor rework a live form without
+/// changing what someone is filling in at that moment.
+model Form {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+
+  title  String
+  status FormStatus @default(draft)
+
+  /// The definition currently being edited. Always present — a form without a
+  /// definition has nothing for the builder to open.
+  draftSchema Json @map("draft_schema")
+
+  /// Snapshot participants currently fill in, or null while the form has never
+  /// been published.
+  publishedVersionId String? @unique @map("published_version_id") @db.Uuid
+
+  /// Public address of the form — **not** the id.
+  ///
+  /// The primary key is a UUIDv7 and therefore time-ordered: knowing one form's
+  /// id tells you roughly what the neighbouring ones look like, which is a poor
+  /// property for a URL anyone may visit. This column carries CSPRNG output
+  /// instead, so the public URL is unguessable even though the row is not.
+  publicSlug String @unique @map("public_slug")
+
+  /// Optimistic lock.
+  ///
+  /// Incremented on every accepted write and named by the client in the next
+  /// one. Two editors starting from the same state means the second update
+  /// matches no row and answers 409 — instead of overwriting work that was
+  /// never displayed to them. The concept plans for ~5 concurrent editors
+  /// (spec 0001 §3), which makes this a case that occurs rather than one that
+  /// is imagined.
+  revision Int @default(1)
+
+  /// The sections this form has taken over from its tenant, plus their values
+  /// . JSONB, shaped by `formSettingsOverrideSchema` in
+  /// `packages/shared/src/form-settings.ts` and validated on the way in — a
+  /// JSONB column accepts any JSON, so "the database checks it" is never true.
+  ///
+  /// **`{}` is the meaning, not a placeholder.** An empty document parses into
+  /// "all four sections on tenant default", which is exactly what a form
+  /// predating this column already is. That is why the column arrives with a default instead of a
+  /// backfill: the absence of a decision *is* the decision, and writing one
+  /// into every existing row would have invented four.
+  ///
+  /// The access word inside `values` is stored **sealed**, never in clear
+  ///  — see `settings-secrets.ts`.
+  settingsOverride Json @default("{}") @map("settings_override")
+
+  /// Optimistic lock of {@link settingsOverride} — **separate from
+  /// {@link revision}** .
+  ///
+  /// One counter for both would make every settings save fail the next save of
+  /// every open builder tab, although the two never touched the same document.
+  /// Two counters keep each conflict to the people who actually collided.
+  ///
+  /// It is needed at all because the loss here is **section-shaped**: a `PUT`
+  /// replaces all four switches, so two editors who share nothing — one sets
+  /// the deadline, one the display — would delete each other's whole sections,
+  /// including a sealed access word that has no Papierkorb and no history.
+  settingsRevision Int @default(1) @map("settings_revision")
+
+  /// Der **Datenschutzhinweis dieses Formulars** (ADR-0028 Nr. 4). Form:
+  /// `legalDocumentSchema` in `@formsache/shared` — dasselbe Dokument, das
+  /// `tenant.legal_pages` je Seite trägt, und ausdrücklich kein zweites
+  /// Textmodell.
+  ///
+  /// **Warum es ihn je Formular gibt**: Zweck und Rechtsgrundlage sind nach
+  /// Art. 13 Abs. 1 lit. c DSGVO **je Verarbeitung** anzugeben, und ein
+  /// Formular ist eine Verarbeitung. Eine Sterbefallmeldung und eine
+  /// Tagungsanmeldung derselben Organisation haben verschiedene; ein einziger
+  /// Organisationstext, der beides abdecken soll, wird entweder unrichtig oder
+  /// unlesbar (`docs/legal/README.md` 5.2).
+  ///
+  /// **NULL heißt „nichts hinterlegt", und die öffentliche Seite zeigt dann
+  /// nichts** — anders als bei `tenant.legal_pages`, wo der Mangel
+  /// ausgesprochen wird. Der Unterschied hat einen Grund: dort ist die Seite
+  /// die geschuldete Auskunft und ihr Fehlen ein Verstoß; hier ist der Text
+  /// ein **Zusatz** zu den allgemeinen Hinweisen der Organisation, die einen
+  /// Link weiter stehen und für dieses Formular genügen können. Ein
+  /// Ersatztext „hier fehlt etwas" wäre eine Fehlmeldung an genau die
+  /// Organisation, bei der nichts fehlt.
+  ///
+  /// **Kein eigener Zähler.** Der Hinweis wird auf derselben Seite und mit
+  /// demselben `PUT` gespeichert wie die Einstellungen dieses Formulars, also
+  /// ist {@link settingsRevision} genau der Zähler, der die Kollision
+  /// beschreibt, die hier auftreten kann. Ein zweiter wäre ein zweiter Wert,
+  /// den jeder Client mitführen müsste, für einen Konflikt, den es nicht gibt.
+  ///
+  /// ⚠️ **Klartext, niemals Auszeichnungssprache** — derselbe Satz wie an
+  /// `tenant.legal_pages`, und hier zählt er doppelt: dieser Text landet auf
+  /// der Ausfüllseite selbst, die Fremde ohne Anmeldung öffnen. Die
+  /// Positivliste, die daraus Struktur macht, ist `legal-text.ts` und lebt
+  /// außerhalb dieser Spalte; ausgeliefert werden Blöcke, nie eine
+  /// Zeichenkette (ADR-0028 Abschnitt 7).
+  privacyNotice Json? @map("privacy_notice")
+
+  /// Papierkorb, coming later. The column exists from the start because adding it later
+  /// would be a migration over live rows; nothing reads it yet, and every
+  /// query filters it to null.
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  /// The snapshot in force. `NoAction` rather than `SetNull` or `Cascade`: the
+  /// row it points at is deleted only together with this form, and the
+  /// relation is one of two between the same pair of tables, so PostgreSQL
+  /// must not try to resolve it on its own.
+  publishedVersion FormVersion? @relation("PublishedVersion", fields: [publishedVersionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  versions           FormVersion[]       @relation("FormVersions")
+  responses          Response[]
+  notifications      Notification[]
+  permissions        FormPermission[]
+  mailLog            MailLog[]
+  files              File[]
+  eventRegistrations EventRegistration[]
+  responseDrafts     ResponseDraft[]
+
+  /// Target of the composite foreign keys on `FormVersion` and `Response`, and
+  /// the key `findById` looks a single form up by — dropping the tenant from
+  /// that lookup is then a type error rather than a wider query.
+  @@unique([id, tenantId])
+  @@index([tenantId, deletedAt])
+  @@map("form")
+}
+
+/// An immutable snapshot of a form's definition.
+///
+/// This is what makes a stored answer keep its meaning. Every response points
+/// at the version it was submitted against, so renaming or deleting a question
+/// afterwards changes what *new* participants see and nothing about what the
+/// old ones said. Without it the CSV export of a form that grew over a
+/// semester would be silent data loss — §9 of the concept names exactly this
+/// risk ("JSONB-Schema-Evolution") and exactly this countermeasure.
+///
+/// Rows are never updated. A change to a published form produces the next
+/// version, which is why there is no `updatedAt` here.
+model FormVersion {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  formId   String @map("form_id") @db.Uuid
+
+  /// 1, 2, 3 … per form. Shown to editors and stored on every response.
+  version Int
+
+  /// The snapshot itself, in the shape of the shared form schema.
+  schema Json
+
+  publishedAt DateTime @default(now()) @map("published_at") @db.Timestamptz(3)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  /// Composite `(form_id, tenant_id)` rather than `(form_id)`: a version
+  /// physically cannot belong to a form of another organisation, whatever a future
+  /// service method does. Same reasoning as `membership → group` above —
+  /// the guard chain stays the defence, this is the floor under it.
+  form Form @relation("FormVersions", fields: [formId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: NoAction)
+
+  publishedFor Form?           @relation("PublishedVersion")
+  responses    Response[]
+  drafts       ResponseDraft[]
+
+  @@unique([formId, version])
+  /// Target of the composite foreign key on `Response`.
+  @@unique([id, tenantId])
+  @@index([tenantId])
+  @@map("form_version")
+}
+
+/// One submission by a participant.
+///
+/// Participants have no account (spec 0001 §6, data minimisation), so there is
+/// no user reference here — the answers are the whole record.
+model Response {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  formId   String @map("form_id") @db.Uuid
+
+  /// The schema state this submission was validated against.
+  formVersionId String @map("form_version_id") @db.Uuid
+
+  /// Answers keyed by question id, in the shape `response-validation.ts`
+  /// produces. Never written without passing that validator first: a JSONB
+  /// column would happily take anything, and an unknown key here becomes a
+  /// column in the export that nobody defined.
+  answers Json
+
+  submittedAt DateTime @default(now()) @map("submitted_at") @db.Timestamptz(3)
+
+  /// The capability that lets the participant change **this one** answer
+  ///  — 128 bits of CSPRNG, base64url, exactly like
+  /// `Form.publicSlug`.
+  ///
+  /// **A stored random value and not a signed token**, which is the decision
+  /// worth writing down here rather than in a commit message. The two would
+  /// have been equally unguessable; they differ in what can be taken back. A
+  /// stored value is revoked by writing this column — one row, one answer, no
+  /// side effects. A signature can only be revoked by rotating the subkey it
+  /// was made under, which invalidates *every* link of the installation at
+  /// once, and there is no per-response middle ground. A self-carrying token
+  /// would also have to name the response inside itself, i.e. put a
+  /// time-ordered UUIDv7 into an address strangers hold — the exact property
+  /// `publicSlug` exists to avoid.
+  ///
+  /// Stored **raw**, unlike `Session.tokenHash`. A session token is only ever
+  /// compared, so a digest suffices there; this one has to be *rendered* again
+  /// — the mail worker re-builds the body when it retries a delivery
+  /// (ADR-0004), and out of a digest it could not. The price, stated correctly:
+  /// a dump grants *reading*, and raw tokens turn that into *writing* against
+  /// the live installation over a public route. Read → write is a real
+  /// escalation. The third option — sealed and readable again, as the access
+  /// word is — is refused for a reason written out in `public/edit-token.ts`.
+  ///
+  /// **Cleared to revoke** : switching a form's access
+  /// word on, or changing it, empties this column for that form's answers in
+  /// the same transaction as the settings write. Without that, a token issued
+  /// while the form was unprotected would keep opening the field definition
+  /// past the gate the access word is meant to close.
+  ///
+  /// **Nullable, and no backfill.** Answers submitted before this column
+  /// existed never had a link, so there is nothing to keep working; inventing one for them would
+  /// mint a capability nobody was ever given. Absence means „diese Antwort hat
+  /// keinen Bearbeiten-Link", the same way an absent `settings_override` means
+  /// „alle vier Abschnitte auf Tenant-Standard" .
+  editToken String? @unique @map("edit_token")
+
+  /// When the participant last changed their answer, or null.
+  ///
+  /// **Separate from `submittedAt`, which is never touched by an edit.** The
+  /// submission instant is what an organisation reconciles its registration list
+  /// against; overwriting it on a correction would silently move a registration
+  /// past a deadline it met.
+  editedAt DateTime? @map("edited_at") @db.Timestamptz(3)
+
+  /// Papierkorb — see the note on `Form.deletedAt`.
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(3)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  /// Both relations are composite and carry the tenant, for the reason spelled
+  /// out at `FormVersion.form`.
+  form        Form        @relation(fields: [formId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: NoAction)
+  formVersion FormVersion @relation(fields: [formVersionId, tenantId], references: [id, tenantId], onDelete: Restrict, onUpdate: NoAction)
+
+  /// The queued mails this submission produced.
+  mailLog MailLog[]
+
+  /// The attachments claimed by this submission (ADR-0014 Nr. 13). Empty for
+  /// every answer predating this feature, and for every form without a Datei question.
+  files File[]
+
+  /// The seats this submission occupies. Empty for every
+  /// answer to a form without a Veranstaltung question.
+  eventRegistrations EventRegistration[]
+
+  @@unique([id, tenantId])
+  /// The responses table reads one form, newest first.
+  @@index([tenantId, formId, deletedAt, submittedAt])
+  @@index([formVersionId])
+  @@map("response")
+}
+
+/// **The seats one answer occupies in one Veranstaltung** (Konzept Nr. 51–53).
+///
+/// The normalised row the concept has named since §5 („je Veranstaltungsfeld
+/// normalisierte Zeile pro Anmeldung → Teilnehmerlimit transaktional
+/// durchsetzbar") and the risk table names as *the* mitigation against
+/// overbooking. It carries nothing the `answers` JSONB does not also carry —
+/// and that is the point: the JSONB column is what a participant *said*, this
+/// table is what the database can *add up under a lock*.
+///
+/// ## Why a table and not `SUM` over the JSONB
+///
+/// The sum has to run inside the transaction that writes the answer, on every
+/// submission to a form with a bounded event, and it decides whether somebody
+/// stands in front of a full hall. Over JSONB it would be
+/// `(answers -> :question -> 'seats' ->> :key)::int` — a cast of untyped
+/// document content, on rows written by *every* published Fassung of the form,
+/// with no index to stand on and a `22P02` waiting in any row whose shape a
+/// future validator lets through. Here it is `SUM(seats)` over an `INTEGER`
+/// column with an index that matches the `WHERE` exactly.
+///
+/// ## The two truths, and what keeps them one
+///
+/// The rows are written **in the same transaction as the answer** and only ever
+/// from `seatRequests()` — the shared reader of the same answer document
+/// (`@formsache/shared`, `event-seats.ts`). There is no second walk and no second
+/// interpretation, which is the only way two representations of one fact stay
+/// equal. The rows are never written on their own: nothing outside the
+/// submission and the edit path creates one.
+///
+/// ## Why the Papierkorb needs no column here
+///
+/// „Eine Antwort im Papierkorb belegt keine Plätze"  is enforced by
+/// **joining `response` and filtering `deleted_at IS NULL`**, not by a second
+/// `deleted_at` on this row. One state, one place: a copy here would have to be
+/// written by every path that soft-deletes an answer, and the first one that
+/// forgets hands out seats nobody holds — or holds seats nobody occupies.
+model EventRegistration {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  formId   String @map("form_id") @db.Uuid
+
+  /// The answer these seats belong to. Cascades: the seats of a physically
+  /// deleted answer are gone with it — there is nothing left to count them for
+  /// (the Papierkorb deletes for real, and the soft-deleted state is
+  /// the `deleted_at` join above, not this).
+  responseId String @map("response_id") @db.Uuid
+
+  /// The `event` question inside the form's definition — a question id, and a
+  /// plain `Uuid` rather than a foreign key, because questions live in a JSONB
+  /// document and have no table to point at.
+  questionId String @map("question_id") @db.Uuid
+
+  /// `EventEntry.key` — stable across renames, which is why the key exists at
+  /// all (`eventEntrySchema`). Not the label: renaming „Konzert" must not
+  /// split one Veranstaltung's seats across two counts.
+  eventKey String @map("event_key")
+
+  /// The **Personenzahl** , never a 1 per registration. Always ≥ 1:
+  /// „keine Anmeldung" is the absence of a row, the same single spelling the
+  /// answer document uses.
+  seats Int
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  /// Composite and carrying the tenant, for the reason spelled out at
+  /// `FormVersion.form`: a row pairing Organisation A's form with Organisation B's tenant must
+  /// not be expressible.
+  form     Form     @relation(fields: [formId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: NoAction)
+  response Response @relation(fields: [responseId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: NoAction)
+
+  /// One row per answer and Veranstaltung — a second row for the same pair would
+  /// be a double booking that no `SUM` could tell from two participants.
+  @@unique([responseId, questionId, eventKey])
+  /// The shape of the counting query: one form, grouped by position.
+  @@index([formId, questionId, eventKey])
+  /// Every tenant-bearing model in this schema carries one, and this one needs
+  /// it for the same two reasons: the `ON DELETE CASCADE` of `tenant_id_fkey`
+  /// would otherwise scan a table that grows with every registration, and so
+  /// would the tenant-scoped evaluation the capacity limit performs (an earlier review found the same gap).
+  @@index([tenantId])
+  @@map("event_registration")
+}
+
+/// **Ein zwischengespeicherter Entwurf** (Konzept
+/// Nr. 58 und Nr. 63).
+///
+/// ## Warum eine eigene Tabelle und keine markierte Antwort
+///
+/// The obvious alternative was a `Response` with a `draft` flag, and it is the
+/// one thing this decision rules out in as many words: **ein Entwurf ist keine
+/// Antwort.** He does not count against the Antwortlimit, he occupies no
+/// Veranstaltungsplatz, he does not appear in the Auswertung and not in the
+/// Export. As a flagged row, each of those four is a `WHERE` somebody has to
+/// remember — in `storeWithinLimit`'s count under the form lock, in the
+/// `SUM(seats)` of `takenSeats`, in the responses view, in the CSV, in the
+/// Papierkorb, in `mail_log`'s join, in the export column plan. Seven places,
+/// one forgotten filter, and an organisation's Jahrestagung registration reports as full
+/// because of forms nobody submitted.
+///
+/// As a table of its own, all seven are right **because the rows are not
+/// there**. That is the difference between a rule that is enforced and a rule
+/// that is remembered.
+///
+/// It also makes the second half true: a draft has **no `event_registration`
+/// row**, because nothing writes one outside the submission and the edit path.
+/// Seats are taken by answers, and this is not one.
+///
+/// ## Was er trotzdem mit einer Antwort teilt
+///
+/// The snapshot. `form_version_id` is the version the draft was **started**
+/// against, and the resume renders it against that same version — a form
+/// republished in the meantime would otherwise hand somebody their answers back
+/// under different questions (the rule the edit route follows).
+///
+/// ## Keine Papierkorb-Spalte
+///
+/// There is no `deleted_at` here and there is nothing to restore. A draft
+/// belongs to somebody **without an account** who cannot see a Papierkorb, and
+/// a Bearbeiter never sees the draft at all; „weg" is the only state it has
+/// besides „da". What ends it is {@link expiresAt}, the settings write of Konzept
+/// Nr. 36, or the submission it turns into.
+model ResponseDraft {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  formId   String @map("form_id") @db.Uuid
+
+  /// The schema state this draft was started against — see the note above.
+  formVersionId String @map("form_version_id") @db.Uuid
+
+  /// The capability that opens **this one** draft — 128 bits of CSPRNG,
+  /// base64url, the same size and alphabet as `Form.publicSlug` and
+  /// `Response.editToken`.
+  ///
+  /// **A stored random value and not a signed token**, for the reason written
+  /// out at `Response.editToken` and, at length, in `public/draft-token.ts`: the
+  /// revocation of Konzept Nr. 36 is a write against this table, not a key rotation
+  /// that would invalidate **every** link of the installation at once.
+  ///
+  /// `NOT NULL` and unique, unlike `Response.editToken`: there a cleared column
+  /// still leaves an answer worth keeping, here the token is the only way in, so
+  /// a draft without one would be a row nobody can reach. The revocation
+  /// therefore deletes the row (`ScopedFormDelegate.updateSettingsOverride`).
+  token String @unique
+
+  /// Answers keyed by question id, in the shape `response-validation.ts`
+  /// produces — validated on the way in with `safeParseDraftAnswers`, i.e.
+  /// everything a submission is held to **except** the Pflicht rule.
+  answers Json
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  /// **When this draft disappears**  — the form's own Frist where
+  /// one is set, thirty days otherwise, computed by `draftExpiresAt` in
+  /// `@formsache/shared` from the injected clock and rewritten on every save.
+  ///
+  /// A column rather than „`created_at` plus thirty days" read at query time:
+  /// the boundary depends on the *settings* the draft was saved under, so
+  /// deriving it later would mean re-reading and re-merging three settings
+  /// layers for every row a purge looks at — and getting a different answer
+  /// once an editor moves the Frist.
+  ///
+  /// It is enforced on **every access**, not only by a purge: the read refuses
+  /// an expired draft with the same 404 an unknown token gets, so a purge that
+  /// is late never hands anything out.
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  /// Both relations are composite and carry the tenant, for the reason spelled
+  /// out at `FormVersion.form`: a row pairing Organisation A's form with Organisation B's
+  /// tenant must not be expressible.
+  ///
+  /// **`Cascade` on the version, where `Response` has `Restrict`.** A snapshot
+  /// with answers behind it may not be deleted — the answers would lose their
+  /// meaning — but a draft is disposable by construction, and blocking the
+  /// deletion of a form for a half-filled document nobody submitted would make
+  /// the Papierkorb fail on rows a Bearbeiter cannot even see.
+  form        Form        @relation(fields: [formId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: NoAction)
+  formVersion FormVersion @relation(fields: [formVersionId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: NoAction)
+
+  /// **Die Anlagen, die dieser Entwurf besitzt**.
+  ///
+  /// An attachment of a draft is not an abandoned upload, and until this
+  /// relation existed it was treated as one: the file died after 24 hours
+  /// (ADR-0014 Nr. 15) while the draft lived up to thirty days, so somebody
+  /// coming back on the second day found their Nachweis gone. The owner column
+  /// on the other side is what makes „so lange wie der Entwurf" expressible.
+  ///
+  /// `SetNull` over there, so deleting a draft — submitted, revoked, expired,
+  /// or destroyed on the participant's own request — hands its files to the
+  /// purge of ADR-0014 Nr. 15 rather than taking their rows along. See the
+  /// comment at `File.draft` for why that direction and not `Cascade`.
+  files File[]
+
+  /// The shape of the revocation of Konzept Nr. 36: every draft of one form of one
+  /// Organisation, deleted in the transaction that writes the access word.
+  @@index([tenantId, formId])
+  /// The shape a purge asks in: „was ist fällig", oldest first.
+  @@index([expiresAt])
+  @@map("response_draft")
+}
+
+// ---------------------------------------------------------------------------
+// Notifications and the mail queue (ADR-0004).
+//
+// **These two models arrive early on purpose, and carry no logic yet.**
+// The reason: a check counts `mail_log` rows before
+// and after a preview round („die Vorschau erzeugt nichts … löst keine Mail
+// aus"). A check whose evidence points at a table that does not exist yet
+// is the open end nobody collects, so the table lands here and the check counts it.
+// Everything that *writes* to either model — the trigger, the worker, the
+// retry, the purge, the views — belongs elsewhere
+// (`docs/specs/0001-formularsystem/umsetzungsplan-m2-etappe-c.md` §3 and §6).
+// ---------------------------------------------------------------------------
+
+/// What sets a notification off.
+///
+/// `save` exists in the schema and is deliberately **not selectable**: a trigger
+/// an editor can choose but nothing can fire is a promise the application does
+/// not keep (`notificationTriggerInputSchema` refuses it on the way in).
+///
+/// **It is not waiting for a future feature.** This comment used to say „‚Zwischen-
+/// speichern' kommt … present here so that becomes an additive change"; Zwischenspeichern then built
+/// **without** a mail — the
+/// participant is shown the address and copies it — so there is no message for
+/// the trigger to carry and no plan to make it selectable. The value stays
+/// because a row written straight into the database has to remain readable.
+enum NotificationTrigger {
+  submit
+  save
+
+  /// A correction made through the edit link. Added 2026-07-28 — until then an edit sent nothing at all,
+  /// because the only trigger was called „Bei Absendung" and an edit is not a
+  /// submission. Two reasons carry it: the office files a registration mail and
+  /// the participant then changes their answers, so the filed mail is wrong and
+  /// nothing says so; and the edit link is an owner capability, so a mail on
+  /// every change is how a participant learns their link has leaked.
+  edit
+
+  /// **Keine Benachrichtigung, sondern eine Systemmail** (ADR-0020) — eine
+  /// Zeile, die kein Formular und keine Antwort ausgelöst hat, sondern die
+  /// Anwendung selbst: heute der Rücksetz-Link von „Passwort vergessen" und
+  /// die Mitteilung über ein administrativ gesetztes Passwort.
+  ///
+  /// Der Wert ist **nicht** kosmetisch, obwohl er auch das Versandprotokoll
+  /// lesbar macht (vorher stand eine Rücksetz-Mail dort als „Beim Absenden"
+  /// und war von einer Formularbestätigung nur am Betreff zu unterscheiden).
+  /// Er ist die **Bedingung**, an der zwei Sicherheitsregeln hängen:
+  ///
+  /// 1. Eine solche Zeile geht **immer über die Systemidentität**, nie über
+  ///    den SMTP-Block der Organisation (`MailIdentityService.resolve`). Sonst
+  ///    liefe eine Passwort-Rücksetzung über einen Mailserver, den jemand mit
+  ///    `can_manage_settings` einträgt — ein Recht, das ADR-0020 ausdrücklich
+  ///    von diesem Konto fernhält.
+  /// 2. Ein Link darin wird **nur** aus der Basis-Adresse der Installation
+  ///    gebaut, nie aus der der Organisation (`QueuedBodyRenderer`).
+  ///
+  /// Eine Benachrichtigung kann diesen Wert nicht führen:
+  /// `notificationTriggerInputSchema` nimmt ihn nicht an, und geschrieben wird
+  /// er ausschließlich von den beiden Stellen, die eine Systemmail einreihen.
+  system
+
+  @@map("notification_trigger")
+}
+
+/// How the body of a notification is written and sent.
+enum MailFormat {
+  html
+  text
+
+  @@map("mail_format")
+}
+
+/// Where one delivery stands (ADR-0004).
+///
+/// Three states, no `sending`: the worker claims a row inside a transaction
+/// with `SELECT … FOR UPDATE SKIP LOCKED`, so „currently being delivered" is
+/// expressed by the lock and cannot survive a crashed worker as a stuck row.
+enum MailStatus {
+  queued
+  sent
+  failed
+
+  @@map("mail_status")
+}
+
+/// Which sending identity a delivery attempt used.
+///
+/// Two values, and there is no third: an identity is resolved from the organisation the
+/// row belongs to, so `own` can only mean that organisation. See
+/// `MailLog.senderIdentity` for why the column is nullable and why NULL must
+/// never be read as `system`.
+enum MailSenderIdentity {
+  /// The installation's block (`system_setting.smtp`) — the organisation inherits.
+  system
+  /// This organisation's own block (`tenant.smtp`).
+  own
+
+  @@map("mail_sender_identity")
+}
+
+/// One configured notification of one form.
+///
+/// Subject, body **and the recipients** are written with placeholders that point
+/// at the form's questions; the question **id** is what
+/// is stored, so renaming a question is harmless and only removing one breaks
+/// the binding — which is what the publish-time validation block is for.
+model Notification {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  formId   String @map("form_id") @db.Uuid
+
+  /// Editor-facing name, so a form with several notifications is manageable.
+  name String
+
+  /// What sets this notification off — **a set, not one value**.
+  ///
+  /// A Postgres enum array rather than JSONB, deliberately: the array is
+  /// type-checked by the database, while JSONB would have been the **third**
+  /// unchecked column of this schema next to `recipients` and `answers`, each of
+  /// which needs its own parse-instead-of-cast discipline (ADR-0003). The price
+  /// is that a new trigger costs a migration — which is exactly the ceremony one
+  /// wants around the column that decides when mail leaves the building.
+  ///
+  /// The **empty** array is storable and means „fires on nothing". Nothing this
+  /// application writes produces one (`notificationTriggersInputSchema` requires
+  /// at least one), and the send path asks `includes()`, so such a row is silent
+  /// rather than dangerous.
+  triggers NotificationTrigger[] @default([submit])
+
+  format MailFormat @default(html)
+
+  /// Whether the participant themselves receives a copy.
+  /// Off by default, deviating from the prototype: Konzept Nr. 18.
+  toSubmitter Boolean @default(false) @map("to_submitter")
+
+  /// Recipients, as written by the editor. JSONB rather than `text[]` because a
+  /// recipient is not always a literal address: Konzept Nr. 30 makes it a
+  /// placeholder pointing at a question, so an entry carries a kind and a value.
+  /// The shape is a shared Zod schema and is validated on the way in — a JSONB
+  /// column accepts any JSON, so „die Datenbank prüft es" is never true here
+  /// (ADR-0003).
+  recipients Json @default("[]")
+
+  subject String
+  body    String
+
+  /// Die Antwortadresse dieser Benachrichtigung, NULL = „es gilt, was die Organisation
+  /// bzw. das System vorgibt" .
+  ///
+  /// Die oberste der drei Ebenen; die Kette selbst steht an einer Stelle
+  /// (`effectiveReplyTo` in `@formsache/shared`) und wird hier nicht zweitbeschrieben.
+  ///
+  /// **Kein Platzhalter, nie aus einer Antwort gelesen** — anders als die
+  /// Empfänger. Der Wert ist Konfiguration, die ein Bearbeiter
+  /// tippt, und das ist der Grund, warum die Kopie in `mail_log.reply_to`
+  /// **nicht** zu den personenbezogenen Spalten gehört, die das endgültige
+  /// Löschen leert (siehe dort).
+  replyTo String? @map("reply_to")
+
+  /// A paused notification keeps its text — without
+  /// the flag, pausing means deleting and losing what somebody wrote.
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  /// Composite `(form_id, tenant_id)`, the same floor `FormVersion` and
+  /// `Response` stand on: a notification physically cannot belong to a form of
+  /// another organisation, whatever a future service method does.
+  form Form @relation(fields: [formId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: NoAction)
+
+  mailLog MailLog[]
+
+  @@index([tenantId, formId])
+  @@map("notification")
+}
+
+/// One delivery attempt log line — **one row per recipient** (Konzept
+/// Nr. 31), not one per mail.
+///
+/// That is what makes „↻ Erneut" a per-recipient action and keeps one rejected
+/// address from taking the other nineteen down with it.
+///
+/// **No body column.** The log keeps who, what subject, and how it went; the
+/// text is re-rendered from the notification and the answer when a delivery is
+/// retried. Storing the rendered body would mean keeping a second copy of
+/// personal data for 90 days for no purpose that would justify it.
+model MailLog {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+
+  /// The form this went out for, or null once that form is gone.
+  ///
+  /// **`SetNull`, not `Cascade`** — the same reasoning as `notificationId`
+  /// below: the sending log is a record of what left the building, and a
+  /// deleted form must not be able to erase it. It is nullable for that reason
+  /// and not because a mail without a form is an ordinary case.
+  ///
+  /// A simple foreign key on `id` rather than the composite `(form_id,
+  /// tenant_id)` the other domain tables use, and the reason is a Prisma
+  /// constraint rather than a decision: an optional relation requires *all* of
+  /// its scalar fields to be optional, and `tenant_id` is required here — a log
+  /// line always belongs to an organisation, even after its form is gone. The tenant
+  /// boundary therefore rests on `tenant_id` and on the scoped query, as
+  /// everywhere else; what is missing is only the database-level floor under it.
+  formId String? @map("form_id") @db.Uuid
+
+  /// Which notification produced it, or null once that notification is deleted.
+  /// `SetNull` is spelled out in the plan: eine gelöschte Benachrichtigung
+  /// darf das Protokoll nicht mitnehmen.
+  notificationId String? @map("notification_id") @db.Uuid
+
+  /// The submission this line was queued for — since the decision
+  /// of 2026-07-28 it carries **the edit link, not the body**.
+  ///
+  /// The body used to be re-rendered from this reference at send time, and that
+  /// is what changed: the text is frozen at the enqueue now (`body_text` /
+  /// `body_html` below). What still has to be read through this column at send
+  /// time is the one thing that must *not* be frozen — `response.edit_token`
+  /// and the form's `allowEdit`, i.e. whether a `{{bearbeiten}}` link still
+  /// leads anywhere.
+  ///
+  /// **`SetNull`, like the two above.** A log line outlives what produced it;
+  /// once the answer is physically gone (Papierkorb purge) the row keeps
+  /// saying who was written to and how it went, and a delivery still waiting at
+  /// that point goes out **without** the link rather than failing — the text it
+  /// carries was settled when the answer arrived and does not depend on the row
+  /// any more.
+  ///
+  /// A simple foreign key rather than the composite `(response_id, tenant_id)`,
+  /// for exactly the reason given at `formId`: Prisma requires every scalar of
+  /// an optional relation to be optional, and `tenant_id` is not. The tenant
+  /// boundary of this table therefore rests on `tenant_id` and the scoped query
+  /// alone — which is why the write here takes
+  /// tenant, form and response from **one** resolved form row.
+  responseId String? @map("response_id") @db.Uuid
+
+  /// The address this line is about. Personal data, and the reason the 90-day
+  /// purge exists.
+  ///
+  /// **Nullable, and NULL means exactly one thing:
+  /// *geleert*.** Endgültiges Löschen keeps the log row — status, timestamps,
+  /// attempts, sending identity — and blanks the columns that name a person:
+  /// this one, `subject`, `body_text`, `body_html` and `last_error`. Nothing
+  /// else ever writes NULL here; a line that never had an address carries the
+  /// sentinel `(kein Empfänger)`
+  /// (`apps/api/src/public/submission-mail.ts`), which is a different state on
+  /// purpose.
+  ///
+  /// `last_error` joined that list because a transport rejection
+  /// routinely quotes the address it could not reach, so a `failed` line kept
+  /// the datum the other four had just given up.
+  ///
+  /// Why NULL rather than a placeholder is argued at the wire contract
+  /// (`mailLogEntrySchema.recipient` in `@formsache/shared`), where this was
+  /// recorded; the short form is the decision of 2026-07-31 — an
+  /// absence is a state, not an empty text.
+  ///
+  /// **A blanked row is unsendable and cannot be put back into the queue.** The
+  /// queue statements exclude `recipient IS NULL` and the erasure marks a
+  /// still-`queued` row `failed`, so a confirmation cannot go out carrying the
+  /// frozen answers of a submission that has just been physically deleted.
+  ///
+  /// That used to be written as „is never claimed", which was true of the
+  /// worker and false of the state „↻ Erneut" could put the row into:
+  /// `requeue` set `status = queued` and cleared `sent_at`,
+  /// `attempts` and the sending identity — the record this erasure exists to
+  /// keep — leaving a line that waited forever and was indeed never claimed.
+  /// `MailLogService.retry` refuses a blanked line for that reason.
+  recipient String?
+  subject   String?
+
+  /// Which trigger produced this line.
+  ///
+  /// **No longer what makes an edit mail's debounce deterministic — there is
+  /// no debounce any more** (`public-forms.service.ts`
+  /// `storeEditWithMails`): a repeated edit is now suppressed only when it
+  /// changed nothing, decided from `context.changes`, not from what else is
+  /// `queued` for the `response_id`. What this column is for today is what its
+  /// name says — „warum ging das raus", read on the Versandprotokoll's detail
+  /// row (`mailLogDetailSchema` in `@formsache/shared`).
+  ///
+  /// Existing rows read `submit`, which is true of every line written before
+  /// this column existed.
+  ///
+  /// It is **not** on the wire yet (`mailLogEntrySchema` in `@formsache/shared` is a
+  /// `strictObject` and the delegate does not select it). „Warum ging das raus"
+  /// is a sensible column for the Versandprotokoll and adding it is additive;
+  /// the view is a separate work item.
+  trigger NotificationTrigger @default(submit)
+
+  /// The rendered body, **frozen when the line was queued** (Entscheidung vom
+  /// 2026-07-28).
+  ///
+  /// Until then the log deliberately kept none and the text was rebuilt from
+  /// the notification and the answer at send time. That was an asymmetry nobody
+  /// had decided: recipient and subject were already frozen here, while the
+  /// body followed whatever the notification said *now* — and the window
+  /// between queueing and sending is days long whenever a mail server is down
+  /// or „↻ Erneut" is pressed. Three consequences settled it: an edited
+  /// notification changed the text of a confirmation that was already promised;
+  /// an answer corrected through an edit changed it too; and a **deleted** answer
+  /// made the row unrenderable, so the delivery failed for good. A confirmation
+  /// confirms what held at the moment it was sent.
+  ///
+  /// **The price is named rather than hidden:** this is a second copy of the
+  /// participant's answers, kept for the ninety days the retention period allows. It is
+  /// therefore part of the same deletion promise as `recipient` and `subject` —
+  /// physically deleting an answer blanks all four.
+  ///
+  /// Nullable, and null means „written before the body was frozen", not „empty
+  /// mail": such a row cannot be delivered and says so with a readable reason.
+  bodyText String? @map("body_text")
+
+  /// The HTML half, for a notification with `format = 'html'`; null for a
+  /// plain-text one. Never the only half — `OutgoingMail` promises a text
+  /// alternative, and it is rendered from the same template rather than
+  /// stripped out of the HTML (`notification-render.ts`).
+  bodyHtml String? @map("body_html")
+
+  /// Der **wirksame** `Reply-To`-Wert dieser Zeile, festgeschrieben **beim
+  /// Einreihen** — oder NULL für „diese Mail trägt keine Kopfzeile"
+  /// .
+  ///
+  /// ## Warum eingefroren und nicht beim Senden aufgelöst
+  ///
+  /// Dieselbe Regel wie Empfänger, Betreff und Rumpf (Entscheidung vom
+  /// 2026-07-28) — und zwar aus deren eigenem Grund, nicht aus Symmetrie:
+  ///
+  /// - `notification_id` ist `SetNull`. Eine beim Senden aufgelöste
+  ///   Antwortadresse verschwände still, sobald jemand die Benachrichtigung
+  ///   löscht — genau die Unrenderbarkeit, gegen die der Rumpf eingefroren
+  ///   wurde. Das Fenster zwischen Einreihen und Senden ist tagelang, wann
+  ///   immer ein Mailserver steht.
+  /// - Eine Bestätigung bestätigt, was im Augenblick ihrer Zusage galt. Wer
+  ///   die Antwortadresse einer Benachrichtigung ändert, ändert damit nicht,
+  ///   wohin eine bereits zugesagte Antwort gehen sollte.
+  ///
+  /// **Anders als {@link senderIdentity}/{@link senderAddress}, und das ist
+  /// keine Asymmetrie, sondern der Unterschied zwischen Inhalt und Transport.**
+  /// Jene beiden sind das *Protokoll eines Versuchs* — sie sagen, über welchen
+  /// Mailserver die Zeile tatsächlich hinausging, und werden deshalb beim
+  /// Senden geschrieben, damit „↻ Erneut" nach einem Wechsel des Servers nicht
+  /// den alten nennt. Dies hier ist Teil der *Nachricht*: es steht im Rumpf,
+  /// nicht in der Verbindung, und wird wie jeder andere Teil des Rumpfs beim
+  /// Einreihen festgelegt. „↻ Erneut" schickt darum dieselbe Mail noch einmal,
+  /// nicht eine neu zusammengesetzte.
+  ///
+  /// ## Nicht personenbezogen — deshalb **nicht** in `ERASED_MAIL_LOG_COLUMNS`
+  ///
+  /// Die Antwortadresse ist Konfiguration: sie kommt aus den
+  /// Systemeinstellungen, aus der Organisation oder aus dem Feld einer
+  /// Benachrichtigung — nie aus einer Antwort und nie aus einem Platzhalter,
+  /// anders als `recipient` und `subject`. Sie benennt eine Geschäftsstelle,
+  /// keinen Teilnehmer, und steht damit in derselben Kategorie wie
+  /// `sender_address`, die das endgültige Löschen ausdrücklich stehen lässt
+  /// (`mail-log/mail-log-erasure.ts`).
+  replyTo String? @map("reply_to")
+
+  status   MailStatus @default(queued)
+  attempts Int        @default(0)
+
+  /// Last transport error, for the editor's „warum ging das nicht raus". Never
+  /// carries a password or a token — what goes in here is written by the mail
+  /// module and is bounded there.
+  lastError String? @map("last_error")
+
+  /// When the worker may next pick this row up. Set on every failure by the
+  /// backoff; null once the row is finished.
+  nextAttemptAt DateTime? @map("next_attempt_at") @db.Timestamptz(3)
+
+  /// **Under whose identity the last attempt went out** — the installation's
+  /// block or this organisation's own.
+  ///
+  /// Until this column, the Versandprotokoll could say *that* a mail left and
+  /// not *how*. That the one mail went over the organisation's own server and the other
+  /// over the system's was proven with two catching SMTP servers — i.e.
+  /// **outside** the application, where nobody operating an installation can
+  /// look. It is the first question asked when SPF or DKIM starts refusing
+  /// after an organisation switches System→eigen.
+  ///
+  /// **Written at send time, never at enqueue**, and that is the decision
+  /// rather than an implementation detail. `MailIdentityService.resolve` runs
+  /// per row, per run; a value frozen when the row was queued would still say
+  /// „System" on a line that „↻ Erneut" pushed out over a block the organisation
+  /// entered in between. NULL therefore means „noch kein Versuch" and the view
+  /// says exactly that — the one thing it must not do is read NULL as „System",
+  /// which is what the *absence* of a default here keeps it from doing.
+  ///
+  /// `own` needs no organisation name beside it: the identity is resolved from the
+  /// row's own `tenant_id`, so there is no other organisation it could be. A copied
+  /// name would be a second, ageing spelling of `tenant.name`.
+  ///
+  /// Not personal data — an installation's or an organisation's sending
+  /// address is neither a participant's datum nor a secret — so the 90-day
+  /// purge stays as it is, and the physical answer deletion blanks
+  /// `recipient`/`subject`/`body_text`/`body_html` and **not** these two: what
+  /// went out over which mail server is exactly the operational record that has
+  /// to survive the participant's data.
+  senderIdentity MailSenderIdentity? @map("sender_identity")
+
+  /// The `From` **address** that attempt used — the block's, never the display
+  /// name (the display name is the organisation's either way, Konzept Nr. 33/ADR-0013 Nr. 3).
+  ///
+  /// Written and cleared by the same statements as {@link senderIdentity}, so
+  /// the two are null together and set together. It is the actionable half: the
+  /// enum narrows the search to one of two blocks, the address names the domain
+  /// whose SPF record is in question.
+  senderAddress String? @map("sender_address")
+
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  sentAt    DateTime? @map("sent_at") @db.Timestamptz(3)
+
+  /// **Wann diese Zeile endgültig aufgegeben wurde** (2026-08-12) — das
+  /// Gegenstück zu {@link sentAt} für den anderen
+  /// Ausgang.
+  ///
+  /// Es gab diesen Zeitpunkt bis dahin nicht, und der Betriebsalarm hat
+  /// deshalb über `created_at` gezählt. Das war an **zwei** Stellen falsch, und
+  /// beide sind der Grund für diese Spalte statt für einen besseren Kommentar:
+  ///
+  /// 1. **„↻ Erneut"** ({@link requeue}) setzt `status`, `attempts` und
+  ///    `next_attempt_at` zurück und lässt `created_at` ausdrücklich stehen —
+  ///    es ist der Einreihungszeitpunkt, den das Versandprotokoll anzeigt und
+  ///    nach dem es sortiert. Vierzig Zeilen, die eine Organisation nach einer
+  ///    vermeintlichen Reparatur erneut anstößt und die erneut scheitern,
+  ///    trugen damit ein drei Tage altes `created_at` und lösten **keinen**
+  ///    Alarm aus.
+  /// 2. **Rückstau.** Steht der Worker acht Stunden und scheitern danach
+  ///    zweihundert Zeilen an einem toten Mailserver, sind alle
+  ///    `created_at`-Werte älter als das Alarmfenster. Danach ist die
+  ///    Warteschlange leer, also schweigt auch der `mail_queue_age`-Alarm: **gar
+  ///    keine** Meldung, während zweihundert Nachrichten liegen bleiben.
+  ///
+  /// `NULL` heißt „nicht (mehr) endgültig gescheitert" — sowohl für die Zeilen,
+  /// die es vor dieser Spalte gab, als auch für jede, die `requeue` wieder in
+  /// die Warteschlange stellt. Das ist die richtige Richtung: eine alte Zeile
+  /// ohne Zeitstempel alarmiert nicht, statt beim ersten Start nach der
+  /// Migration alles auf einmal zu melden.
+  failedAt DateTime? @map("failed_at") @db.Timestamptz(3)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  form   Form?  @relation(fields: [formId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  notification Notification? @relation(fields: [notificationId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  response Response? @relation(fields: [responseId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  /// Der Rücksetz-Link, den diese Zeile trägt — nur bei einer Rücksetz-Mail
+  /// gesetzt (ADR-0020). Die Fremdschlüsselspalte liegt drüben; hier steht nur
+  /// die Rückseite der Beziehung, damit der Versand die Zeile finden kann, aus
+  /// deren Kennung er das Token neu bildet.
+  passwordReset PasswordResetToken?
+
+  /// The worker's claim: „queued rows whose time has come", oldest first.
+  @@index([status, nextAttemptAt])
+  /// Not for a query of ours — nothing reads `mail_log` by response. It is what
+  /// keeps `ON DELETE SET NULL` from sequentially scanning the whole log every
+  /// time the Papierkorb purge removes an answer.
+  @@index([responseId])
+  /// The Versandprotokoll view — tenant-wide, newest first.
+  @@index([tenantId, createdAt])
+  /// The sending budget: „wie viele Zeilen hat *dieses*
+  /// Formular im gleitenden Fenster eingereiht", counted once per submission and
+  /// per edit on the public path (`public-forms.service.ts`, `mailAllowance`).
+  ///
+  /// Its own index rather than the tenant one above, and that is the point: the
+  /// count is per **form**, so `(tenant_id, created_at)` makes PostgreSQL read
+  /// every line the whole organisation produced in the window and drop all but one
+  /// form's — on the busiest form of the busiest Organisation, which is exactly when the
+  /// budget is being counted. `(form_id, created_at)` is the range scan the
+  /// statement actually describes.
+  @@index([formId, createdAt])
+  /// The purge, which runs across tenants by design.
+  @@index([createdAt])
+  /// Der Betriebsalarm: „wie viele Zeilen sind im Fenster endgültig
+  /// gescheitert" — installationsweit, ohne Organisation (`ops-status.service.ts`).
+  /// Eigener Index und nicht `(status, next_attempt_at)` darüber: dessen
+  /// zweite Spalte ist bei genau diesen Zeilen `NULL`.
+  @@index([status, failedAt])
+  @@map("mail_log")
+}
+
+/// The installation-wide settings — mail server, own address, KI, and the
+/// notification templates a new form starts from (ADR-0011).
+///
+/// **The second table of this application that belongs to no organisation**, after
+/// `mail_log`'s queue side. It carries no `tenant_id` on purpose: it *is* the
+/// layer below every organisation, so scoping it to one would be a contradiction. What
+/// takes the place of a tenant boundary here is that there is exactly one row,
+/// that its id is not an input from anywhere, and that only the superadmin
+/// route writes it — the ESLint allow-list entry for
+/// `apps/api/src/system-settings/**` states the same in `eslint.config.js`.
+///
+/// **Exactly one row, promised by the table and not by the application.** The
+/// primary key is a single character pinned by a `CHECK` constraint in the
+/// migration (`id = 'x'`), so a second row is a database error rather than a
+/// rule some future service has to remember. Prisma cannot express a `CHECK`,
+/// which is why the migration for this model was created with
+/// `migrate dev --create-only` and the constraint written into it by hand
+/// before it was ever applied.
+///
+/// **No row means „nichts entschieden"**, and none is needed — no backfill, no
+/// seed. The same shape as the absent `settings_override`: the absence is the
+/// meaning.
+///
+/// ⚠️ **This row carried a third layer of form settings and no longer does**
+/// (ADR-0011, Fortschreibung 2026-08-14; review finding 9). The columns
+/// `form_defaults`, `form_defaults_revision` and `updated_by` were dropped by
+/// `20260814120000_two_layer_form_settings`, after it had copied what they
+/// decided into the organisations that were inheriting it. A form now inherits
+/// from its organisation and, failing that, from the shipped constant
+/// `SYSTEM_FORM_SETTINGS`. Reintroducing an installation-wide settings layer
+/// needs a new decision, not a new column.
+model SystemSetting {
+  /// Fixed at `x`, enforced by a `CHECK` constraint — see above.
+  id String @id @default("x") @db.Char(1)
+
+  /// The delivered notification templates, installation-wide. Shape: `systemNotificationTemplatesSchema` in
+  /// `@formsache/shared`.
+  ///
+  /// **Nullable, and that is the whole design.** SQL NULL means „nichts
+  /// entschieden" and reads as `NOTIFICATION_TEMPLATES_FLOOR`; `[]` means
+  /// „diese Installation bietet keine Vorlagen an", which is a decision
+  /// somebody took. The two settings columns one layer up cannot express that
+  /// difference — their `{}` is both — and pay for it with `refuseJsonNull`.
+  /// Here the absence is representable, so it is represented.
+  ///
+  /// A template is **copied** into a notification when it is applied, never
+  /// linked: changing this document does not touch a single existing
+  /// `notification` row.
+  ///
+  /// **Der Zähler ist da, seit es den Schreibweg gibt** (ADR-0022,
+  /// Fortschreibung 2026-08-18). Hier stand bis dahin, dass
+  /// `notification_templates_revision` bewusst fehlt: ein optimistischer Zähler
+  /// bewacht ein *Schreiben*, und diese Spalte hatte keinen Schreibweg — „wer
+  /// diesen Editor baut, bringt die Spalte in derselben Migration mit". Genau
+  /// das ist mit `20260818100000_notification_templates_revision` passiert.
+  notificationTemplates Json? @map("notification_templates")
+
+  /// Optimistischer Zähler von {@link notificationTemplates}.
+  ///
+  /// **Ein eigener, neben {@link mailRevision} und {@link aiRevision}.** Die
+  /// drei Blöcke dieser Zeile werden von drei Seiten gepflegt; ein gemeinsamer
+  /// Zähler machte aus drei Sperren eine und beantwortete „jemand anderes war
+  /// schneller" auch dann mit ja, wenn der andere etwas völlig anderes
+  /// angefasst hat.
+  ///
+  /// Vorgabe `1`, wie die beiden daneben: eine frische Installation ohne Zeile
+  /// meldet die Zahl, bei der die Spalte anfangen wird, damit der erste
+  /// Schreibvorgang sie nennen kann, ohne dass die Sperre optional wäre.
+  notificationTemplatesRevision Int @default(1) @map("notification_templates_revision")
+
+  /// The installation's own mail server — the **system block** of ADR-0013.
+  /// Shape: `smtpBlockSchema` in `@formsache/shared`, i.e.
+  /// host, port, secure, auth and from, with `auth.password` sealed by
+  /// `MailSecretsService` and never in clear.
+  ///
+  /// **The naked block, not the union.** An organisation stores
+  /// `{ source: 'system' } | { source: 'own', … }`, because it has somebody to
+  /// inherit from; this row has not, so a discriminator here would be a field
+  /// with exactly one possible value.
+  ///
+  /// **NULL means „noch nicht eingerichtet", and that is not a fault**
+  /// (ADR-0013 Nr. 5). Queued mail stays `queued` with the same reason —
+  /// nothing was attempted and nothing refused, and a mail server configured
+  /// later still sends it. Turning that into `failed` would be the convenient
+  /// way to save a special case, and it would cost exactly the property that
+  /// makes a fresh installation usable.
+  ///
+  /// This used to stand in `SMTP_*` of the `.env`. It moved because an organisation may
+  /// now replace it with its own, and a value that is overridable
+  /// per organisation does not belong in a file that describes the process.
+  smtp Json? @map("smtp")
+
+  /// Where this installation answers, seen from outside — the base of every
+  /// absolute link the server builds. Shape:
+  /// `baseUrlSchema` in `@formsache/shared` (absolute http(s), no query, no fragment,
+  /// no trailing slash).
+  ///
+  /// **Deliberately not part of the mail block.** It says *where an organisation is
+  /// reachable*, not who it is in the mail system: an organisation may be reachable under
+  /// its own address and still send over the system mail server, and that is the
+  /// normal case rather than a mixture (ADR-0013 Nr. 3).
+  ///
+  /// NULL means „nicht gesetzt": links that would need it are then omitted
+  /// rather than guessed. A guessed base address goes out by mail to a whole
+  /// Organisation, where it is dead on arrival and cannot be recalled.
+  publicBaseUrl String? @map("public_base_url")
+
+  /// Die installationsweite Vorgabe für `Reply-To` —
+  /// die unterste Ebene der Kette Benachrichtigung → Organisation → System.
+  ///
+  /// **Ausdrücklich nicht Teil des Mailblocks.** Genau diese Frage stellte die
+  /// Entscheidung vor den Bau: der Block ist unteilbar, weil er ein Geheimnis
+  /// trägt, eine Antwortadresse ist keines — läge sie darin, könnte sie
+  /// niemand ändern, ohne das SMTP-Passwort zu haben, und auf einer
+  /// Installation ohne Mailserver (`smtp` NULL) gar nicht erst gesetzt werden.
+  ///
+  /// NULL heißt „nicht gesetzt": ist auch auf den beiden Ebenen darüber nichts
+  /// gesetzt, geht die Mail **ohne** `Reply-To` hinaus. Kein geratener Wert und
+  /// keine Verweigerung des Versands — ein Formular, das wegen einer fehlenden
+  /// Antwortadresse keine Bestätigung mehr verschickte, wäre der teuerste Weg,
+  /// ein Feld zur Pflicht zu machen (`packages/shared/src/reply-to.ts`).
+  ///
+  /// Unter demselben Zähler wie {@link smtp} und {@link publicBaseUrl}
+  /// ({@link mailRevision}): es ist dieselbe Seite und derselbe Speichervorgang.
+  replyTo String? @map("reply_to")
+
+  /// **Wohin ein Betriebsalarm geht** .
+  ///
+  /// NULL heißt „niemand" — dann prüft der Wächter die Schwellen weiter (die
+  /// Zahlen stehen im Betriebsstatus), verschickt aber nichts. Das ist ein
+  /// zulässiger Zustand einer frischen Installation und kein Fehler; was es
+  /// **nicht** ist, ist ein guter Dauerzustand, und das Betriebshandbuch sagt
+  /// das.
+  ///
+  /// ⚠️ **Eine Adresse, kein Verteiler-Feld.** Wer mehrere Empfänger will,
+  /// trägt hier eine Verteileradresse ein — die Anwendung soll nicht die
+  /// zweite Stelle sein, an der eine Empfängerliste gepflegt wird.
+  ///
+  /// Getrennt von {@link replyTo} aus demselben Grund, aus dem `replyTo` vom
+  /// SMTP-Block getrennt ist: es ist kein Geheimnis, und es beantwortet eine
+  /// andere Frage („wer erfährt von einem Ausfall?" gegen „wohin antwortet ein
+  /// Empfänger?").
+  opsAlertEmail String? @map("ops_alert_email")
+
+  /// Die Rechtstexte der **Installation** — Impressum und
+  /// Datenschutzerklärung (ADR-0027). Form: `systemLegalPagesSchema` in
+  /// `@formsache/shared`.
+  ///
+  /// ⚠️ Eine dritte Seite, die Erklärung zur Barrierefreiheit, stand hier bis
+  /// Review-Runde 4 Nr. 4. Sie ist ersatzlos gestrichen, und der Schlüssel ist
+  /// aus bestehenden Dokumenten entfernt worden
+  /// (`20260824090000_drop_accessibility_legal_page`) — `systemLegalPagesSchema`
+  /// ist ein `strictObject`, ein übriggebliebener Schlüssel hätte das ganze
+  /// Dokument unlesbar gemacht.
+  ///
+  /// **NULL heißt „nichts hinterlegt", und das ist ein Zustand, den die
+  /// öffentliche Seite ausspricht** statt ihn zu verbergen
+  /// (`docs/legal/README.md` Abschnitt 5.4): kein fehlender Link, der den
+  /// Mangel unsichtbar machte, und kein Ersatztext, der eine Falschangabe
+  /// wäre. Ein Impressum, das fehlt, ist mit oder ohne Link ein Verstoß — nur
+  /// mit Link ist er behebbar.
+  ///
+  /// Ein Dokument je Seite, mit zwei Hälften nebeneinander: die ausgefüllten
+  /// Platzhalter der ausgelieferten Vorlage **und** ein eigener Text. Welche
+  /// gilt, sagt `mode`; beide bleiben stehen, damit ein Moduswechsel nichts
+  /// verliert.
+  ///
+  /// ⚠️ **Klartext, niemals Auszeichnungssprache.** Was hier steht, landet auf
+  /// einer Seite, die Fremde ohne Anmeldung aufrufen; die Positivliste, die
+  /// daraus Struktur macht, ist `legal-text.ts` und lebt außerhalb dieser
+  /// Spalte. Ein HTML-Feld an dieser Stelle wäre eine gespeicherte
+  /// Cross-Site-Scripting-Lücke (`docs/legal/README.md` 5.6, 7.8).
+  legalPages Json? @map("legal_pages")
+
+  /// Optimistischer Zähler von {@link legalPages} — ein **eigener**, aus
+  /// demselben Grund, den {@link notificationTemplatesRevision} ausschreibt:
+  /// die Blöcke dieser Zeile werden von verschiedenen Seiten gepflegt.
+  legalRevision Int @default(1) @map("legal_revision")
+
+  // ---------------------------------------------------------------------------
+  // KI-Konfiguration (ADR-0015 mit dem Nachtrag vom
+  // 2026-08-11).
+  //
+  // Diese Werte standen früher in der Umgebung (`AI_PROVIDER`,
+  // `AI_*_API_KEY`, `AI_MODEL`, `AI_ENABLED`). Sie sind hierher gezogen, weil
+  // ein Wert, die eine Organisation überschreiben darf, nicht in eine Datei gehört, die
+  // den Prozess beschreibt — dieselbe Begründung, die `smtp` eine Spalte weiter
+  // oben trägt, und die dritte Anwendung desselben Musters.
+  //
+  // ⚠️ **Vier offene Spalten und eine versiegelte, nicht ein Block.** Genau
+  // daran ist `reply_to` bewusst nicht in den SMTP-Block gewandert: der Block
+  // ist unteilbar, weil er ein Geheimnis trägt. Läge die Region im selben
+  // Umschlag wie der Schlüssel, könnte niemand die Region ändern, ohne den
+  // Schlüssel zu haben — und auf einer Installation ohne Schlüssel gar nichts
+  // einstellen.
+  // ---------------------------------------------------------------------------
+
+  /// Der installationsweite Schalter — das, was `AI_ENABLED` war.
+  ///
+  /// `true` auf einer frischen Installation, weil „aus" bereits durch das
+  /// Fehlen eines Anbieters ausgedrückt ist: ein Schalter, der auf „aus" stünde,
+  /// hieße, dass ein Betreiber nach dem Einfügen des Schlüssels weiterhin 404
+  /// bekommt, ohne einen Hinweis warum. Nicht `null`-bar: es gibt hier niemanden,
+  /// von dem geerbt werden könnte (`tenant.ai_enabled` erbt von *dieser* Zeile).
+  aiEnabled Boolean @default(true) @map("ai_enabled")
+
+  /// `anthropic` | `mistral`, geprüft durch `aiProviderSchema` in `@formsache/shared`
+  /// — als Text und nicht als Postgres-Enum, wie jede andere geteilte
+  /// Aufzählung dieser Anwendung: die Wahrheit ist das Zod-Schema, und ein
+  /// zweiter Ort, an dem die Werte wahr bleiben müssen, ist die Doppelung, die
+  /// dieses Projekt schon mehrfach bezahlt hat.
+  ///
+  /// **NULL heißt „nicht eingerichtet" und ist kein Fehler** (wie `smtp`,
+  /// ADR-0013 Nr. 5): die Funktion ist dann abwesend — 404, kein Menüeintrag,
+  /// die Anwendung startet.
+  aiProvider String? @map("ai_provider")
+
+  /// Die gepinnte Modellkennung, oder NULL für „den Vorgabewert des Anbieters".
+  ///
+  /// Für Mistral gibt es keinen — der Grund steht an `DEFAULT_AI_MODEL` in
+  /// `packages/shared/src/ai-config.ts`. Anders als früher verweigert das
+  /// **nicht** mehr den Start: ein Formularfeld wird im laufenden Betrieb
+  /// ausgefüllt, und ein Superadmin, der den Anbieter vor dem Modell setzt,
+  /// nähme sonst die ganze Installation herunter.
+  aiModel String? @map("ai_model")
+
+  /// `eu` | `global` | `us` (`aiRegionSchema`). **NULL liest sich als `eu`**,
+  /// nicht als „die erste gefundene Region" — eine frische Installation
+  /// verarbeitete sonst außerhalb der EU, ohne dass jemand etwas eingestellt
+  /// hätte.
+  ///
+  /// Offen und nicht versiegelt: eine Region ist kein Geheimnis, und der
+  /// gepinnte EU-Endpunkt **ist** die Datenschutzzusage aus ADR-0015 Nr. 13.
+  aiRegion String? @map("ai_region")
+
+  /// Der Anbieter-Schlüssel, **versiegelt** durch `SecretBoxService` mit dem
+  /// Kontext `system:ai.api_key` — dieselbe Bauform wie das SMTP-Passwort und
+  /// das OIDC-Secret je Organisation, ausdrücklich **keine zweite**.
+  ///
+  /// Ein `String`, kein `Json`: `seal()` liefert eine selbstbeschreibende
+  /// Zeichenkette, und ein JSON-Umschlag darum wäre eine Struktur, die nichts
+  /// trägt. NULL heißt „kein Schlüssel hinterlegt"; er verlässt den Server nie
+  /// — die Anzeige sagt nur, *dass* einer da ist (`apiKeySet`).
+  aiApiKey String? @map("ai_api_key")
+
+  /// Optimistischer Zähler der fünf Spalten darüber.
+  ///
+  /// **Ein eigener, nicht `mailRevision` und nicht `updatedAt`.** Der erste
+  /// gehört einer anderen Seite; der zweite bewegt sich bei *jedem* Schreiben
+  /// auf diese Zeile und wird von PostgreSQL auf Millisekunden gekürzt — zwei
+  /// Schreibvorgänge in derselben Millisekunde vergleichen sich gleich, und der
+  /// zweite überschreibt den ersten, ohne dass je eine 409 antwortet.
+  ///
+  /// Vorgabe `1`, wie die beiden Zähler daneben: eine frische Installation ohne
+  /// Zeile meldet die Zahl, bei der die Spalte anfangen wird, sodass der erste
+  /// Schreibvorgang sie nennen kann, ohne dass die Sperre optional wäre.
+  aiRevision Int @default(1) @map("ai_revision")
+
+  /// Optimistic lock of {@link smtp} and {@link publicBaseUrl} (Konzept
+  /// Nr. 21) — its own counter, added on review,
+  /// not the row's `updatedAt`.
+  ///
+  /// **`updatedAt` cannot do this job, for the reason
+  /// `tenant.formDefaultsRevision`'s own comment gives:** it is
+  /// `@updatedAt` on the *row*, so it moves on any write to it, and
+  /// PostgreSQL truncates it to milliseconds — two writes landing in
+  /// the same millisecond compare equal and the second overwrites the first
+  /// with nothing ever answering 409. A counter cannot land in the same
+  /// millisecond as another counter; it is either the value a reader saw or it
+  /// is not.
+  ///
+  /// Default `1`: a fresh installation with no row yet reports the number the
+  /// column will start at, so the first write can name it without the lock
+  /// being optional.
+  ///
+  /// (`updated_by` stood here and went with the form standards it attributed —
+  /// see the head of this model. The mail and KI writes never set it, so
+  /// nothing was left for it to say.)
+  mailRevision Int @default(1) @map("mail_revision")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("system_setting")
+}
+
+// ---------------------------------------------------------------------------
+// Per-form user rights.
+// ---------------------------------------------------------------------------
+
+/// What one person may do on **one** form — the fourth and last link of the
+/// guard chain *Tenant-Scope → Gruppenrechte → Formular-Restriktion*
+/// .
+///
+/// **The model can only take away.** There is no column that grants anything:
+/// `accessRevoked` locks a form, `cappedGroupId` names a group whose rank the
+/// person's role is lowered *to* for this form. Raising a role would need a
+/// column that does not exist, which is what „eine Restriktion kann nie
+/// hochstufen" means structurally rather than as a rule some service checks
+/// . Whether the cap is honoured for an administrator
+/// is a second question and answered in the evaluation, not here — the handoff
+/// promises „sieht immer alles" regardless of which path wrote the row, so a
+/// restriction smuggled in by a raw write is ignored.
+///
+/// **A missing row means „keine Einschränkung"** — the same shape as the absent
+/// `settings_override`. There is no backfill and none is needed: every
+/// existing form is unrestricted, and writing a row per form and person
+/// would invent decisions nobody took.
+model FormPermission {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  formId   String @map("form_id") @db.Uuid
+  userId   String @map("user_id") @db.Uuid
+
+  /// „Zugriff gesperrt" — this person does not see this form at all.
+  accessRevoked Boolean @default(false) @map("access_revoked")
+
+  /// The group this person's role is lowered **to** for this form, or null for
+  /// „keine Deckelung".
+  ///
+  /// A group reference rather than a copy of the five flags, so the cap follows
+  /// the group editor: taking a permission away from *viewer* takes it away
+  /// from everyone capped to *viewer*, without a second place to maintain. The
+  /// price is the foreign key below, and it is the price worth paying — a
+  /// snapshot of flags would be the second answer to „was darf viewer?".
+  cappedGroupId String? @map("capped_group_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  /// Composite `(form_id, tenant_id)` — the database floor under the whole
+  /// guard chain, and the reason this model is built before anything evaluates it.
+  ///
+  /// The same key `FormVersion`, `Response` and `Notification` stand on: a
+  /// restriction physically cannot point at a form of another organisation, whatever a
+  /// future service method does. It is what makes „die Kette beginnt beim
+  /// Tenant-Scope" true even if somebody one day reorders the
+  /// guards — a row that would need the wrong order to exist cannot be inserted
+  /// at all. `mail_log` is the counter-example in this schema: there the key is
+  /// missing (Prisma cannot spell it for an optional relation with a required
+  /// tenant) and the delegate is the only boundary the table has.
+  form Form @relation(fields: [formId, tenantId], references: [id, tenantId], onDelete: Cascade, onUpdate: NoAction)
+
+  /// The person restricted. `Cascade`: a deleted user leaves no restrictions
+  /// behind that a recycled id could inherit.
+  ///
+  /// Note what this does **not** do: removing somebody's *membership* in an organisation
+  /// deletes no row here, because a membership is not a user. Whoever builds the removal
+  /// deletes the restrictions of that organisation in the same transaction — otherwise
+  /// a person re-added later returns with rights somebody revoked long ago.
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Composite `(capped_group_id, tenant_id)`, so a cap cannot name a group of
+  /// another organisation either. Optional in Prisma and satisfied by SQL's `MATCH
+  /// SIMPLE` whenever `capped_group_id` is null — „keine Deckelung" needs no
+  /// group to exist.
+  ///
+  /// `NoAction` and not `SetNull`, deliberately: `SetNull` would **raise** the
+  /// access of everyone capped to a group the moment that group is deleted, and
+  /// nothing would say so. `NoAction` rather than `Restrict` for the reason
+  /// spelled out at `Membership.group` — `RESTRICT` is checked immediately and
+  /// would abort a *tenant* deletion, where group and restriction rows vanish
+  /// in one statement. The readable „diese Gruppe ist in Benutzung" is the
+  /// application's job; this is the floor under it.
+  cappedGroup Group? @relation(fields: [cappedGroupId, tenantId], references: [id, tenantId], onDelete: NoAction, onUpdate: NoAction)
+
+  /// One restriction per person and form — the row *is* the decision, so a
+  /// second one would be a second answer to the same question.
+  @@unique([formId, userId])
+  @@index([tenantId])
+  /// „Welche Formulare sind für mich eingeschränkt" — the list every read of a
+  /// form list has to subtract, and the target of the `user` foreign key.
+  @@index([userId])
+  /// Not for a query of ours: it keeps the `NO ACTION` check above from
+  /// scanning the table whenever a group is deleted.
+  @@index([cappedGroupId])
+  @@map("form_permission")
+}
+
+// ---------------------------------------------------------------------------
+// Uploaded files (ADR-0014).
+//
+// **The bytes are not here.** They live behind `FileStorage`
+// (`apps/api/src/files/`), and this table is their index: no `bytea`, no
+// base64 in JSONB. That is the one property this whole design
+// rests on — a 10 MiB blob cannot be streamed through Prisma, so storing it
+// here would put every upload and every download fully into the process's
+// memory and turn the per-file limit of ADR-0014 Nr. 6 into „limit ×
+// concurrency" of RAM.
+//
+// The consequence is written down where it will be needed rather than
+// discovered: this application has state outside the database from here on, so
+// a backup that only runs `pg_dump` restores rows whose bytes are gone
+// (ADR-0014 „Consequences", Backup-Restore-Probe).
+// ---------------------------------------------------------------------------
+
+/// What an uploaded file **is** — and therefore how it may be delivered
+/// (ADR-0014 Nr. 3, Nr. 5, Nr. 11).
+///
+/// The two values are two delivery rules, not a label: a `tenant_logo` is
+/// served to strangers without a session and embedded in a page, an
+/// `response_attachment` is served only behind the full guard chain and only
+/// as a download. Every route filters on this column, and the `CHECK`
+/// constraint in the migration keeps the shapes apart — a Logo carrying a
+/// `response_id` is the row with which somebody would push a foreign
+/// attachment into the public logo route, and it cannot be **inserted**.
+///
+/// The same constraint carries the second half of Nr. 82: an
+/// attachment has **at most one** owner — an answer or a draft, never both —
+/// and a Logo has neither. The claim that hands a file from a draft to the
+/// answer it was submitted into therefore cannot half-happen: it writes both
+/// columns in one `UPDATE`, and a version that forgot one of them is a
+/// constraint violation rather than a row with two owners.
+///
+/// **The narrower sentence is the true one:** that constraint pins a *row
+/// shape*, not immutability. A `CHECK` is evaluated on the row as it looks
+/// afterwards, on every `UPDATE` as well — so rewriting an attachment into a
+/// `tenant_logo` (`kind`, `form_id` and `response_id` in one statement)
+/// satisfies it completely and produces exactly the row it was written
+/// against. Closing that path is a `BEFORE UPDATE` trigger on `kind`,
+/// `tenant_id` and `form_id` — **built later**, in a migration of its own
+/// (`file_immutable_columns`; the one here was written and migrations are never
+/// edited afterwards). The two together are the claim: the `CHECK` keeps a
+/// malformed row from being inserted, the trigger keeps a well-formed one from
+/// being rewritten into it.
+enum FileKind {
+  response_attachment
+  tenant_logo
+
+  @@map("file_kind")
+}
+
+/// Where one file stands between „die Zeile gibt es" and „die Bytes liegen"
+/// (ADR-0014 Nr. 4).
+///
+/// The order is deliberate and the asymmetry is the reason: the row is written
+/// **before** `put()`, so a crash in between leaves a row without bytes —
+/// visible, purgeable, and a clean 404 on retrieval. The other order would
+/// leave bytes without a row, and since the seam deliberately has no `list()`
+/// (Nr. 1) nothing could ever find them again — personal data outliving every
+/// deletion promise of Spec 0001 §6.
+///
+/// **Nothing sets `stored` yet.** The upload route comes later; this column
+/// exists now because adding it later would be a migration over live rows.
+enum FileStatus {
+  /// The row exists, the bytes are not (yet) in the storage.
+  pending
+  /// `put()` returned; `byte_size` says what it wrote.
+  stored
+
+  @@map("file_status")
+}
+
+/// One uploaded file — the index of something that lives outside the database
+/// (ADR-0014 Nr. 3).
+///
+/// **The storage key is the `id`**, never the file name and never the
+/// `public_ref` (Nr. 4). The name belongs to whoever uploaded it and is data
+/// (Nr. 10); the reference is an address that must stay swappable without
+/// moving bytes. Nothing outside `apps/api/src/files/` knows how a key becomes
+/// a path — that is what makes the seam one.
+///
+/// **What this table cannot promise, stated rather than implied.** `response`
+/// stands on the composite foreign key `(form_id, tenant_id)`, so a forgotten
+/// binding fails in the database. For `file` that is impossible: Prisma
+/// requires every scalar field of an *optional* relation to be optional, and
+/// `tenant_id` is required here — a file always belongs to an organisation, also while
+/// it waits for the answer that will claim it. It is literally the constraint
+/// `MailLog.formId` and `MailLog.responseId` already document. The tenant
+/// boundary of this table therefore rests on `tenant_id`, on the scoped query,
+/// and on the claim of ADR-0014 Nr. 13 — whose **`WHERE tenant_id = …`** is
+/// what keeps a file from crossing into another organisation. **Not** on a foreign key.
+/// Its test is the load-bearing proof, not one of many.
+///
+/// *(This comment named `form_id` as that boundary until it was corrected. It was the
+/// same sentence the first draft of ADR-0014 made and review struck
+/// out — see `formId` below: `form_id` binds the **form**, condition 2 binds
+/// the **Organisation**, and neither implies the other on a table without the composite
+/// key.)*
+model File {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+
+  kind FileKind
+
+  /// The form the upload was made against — set exactly for
+  /// `response_attachment`, null for a `tenant_logo` (the `CHECK` in the
+  /// migration says so, not a service).
+  ///
+  /// It is condition **3** of the claim (Nr. 13): a file uploaded against form
+  /// A cannot be hung onto an answer of form B — not even inside the same organisation.
+  ///
+  /// **It is not the tenant boundary, and this comment said so until it was corrected.** The
+  /// sentence here — „a form carries its organisation, so `WHERE form_id = …` is what
+  /// stops a file from crossing into another organisation" — was the same claim the
+  /// first draft of ADR-0014 made and review struck out: `file` has
+  /// no composite foreign key on `(form_id, tenant_id)` (see the model comment
+  /// above), so a row with `form_id` of Organisation A and `tenant_id` of Organisation B **is**
+  /// expressible, and the retrieval of Nr. 11(b) reads through `tenant_id`. The
+  /// boundary is therefore condition **2**, `tenant_id` in the `WHERE` of the
+  /// claim, spelled out beside this one and implied by nothing
+  /// (`public/attachment-claim.ts`).
+  formId String? @map("form_id") @db.Uuid
+
+  /// The submission that owns this file, or null for „noch nicht beansprucht"
+  /// (Nr. 13) — the column the claim writes and the purge of Nr. 15 reads.
+  responseId String? @map("response_id") @db.Uuid
+
+  /// **Der andere Eigentümer: ein zwischengespeicherter Entwurf** (the point ADR-0014 Nr. 15 left open and the Nachtrag of
+  /// 2026-08-06 decided).
+  ///
+  /// An attachment hanging off a draft lives **as long as the draft** — thirty
+  /// days, capped by the form's Frist (`draftExpiresAt`) — and not the 24 hours
+  /// of an unclaimed upload. Before this column the shorter deadline simply
+  /// won: somebody coming back on the second day was told their Nachweis was
+  /// gone and asked to upload it again, which is the Zumutung Nr. 82 ends.
+  ///
+  /// **Two owner columns, and never both at once.** The `CHECK` of the
+  /// migration says so, which is what makes the handover at submission time one
+  /// statement rather than a convention: the claim writes `response_id` **and**
+  /// `NULL` here in a single `UPDATE`, so a version that forgot the second half
+  /// is a constraint violation instead of a row with two owners
+  /// (`public/attachment-claim.ts`).
+  ///
+  /// **The 24 hours did not go away, they moved.** They are the deadline of a
+  /// file with **neither** owner — the protection against uploading into
+  /// nothing — and the deadline of an attachment a *correction*
+  /// removes from a submitted answer, measured from `created_at` and not from
+  /// the removal.
+  draftId String? @map("draft_id") @db.Uuid
+
+  /// The address this file is retrieved under — 16 bytes of CSPRNG, base64url,
+  /// like `Form.publicSlug` and `Response.editToken` (Nr. 9).
+  ///
+  /// **Not the `id`.** That one is a UUIDv7 and therefore time-ordered, which
+  /// is exactly the property `publicSlug` exists to keep out of an address
+  /// strangers hold. And the reverse is just as deliberate: the reference is
+  /// **not** the storage key either, or it could never be rotated without
+  /// moving the bytes.
+  ///
+  /// Unguessable, and that is **not** the authorisation of an attachment — the
+  /// guard chain is (Nr. 11b). It is the protection of the Logo, which has no
+  /// session, and defence in depth everywhere else.
+  publicRef String @unique @map("public_ref")
+
+  /// The original file name, as **data** (Nr. 10). Never part of a path.
+  ///
+  /// Validated on the way in by a shared Zod schema and *rejected* rather than
+  /// sanitised — a sanitiser would be a second opinion about what a name is —
+  /// and percent-encoded again on the way out, in `Content-Disposition`. Two
+  /// mechanisms, because either one alone would rest on an assumption: the
+  /// first on „every row came through the API", the second on a library's
+  /// header handling.
+  fileName String @map("file_name")
+
+  /// The content type **derived from the signature** of the content, never the
+  /// one the caller sent (Nr. 5, Nr. 12). Both belong to whoever uploaded the
+  /// file; only one of them was measured.
+  contentType String @map("content_type")
+
+  /// What `put()` reported it wrote, or null while nothing has been written.
+  ///
+  /// Null is the honest state of a `pending` row: „wir wissen es nicht" rather
+  /// than a zero that reads like an empty file. The per-answer total of Nr. 6
+  /// (25 MiB) sums this column at claim time, so a row it cannot trust must not
+  /// contribute a number.
+  byteSize Int? @map("byte_size")
+
+  status FileStatus @default(pending)
+
+  /// When the row was written — **not** an access timestamp. The purge of
+  /// Nr. 15 cuts on this and on **both** owner columns, and every part is
+  /// needed: „ohne Eigentümer" alone would take a file the participant is about
+  /// to submit, „älter als 24 Stunden" alone would take one that has been
+  /// submitted, and asking only about `response_id` would take the attachment
+  /// of every living draft a day after it was uploaded.
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  /// A simple foreign key on `id`, not the composite `(form_id, tenant_id)` —
+  /// the Prisma constraint spelled out at the top of this model.
+  ///
+  /// **`NoAction`, so deleting a form that still has files fails.** That is the
+  /// database floor under ADR-0014 Nr. 16: deleting rows before their bytes
+  /// leaves personal data on a volume that nothing can find again, because the
+  /// storage seam has no `list()`. `Cascade` here would be exactly that case,
+  /// silently. Whoever builds the Papierkorb enumerates the files and
+  /// removes the bytes first, and until they do the delete says so.
+  ///
+  /// `NoAction` rather than `Restrict` for the reason written at
+  /// `FormPermission.cappedGroup`: `RESTRICT` is checked immediately and would
+  /// abort a *tenant* deletion, where the form rows and these rows disappear in
+  /// one statement. Deferred to the end of the statement, that case passes and
+  /// the case this guards against — a form deleted on its own — still fails.
+  form Form? @relation(fields: [formId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  /// The owner, with a simple key for the same reason.
+  ///
+  /// **`SetNull`, and it is the opposite decision from `form` above on
+  /// purpose.** A deleted answer must not take its attachment rows with it —
+  /// that would be „Zeile weg, Bytes bleiben" again. Losing the owner instead
+  /// turns the file into exactly what the purge of Nr. 15 is for: unclaimed and
+  /// older than a day, therefore physically deleted, bytes first. The Papierkorb still
+  /// removes the bytes itself; this is the net under it, not a substitute.
+  response Response? @relation(fields: [responseId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  /// The other owner — **`SetNull` for the same reason as
+  /// `response` above, and it is what makes „verfällt der Entwurf, verfallen
+  /// seine Anlagen" true without a second purge.**
+  ///
+  /// A draft disappears in four ways: it is submitted (the claim has already
+  /// moved the file to the answer by then), the participant deletes it, a
+  /// settings write revokes it, or its Frist runs out and
+  /// `RetentionPurgeService.purgeDrafts` takes it. In every one of them the
+  /// file loses its owner and becomes exactly what the purge of ADR-0014 Nr. 15
+  /// selects — unclaimed and, by then, far older than a day — so the bytes go
+  /// on the next run, `remove()` first.
+  ///
+  /// **`Cascade` would be the case ADR-0014 Nr. 16 forbids**: the row would
+  /// vanish with the draft while the bytes stayed on a volume that nothing can
+  /// enumerate (the seam has no `list()`), i.e. personal data this application
+  /// has declared deleted and can never find again. `NoAction` would be worse
+  /// in the other direction — every path that deletes a draft, including the
+  /// cascade from `tenant`, would fail on a row a participant left behind.
+  draft ResponseDraft? @relation(fields: [draftId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([tenantId])
+  /// „Was hängt an dieser Antwort" (the claim, the per-answer totals of Nr. 6,
+  /// the attachment list) and — with `response_id IS NULL` — the purge's
+  /// own cut.
+  @@index([responseId, createdAt])
+  /// „Was hängt an diesem Entwurf" — the claim of Nr. 82 — and the index
+  /// the `SET NULL` above needs so that deleting one draft does not scan every
+  /// file of the installation.
+  @@index([draftId])
+  /// Not for a query of ours: it keeps the `NO ACTION` check above from
+  /// scanning the table whenever a form is deleted.
+  @@index([formId])
+  @@map("file")
+}
+
+/// What can be saved as a Vorlage (Handoff §3).
+enum FormTemplateKind {
+  form
+  page
+  question
+
+  @@map("form_template_kind")
+}
+
+/// **Eine gespeicherte Vorlage einer Organisation** (Konzept
+/// Nr. 71).
+///
+/// ## Warum es diese Tabelle gibt und was *nicht* in ihr steht
+///
+/// Am 2026-08-03 wurde entschieden, dass **kein Vorlagen-Inhalt
+/// ausgeliefert wird** (revidiert Nr. 60): keine BT-Anmeldung,
+/// keine Bestandsmeldung, kein fertiger Fragenblock. Jede Zeile hier ist
+/// deshalb von jemandem gespeichert worden, und sie hat einen `tenant_id` —
+/// es gibt keine Zeile ohne Organisation, also auch keinen Katalog, in den eine
+/// Migration je etwas hineinschreiben dürfte. Wer hier einen Seed anlegt,
+/// nimmt die Entscheidung zurück.
+///
+/// ## Kopie, nicht Referenz
+///
+/// `content` ist eine **Momentaufnahme**, keine Verknüpfung. Es gibt bewusst **keine `form_id`-Spalte**: eine
+/// spätere Änderung am Quellformular hat nichts, woran sie sich entlanghangeln
+/// könnte, und das Löschen des Quellformulars nimmt die Vorlage nicht mit.
+///
+/// ## Kein Papierkorb
+///
+/// Anders als `form` und `response` trägt diese Tabelle **kein `deleted_at`**.
+/// Der Papierkorb ist ein Versprechen über *Daten von
+/// Teilnehmern* — 30 Tage, in denen ein versehentliches Löschen umkehrbar
+/// bleibt. Eine Vorlage trägt keine personenbezogenen Daten,
+/// ihr Verlust kostet ein erneutes „☆ als Vorlage speichern" am Formular, aus
+/// dem sie stammt, und ein zweites Löschregime für ein Artefakt ohne
+/// Betroffene wäre eine Frist mehr, die auseinanderlaufen kann (Nr. 63
+/// begründet, warum es nur *eine* Frist gibt).
+model FormTemplate {
+  id       String @id @default(uuid(7)) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+
+  kind FormTemplateKind
+
+  /// Wie die Vorlage in der Schublade heißt — vom Speichernden gewählt,
+  /// vorbelegt aus Formulartitel, Seitentitel oder Fragetext.
+  name String
+
+  /// Der kopierte Inhalt, in der Form von `formTemplateContentSchema`
+  /// (`packages/shared/src/form-templates.ts`) und auf dem Weg hinein wie
+  /// hinaus dagegen geparst — eine JSONB-Spalte nimmt jedes JSON an, „die
+  /// Datenbank prüft das" ist also nie wahr (derselbe Satz wie über
+  /// `form.draft_schema`).
+  ///
+  /// Bei `kind = form` enthält es das Einstellungsdokument des Quellformulars
+  /// **ohne das Zugangswort** — es ist entschlüsselbar gespeichert (Nr. 14)
+  /// und unter der *Formular-ID der Quelle* versiegelt, wäre also
+  /// weder lesbar noch harmlos.
+  content Json
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  /// Ziel des zusammengesetzten Schlüssels, mit dem eine einzelne Vorlage
+  /// gelesen wird — die Organisation aus dieser Suche zu streichen ist damit ein
+  /// Typfehler und keine weitere Query (dieselbe Regel wie bei `form`).
+  @@unique([id, tenantId])
+  /// „Die Vorlagen dieser Organisation, neueste zuerst" — die eine Leseabfrage der
+  /// Schublade.
+  @@index([tenantId, createdAt])
+  @@map("form_template")
+}
+
+/// Welcher Anbieter einen KI-Aufruf ausgeführt hat (ADR-0015 Nr. 5).
+///
+/// Dieselben zwei Werte wie `aiProviderSchema` in `@formsache/shared`, und die
+/// Gleichheit ist geprüft statt gehofft: `test/ai/usage-limit.spec.ts` hält die
+/// Aufzählung dieser Datenbank gegen die geteilte. Ein dritter Anbieter, der nur
+/// in `packages/shared` auftaucht, macht dort einen Test rot statt hier eine
+/// Einfügung scheitern.
+enum AiProvider {
+  anthropic
+  mistral
+
+  @@map("ai_provider")
+}
+
+/// Wie ein KI-Aufruf ausging — `ok` oder einer der sechs Fehlerfälle
+/// (ADR-0015 Nr. 2 und Nr. 8).
+///
+/// **Die geschlossene Aufzählung von `AiFailureKind`, um `ok` erweitert.** Sie
+/// wird mitgeschrieben, weil `unavailable` ein Sammelfall ohne Diagnose ist: eine
+/// dauerhaft falsche Konfiguration — ein zurückgezogener Schlüssel, eine
+/// Modellkennung, die der Anbieter nicht bedient — ist sonst von „der Anbieter
+/// hat einen schlechten Nachmittag" nicht zu unterscheiden, und niemand, der die
+/// Installation beobachtet, sieht den Unterschied (`ai.ts` in `@formsache/shared`, der
+/// Warnhinweis an `unavailable`). Eine Zeile, die nur festhält, *dass* ein Aufruf
+/// stattfand, macht aus allen sechs Fällen „irgendwas war".
+enum AiOutcome {
+  ok
+  timeout
+  rate_limited
+  invalid_output
+  truncated
+  refused
+  unavailable
+
+  @@map("ai_outcome")
+}
+
+/// **Ein KI-Aufruf: der Zähler und der Freitext, eine Zeile, zwei
+/// Lebensdauern** (ADR-0015 Nr. 8).
+///
+/// ## Warum eine Tabelle und nicht zwei
+///
+/// Zähler und Text entstehen in **einem** Vorgang und in **einer** Transaktion
+/// (ADR-0015 Nr. 7). Zwei Tabellen wären ein zweiter Schreibpfad, den ein
+/// künftiger dritter Aufrufer vergessen kann — und war bereits zweimal die
+/// Ursache eines weitergereichten Geheimnisses.
+///
+/// ## Warum der Purge den Text auf `NULL` setzt, statt die Zeile zu löschen
+///
+/// Weil der **Verbrauchszähler bleiben muss**, wenn der Text verfällt:
+/// eine gelöschte Zeile setzte das Kontingent nach 30 Tagen
+/// zurück. Das ist genau das Szenario, vor dem diese Spalte schützt — und der
+/// wahrscheinlichste Fehler, weil beide in derselben Zeile liegen.
+///
+/// ## Die Zeile ist zugleich die Reservierung
+///
+/// Sie wird **vor** dem Aufruf geschrieben, unter der Sperre auf
+/// `tenant.ai_monthly_call_limit`, und sie zählt ab diesem Moment — ein Zähler
+/// hinter dem Aufruf kostet Geld und nicht nur Zustand.
+/// Deshalb ist {@link outcome} nullable: zwischen Reservierung und Urteil gibt
+/// es einen Zustand, und ein Prozess, der in diesem Fenster stirbt, hinterlässt
+/// ihn. `NULL` heißt „kein Urteil aufgeschrieben", nicht „lief gut" — und es ist
+/// die einzige ehrliche Antwort für einen Aufruf, dessen Ausgang niemand mehr
+/// kennt, während der Anbieter ihn trotzdem berechnet hat.
+model AiUsage {
+  id       String  @id @default(uuid(7)) @db.Uuid
+  tenantId String  @map("tenant_id") @db.Uuid
+  /// Die auslösende Person, `NULL` sobald das Konto entfernt ist.
+  userId   String? @map("user_id") @db.Uuid
+
+  /// Der Zeitpunkt des Aufrufs — und die Größe, gegen die **beide** Fristen
+  /// dieser Tabelle messen: der Kalendermonat des Kontingents und die 30 Tage
+  /// des Purge.
+  ///
+  /// Geschrieben aus der injizierten Uhr, nie aus `now()` der Datenbank: eine
+  /// Frist, die in Node gerechnet und in der Datenbank gestempelt wird, sind
+  /// zwei Meinungen zweier Maschinen (`mail-clock.ts`).
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  provider AiProvider
+  /// Die Modellkennung als **Daten** (ADR-0015 Nr. 2) — Grundlage jeder
+  /// Kostenzuordnung. Bei der Reservierung die konfigurierte, nach dem Aufruf
+  /// die vom Anbieter zurückgemeldete, sofern er eine nennt: berechnet wird,
+  /// was tatsächlich lief.
+  model    String
+
+  /// **Die feste Fassung, auf die die Kennung oben im Moment des Aufrufs
+  /// zeigte** (2026-08-12).
+  ///
+  /// Seit die Auswahlliste auf Aliassen steht, ist `model` ein *wandernder*
+  /// Name — und der Anbieter meldet in seiner Antwort genau diesen zurück,
+  /// nicht die aufgelöste Fassung (gemessen an `api.eu.mistral.ai`). Ohne diese
+  /// Spalte stünde in jeder Zeile für alle Zeiten „mistral-large-latest", und
+  /// die Frage „welche Fassung lief im März?" wäre unbeantwortbar, sobald der
+  /// Alias weiterzieht.
+  ///
+  /// **Zwei Spalten statt einer überschriebenen**, und das ist der Punkt:
+  /// `model` ist *beobachtet* (was der Anbieter sagte), dies hier *abgeleitet*
+  /// (was seine Modellliste dazu sagte). Eine einzige Spalte müsste eines von
+  /// beidem als das andere ausgeben.
+  ///
+  /// `NULL` heißt „nicht auflösbar" und ist ein regulärer Zustand: Anthropics
+  /// Models-API führt überhaupt kein Alias-Feld, dort bleibt die Spalte immer
+  /// leer. Ebenso, wenn die Modellliste gerade nicht erreichbar war — ein
+  /// Nebenbefund darf den Formularentwurf nicht verhindern.
+  modelResolved String? @map("model_resolved")
+
+  /// `NULL`, solange der Aufruf läuft — siehe den Modellkommentar.
+  outcome AiOutcome?
+
+  /// Was der Anbieter über sich selbst sagt — Beobachtung, nie
+  /// Grenze. `NULL`, wenn er nichts meldet, wenn der Aufruf vor jeder Antwort
+  /// scheiterte, oder wenn die gemeldete Zahl nicht in eine `INTEGER`-Spalte
+  /// passt (dann kostet eine unglaubwürdige Selbstauskunft die Beobachtung und
+  /// sonst nichts).
+  inputTokens  Int? @map("input_tokens")
+  outputTokens Int? @map("output_tokens")
+
+  /// **Der Freitext, den ein Bearbeiter getippt hat**  — der Anlass,
+  /// den ein Zähler allein nie nennt, und zugleich die eine Stelle, an der
+  /// versehentlich Personenbezogenes in diese Anwendung gerät.
+  ///
+  /// Nullable, weil der Purge ihn nach `AI_PROMPT_RETENTION_DAYS` **physisch**
+  /// entfernt: der Wert ist aus der lebenden Zeile fort, kein Flag verdeckt ihn.
+  prompt String?
+
+  /// Wann der Purge {@link prompt} geleert hat.
+  ///
+  /// Damit „gelöscht" von „hatte nie einen" unterscheidbar bleibt — ohne diese
+  /// Spalte sähe eine Zeile ohne Text aus wie eine gelöschte, und die Zusage
+  /// „nach 30 Tagen weg" wäre an der Tabelle selbst nicht mehr ablesbar.
+  promptErasedAt DateTime? @map("prompt_erased_at") @db.Timestamptz(3)
+
+  /// **Cascade**: die Aufrufe einer gelöschten Organisation gehen mit ihm.
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  /// **SetNull**: die Zeile bleibt als Kostenbeleg stehen und verliert ihren
+  /// Personenbezug (ADR-0015 Nr. 8). `Cascade` machte das Entfernen einer Person
+  /// zum Zurücksetzen ihres Verbrauchs.
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  /// Die eine Abfrage des Zählers: „wie viele Aufrufe hat *dieser* Organisation seit dem
+  /// Monatsanfang" — ein Bereichsscan, der genau so aussieht wie die Anweisung.
+  @@index([tenantId, createdAt])
+  /// Der Purge, der über Organisationen hinweg arbeitet und nach `created_at` auswählt.
+  @@index([createdAt])
+  @@map("ai_usage")
+}
+
+/// Welche Kennzahl einen Alarm ausgelöst hat.
+enum OpsMetric {
+  /// Älteste wartende Mail über 30 Minuten.
+  mail_queue_age
+  /// Zu viele `failed`-Zeilen seit dem letzten Alarm.
+  mail_failures
+  /// Ein Hintergrundlauf über 26 Stunden ohne Erfolg.
+  job_stale
+  /// Upload-Ablage über 85 %.
+  storage_full
+  /// KI-Fehlerquote über 25 %.
+  ai_failure_rate
+
+  @@map("ops_metric")
+}
+
+/// **Wann zuletzt über diese Kennzahl alarmiert wurde** .
+///
+/// ⚠️ **In der Datenbank und nicht im Prozess.** Eine Wiederholungssperre im
+/// Arbeitsspeicher wäre nach jedem Ausrollen wieder leer — und eine täglich neu
+/// ausgerollte Installation schickte denselben Alarm jeden Tag neu, bis ihn
+/// niemand mehr liest. Das ist dieselbe Falle wie beim Purge oben,
+/// nur andersherum: dort ging etwas nie los, hier ginge es immer wieder los.
+model OpsAlert {
+  metric OpsMetric @id
+
+  /// Beginn der Sperre. Vor Ablauf wird dieselbe Kennzahl nicht erneut gemeldet.
+  lastSentAt DateTime @map("last_sent_at") @db.Timestamptz(3)
+
+  @@map("ops_alert")
+}
+
+/// Welcher Hintergrundlauf eine {@link JobRun}-Zeile geschrieben hat
+/// (ADR-0016 §2).
+///
+/// Eine Aufzählung und keine freie Zeichenkette: die fünf Läufe sind bekannt,
+/// und ein Tippfehler in einem Namen ließe einen Lauf aus jeder Auswertung
+/// verschwinden — genau aus dem Zustand also, den diese Tabelle sichtbar machen
+/// soll.
+enum JobKind {
+  /// Nimmt `queued`-Zeilen aus der Warteschlange und versendet sie (ADR-0004).
+  mail_worker
+  /// Löscht `mail_log`-Zeilen über 90 Tagen.
+  mail_log_purge
+  /// Löscht unbeanspruchte Anlagen über 24 Stunden (ADR-0014).
+  file_purge
+  /// Papierkorb über 30 Tagen **und** abgelaufene Entwürfe.
+  retention_purge
+  /// KI-Freitext über 30 Tagen, dazu die Person nach 12 Monaten.
+  ai_prompt_purge
+  /// Löscht tote Sitzungszeilen — abgelaufen oder abgemeldet — nach
+  /// `SESSION_RETENTION_DAYS`. Er ist der Job, den der
+  /// Kommentar an `session.expiresAt` von Anfang an versprochen hat.
+  session_purge
+  /// Prüft die Schwellen und alarmiert (ADR-0016 §4).
+  ///
+  /// Er steht hier, obwohl er nichts aufräumt: **auch der Wächter kann
+  /// ausfallen**, und ein Alarmweg, dessen eigenes Scheitern niemand sieht,
+  /// ist die stillste aller Lücken.
+  ops_alert
+
+  @@map("job_kind")
+}
+
+/// Wie ein Lauf ausging.
+///
+/// **Kein `running`.** Eine Zeile entsteht, wenn der Lauf vorbei ist; ein
+/// dritter Wert wäre ein Zustand, den ein abgestürzter Prozess für immer
+/// stehen ließe, und die Auswertung müsste ihn von „läuft noch" unterscheiden,
+/// ohne es zu können. Dass ein Lauf gerade läuft, weiß der Prozess selbst
+/// (`schedulerRunning`); was diese Tabelle beantwortet, ist „wann war der
+/// letzte **erfolgreiche**".
+enum JobOutcome {
+  ok
+  failed
+
+  @@map("job_outcome")
+}
+
+/// **Ein Hintergrundlauf, nachdem er vorbei ist** (ADR-0016 §2).
+///
+/// Früher schrieb ein gescheiterter Purge eine `logger.error`-Zeile in einen
+/// Container-Stream, den niemand aufbewahrt — und ein Purge, der **nie
+/// startet**, schrieb gar nichts. Das ist derselbe Fall wie weiter oben, in dem eine
+/// täglich neu ausgerollte Installation nie gelöscht hätte: jede Seite
+/// antwortete, keine Kennzahl bewegte sich, und die DSGVO-Zusage war gebrochen.
+///
+/// ⚠️ **Diese Zeile zählt, sie benennt nicht.** Keine Empfängeradresse, kein
+/// Formularname, keine Organisation-Kennung, kein Meldungstext — nur die
+/// **Fehlerklasse** . Eine Buchführung über Aufräumläufe, die
+/// festhielte, *wessen* Daten gelöscht wurden, wäre das Gegenteil dessen,
+/// wofür die Läufe da sind.
+model JobRun {
+  id String @id @default(uuid(7)) @db.Uuid
+
+  job JobKind
+
+  /// Anfang und Ende **des Laufs**, nicht des Schreibens dieser Zeile.
+  ///
+  /// Der Unterschied ist der ganze Zweck: würde `startedAt` beim Abfragen des
+  /// Betriebsstatus gesetzt, sähe eine Installation, deren Läufe seit Wochen
+  /// ausbleiben, für immer frisch aus — und zwar **still**.
+  startedAt  DateTime @map("started_at") @db.Timestamptz(3)
+  finishedAt DateTime @map("finished_at") @db.Timestamptz(3)
+
+  outcome JobOutcome
+
+  /// Wie viele Elemente der Lauf behandelt hat (gelöschte Zeilen, versendete
+  /// Mails). `0` ist ein gültiges Ergebnis und heißt „nichts war fällig".
+  itemCount Int @default(0) @map("item_count")
+
+  /// Die **Klasse** des Fehlers, nie seine Meldung — `PrismaClientKnownRequestError`,
+  /// nicht der Text, der einen Formularnamen oder eine Adresse enthalten kann.
+  /// NULL bei `outcome = ok`.
+  errorClass String? @map("error_class")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  /// Die Abfrage, die der Betriebsstatus stellt: „wann lief *dieser* Lauf
+  /// zuletzt erfolgreich?" — je Art absteigend nach Beginn.
+  @@index([job, startedAt(sort: Desc)], map: "job_run_job_started_at_idx")
+  @@map("job_run")
+}

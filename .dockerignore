@@ -1,0 +1,51 @@
+# What never enters a build context.
+#
+# The first block keeps `.env` out of the build
+# context. A file that is not sent cannot be COPYed in by accident, cannot end
+# up in a layer, and cannot be read out of the image afterwards — which is what
+# makes this stronger than "we do not copy it".
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Installed and generated locally. They would be copied into the build only to
+# be overwritten by the container's own install — and a host `node_modules`
+# carries binaries built for the host, not for Alpine.
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# History and CI metadata. The application version comes in as a build
+# argument, so the image never needs the repository.
+.git/
+.github/
+.gitignore
+.gitattributes
+
+# Test output and local tooling state.
+playwright-report/
+test-results/
+blob-report/
+.playwright/
+.vscode/
+.idea/
+.claude/
+
+# Documentation and specifications — several megabytes of design handoff that
+# no image runs.
+docs/
+CHANGELOG.md
+README.md
+AGENTS.md
+CLAUDE.md
+
+# Only the two application Dockerfiles are ever used, and each is passed with
+# `-f`; sending them along would just invalidate cache layers.
+**/Dockerfile
+docker-compose.yml

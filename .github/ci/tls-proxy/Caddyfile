@@ -1,0 +1,28 @@
+# TLS-Vorschaltproxy — **nur für die CI**, gelesen vom `tls-proxy`-Dienst in
+# `.github/ci/docker-compose.ci.yml`. Ein Produktionsserver bringt seinen
+# eigenen Reverse-Proxy mit; dieser hier existiert, damit der `stack`-Job TLS,
+# das `__Host-`-Cookie und die Zählung von `X-Forwarded-For` messen kann.
+#
+# Er beendet TLS, lenkt http auf https um und reicht sonst alles unverändert an
+# den nginx-Frontdoor weiter. Pfade kennt er nicht.
+
+{
+	# Kein Admin-Endpunkt: er lauscht sonst unauthentifiziert auf Port 2019 und
+	# kann die laufende Konfiguration ersetzen.
+	admin off
+}
+
+{$TLS_DOMAIN} {
+	# `internal` (eigene CA) oder eine Mailadresse (Let's Encrypt).
+	tls {$TLS_MODE}
+
+	# **`X-Forwarded-For` hängt an, es ersetzt nicht** — Caddys Vorgabe, und hier
+	# die tragende Zusage: die API vertraut `TRUST_PROXY_HOPS` Sprüngen von
+	# rechts, ein ersetzender Proxy kürzte die Kette um seinen Vorgänger.
+	reverse_proxy web:8080
+
+	log {
+		output stdout
+		format console
+	}
+}

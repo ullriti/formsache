@@ -1,0 +1,85 @@
+/*
+ * Die Liste der Drittkomponenten auf `/lizenzen` (Review-Runde 3 Nr. 14).
+ *
+ * Eine Nachweisliste, keine Gestaltungsfläche: knapper Satz, klare Trennung
+ * zwischen Lizenz und Paketen, und der Wortlaut in derselben vorformatierten
+ * Schrift wie die beiden Lizenztexte darüber (`legal-text__licence`).
+ */
+
+.third-party {
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.third-party__group {
+  margin: 0 0 var(--space-5);
+  padding: var(--space-4) 0 0;
+  border-top: 1px solid var(--color-hairline);
+}
+
+.third-party__licence {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+}
+
+.third-party__packages {
+  margin: 0;
+  padding: 0 0 0 var(--space-5);
+  font-size: var(--font-size-body-sm);
+  line-height: var(--line-height-body);
+  color: var(--color-text-muted);
+  /*
+    **Jede Angabe hier bricht notfalls im Wort.** Paketnamen, Fassungen und
+    Urheberangaben tragen keine Leerzeichen — `@scope/paket-mit-langem-namen`,
+    `1.2.3-canary.20260801`. Ohne diese Regel schob eine einzige davon die
+    ganze Seite über die Fensterbreite hinaus; gemessen auf 360 px, wo
+    `e2e/mobile-reachable.spec.ts` genau das ausschließt (5 px, und die kamen
+    von einer Fassungsnummer).
+  */
+  overflow-wrap: anywhere;
+}
+
+.third-party__name {
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+}
+
+.third-party__version {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Der Wortlaut selbst rollt in seinem eigenen Kasten, statt die Seite zu
+   verbreitern — dieselbe Zusage wie bei jedem anderen langen Block dieser
+   Anwendung. */
+.third-party__text pre {
+  overflow-x: auto;
+}
+
+.third-party__home,
+.third-party__packages a {
+  color: var(--color-info);
+}
+
+.third-party__missing {
+  margin: var(--space-3) 0 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-muted);
+}
+
+.third-party__text {
+  margin: var(--space-3) 0 0;
+  font-size: var(--font-size-body-sm);
+}
+
+.third-party__text > summary {
+  cursor: pointer;
+  /* Antippbar auf dem Telefon — eine Zusammenfassung ist ein Bedienelement. */
+  min-height: var(--touch-target-min);
+  line-height: var(--touch-target-min);
+  color: var(--color-info);
+}

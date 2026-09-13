@@ -1,0 +1,478 @@
+/*
+ * Nutzerrechte je Formular (handoff).
+ *
+ * Measurements follow the prototype's `renderMembers()`: a narrow centred
+ * column, a dark banner pointing back at the Tenant-Nutzerverwaltung, a role
+ * legend as a wrapping row of cards, the member list as one bordered section
+ * and the rights matrix underneath.
+ */
+
+.form-members {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: var(--layout-settings-max);
+  margin: 0 auto;
+  padding: var(--space-9) var(--space-9) 70px;
+  min-width: 0;
+}
+
+.app-shell--compact .form-members {
+  padding: var(--space-7) var(--space-6) 80px;
+}
+
+/* --- loading / error ---------------------------------------------------- */
+
+.form-members__state {
+  margin: 0;
+  padding: 48px var(--space-7);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  text-align: center;
+  font-size: var(--font-size-body);
+  color: var(--color-text-muted);
+}
+
+.form-members__link {
+  border: none;
+  background: none;
+  /* An underlined text button, so WCAG 1.4.3 applies and 4.5:1 is the bar —
+     `--color-accent-strong` is a surface colour and reaches 3.54:1 with the
+     Dachorganisation's accent colour. `--color-accent-ink` is the same hue, dark enough to be
+     read whatever an organisation typed in (`tokens.css`). */
+  color: var(--color-accent-ink);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* --- head ----------------------------------------------------------------- */
+
+.form-members__head {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-members__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-title);
+  color: var(--color-text);
+}
+
+.form-members__subtitle {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-body);
+  color: var(--color-text-subtle);
+}
+
+/* --- banner to the Tenant-Nutzerverwaltung --------------------------------- */
+
+.form-members__banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-card);
+  background: var(--color-ink);
+}
+
+.form-members__banner-icon {
+  font-size: var(--font-size-heading);
+  color: var(--color-accent);
+}
+
+.form-members__banner-text {
+  flex: 1 1 200px;
+  margin: 0;
+  font-size: var(--font-size-body-sm);
+  line-height: var(--line-height-body);
+  color: var(--color-on-ink-subtle);
+}
+
+.form-members__banner-text strong {
+  color: var(--color-on-ink);
+}
+
+.form-members__banner-action {
+  flex: none;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-on-ink-border);
+  border-radius: var(--radius-control);
+  background: var(--color-on-ink-surface);
+  color: var(--color-on-ink);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* --- role legend ------------------------------------------------------------ */
+
+.form-members__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.form-members__legend-card {
+  flex: 1 1 180px;
+  padding: var(--space-5) var(--space-5);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+.form-members__legend-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-1);
+}
+
+.form-members__legend-dot {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border-radius: var(--radius-circle);
+  background: var(--group-color);
+}
+
+.form-members__legend-name {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+}
+
+.form-members__legend-count {
+  margin-left: auto;
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-subtle);
+}
+
+.form-members__legend-desc {
+  margin: 0;
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-body);
+  color: var(--color-text-subtle);
+}
+
+/* --- member list ------------------------------------------------------------ */
+
+.form-members__list-card {
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card-lg);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.form-members__list-head {
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-panel-raised);
+  border-bottom: 1px solid var(--color-hairline-faint);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+}
+
+.form-members__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.form-members__row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--color-hairline-faint);
+}
+
+/*
+ * **„Gesperrt" dims what the row *says* — never what it *does*.**
+ *
+ * The dimming lay on the whole row. „Speichern" thereby inherited the opacity
+ * 0.55 as well and could no longer be told apart from
+ * `.form-members__save:disabled` (0.6) — at precisely the moment at which
+ * saving *must* happen, for the button appears only on an unsaved change, and
+ * the blocking is exactly one of those. The button looked dead and was not.
+ *
+ * Dimmed are therefore only the logo and the name/address: the details *about*
+ * the person. Switch, select and button stay fully opaque — they are the way
+ * out of the state. That the row is blocked stands beside it as a word anyway
+ * („Gesperrt", `FormMemberRow.tsx`); the opacity is the accompaniment to that
+ * and not the carrier of the statement.
+ */
+.form-members__row--locked .form-members__avatar,
+.form-members__row--locked .form-members__identity {
+  opacity: 0.55;
+}
+
+.form-members__avatar {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-circle);
+  background: var(--group-color);
+  /* Picked from the group colour it sits on (`readable-ink.ts`), not fixed. */
+  color: var(--group-ink, var(--color-on-ink));
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+}
+
+.form-members__identity {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+.form-members__name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+}
+
+.form-members__name-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.form-members__you {
+  flex: none;
+  padding: 1px var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--color-panel);
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-muted);
+}
+
+.form-members__meta {
+  display: block;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-subtle);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.form-members__always-badge {
+  flex: none;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  white-space: nowrap;
+}
+
+.form-members__controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.form-members__access {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.form-members__access-label {
+  font-size: var(--font-size-caption);
+  color: var(--color-text-subtle);
+  white-space: nowrap;
+}
+
+.form-members__role-select {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.form-members__save {
+  padding: var(--space-3) var(--space-4);
+  border: none;
+  border-radius: var(--radius-control);
+  background: var(--gradient-accent);
+  color: var(--color-on-accent);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.form-members__save:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.form-members__row-error {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: var(--font-size-caption);
+  color: var(--color-danger-strong);
+}
+
+/* --- the switch ------------------------------------------------------------
+ * Same fix as the settings surfaces (`settings-view.css`): the decorative
+ * track/knob must not take the pointer, or the middle of the control — the
+ * spot anyone aims at — becomes a dead zone (the requirement regression, named
+ * again here rather than assumed obvious, because this row is a rebuild of the
+ * same control from scratch and would otherwise be free to reintroduce it).
+ */
+
+.form-members__switch {
+  position: relative;
+  flex: none;
+  width: 42px;
+  height: 24px;
+}
+
+.form-members__switch-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.form-members__switch-track {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--color-control-off);
+  transition: background var(--motion-fast);
+  pointer-events: none;
+}
+
+.form-members__switch-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-circle);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-raised);
+  transition: left var(--motion-fast);
+}
+
+.form-members__switch-input:checked ~ .form-members__switch-track {
+  background: var(--color-accent);
+}
+
+.form-members__switch-input:checked
+  ~ .form-members__switch-track
+  .form-members__switch-knob {
+  left: 21px;
+}
+
+.form-members__switch-input:focus-visible ~ .form-members__switch-track {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* --- rights matrix ----------------------------------------------------------- */
+
+.form-members__matrix {
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card-lg);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.form-members__matrix-head {
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-panel-raised);
+  border-bottom: 1px solid var(--color-hairline-faint);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+}
+
+.form-members__matrix-scroll {
+  overflow-x: auto;
+}
+
+/* The box is a tab stop (`PermissionMatrix.tsx` says why), so it takes the
+   global focus ring — but the card around it clips (`overflow: hidden`, for
+   the rounded corners), and the outward offset of `base.css` would be cut off
+   on all four sides. Drawn inwards instead; colour and width stay the shared
+   tokens. */
+.form-members__matrix-scroll:focus-visible {
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
+
+.form-members__matrix-table {
+  width: 100%;
+  min-width: 420px;
+  border-collapse: collapse;
+}
+
+.form-members__matrix-table th {
+  padding: var(--space-4) var(--space-4);
+  text-align: center;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  color: var(--group-color, var(--color-text-muted));
+}
+
+.form-members__matrix-table th:first-child {
+  text-align: left;
+  color: var(--color-text-muted);
+}
+
+.form-members__matrix-perm {
+  padding: var(--space-3) var(--space-5);
+  font-size: var(--font-size-body);
+  color: var(--color-text-strong);
+  border-top: 1px solid var(--color-hairline-faint);
+}
+
+.form-members__matrix-cell {
+  padding: var(--space-3) var(--space-4);
+  text-align: center;
+  font-size: var(--font-size-subheading);
+  font-weight: var(--font-weight-bold);
+  border-top: 1px solid var(--color-hairline-faint);
+}
+
+.form-members__matrix-yes {
+  color: var(--color-success-alt);
+}
+
+.form-members__matrix-no {
+  color: var(--color-hairline);
+}
+
+/* --- footnote ----------------------------------------------------------------- */
+
+.form-members__footnote {
+  margin: 0;
+  text-align: center;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-subtle);
+}

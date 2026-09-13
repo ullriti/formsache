@@ -1,0 +1,157 @@
+/*
+ * The legal text pages (ADR-0028).
+ *
+ * Exclusively tokens from `styles/tokens.css` — a hard-coded hex value would be
+ * the same mistake here as everywhere else, and these pages stand under the
+ * appearance of the installation and not under that of an organisation
+ * (they belong to none).
+ *
+ * The reading width is deliberately narrower than that of a settings page: a
+ * legal text is **read**, not skimmed over, and a line wider than 1000 px is
+ * unreadable for running text.
+ */
+
+.legal {
+  background: var(--color-shell);
+  min-height: 100vh;
+  padding: var(--space-8) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.legal__card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-raised);
+  max-width: var(--layout-form-max);
+  width: 100%;
+  padding: var(--space-8);
+}
+
+.legal__owner {
+  margin: 0;
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+}
+
+.legal__title {
+  margin: var(--space-2) 0 var(--space-6);
+  font-family: var(--font-display);
+  font-size: var(--font-size-title);
+  color: var(--color-text-strong);
+  line-height: var(--line-height-tight);
+}
+
+.legal__state {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-body);
+}
+
+/* ------------------------------------------------------------------ *
+ * The text itself
+ * ------------------------------------------------------------------ */
+
+.legal-text {
+  color: var(--color-text);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+.legal-text__h2 {
+  margin: var(--space-8) 0 var(--space-3);
+  font-family: var(--font-display);
+  font-size: var(--font-size-heading);
+  color: var(--color-text-strong);
+  line-height: var(--line-height-tight);
+}
+
+.legal-text__h3 {
+  margin: var(--space-6) 0 var(--space-2);
+  font-size: var(--font-size-subheading);
+  color: var(--color-text-strong);
+  line-height: var(--line-height-tight);
+}
+
+.legal-text__p {
+  margin: 0 0 var(--space-4);
+  /* A postal address is a paragraph with line breaks — the parser keeps them,
+     so the rendering has to show them. */
+  white-space: pre-wrap;
+}
+
+.legal-text__list {
+  margin: 0 0 var(--space-4);
+  padding-left: var(--space-7);
+}
+
+.legal-text__list li {
+  margin-bottom: var(--space-2);
+}
+
+.legal-text__link {
+  color: var(--color-info);
+}
+
+/*
+ * An open detail — visible and named.
+ *
+ * `<mark>` instead of a colour alone: whoever reads the page without colours
+ * (high contrast, print view, screen reader) is still given a highlight and the
+ * text „Angabe fehlt: …" along with it. The gap must not be the one place
+ * that works only with colour.
+ */
+.legal-text__gap {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  border: 1px dashed var(--color-warning-alt);
+  border-radius: var(--radius-control-sm);
+  padding: 0 var(--space-1);
+  font-size: var(--font-size-body-sm);
+}
+
+/* Wide content scrolls in its own area, never the page. */
+.legal-text__table-scroll {
+  overflow-x: auto;
+  margin: 0 0 var(--space-5);
+}
+
+.legal-text__table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 420px;
+  font-size: var(--font-size-body-sm);
+}
+
+.legal-text__table th,
+.legal-text__table td {
+  border: 1px solid var(--color-table-border);
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  vertical-align: top;
+  white-space: pre-wrap;
+}
+
+.legal-text__table th {
+  background: var(--color-surface-sunken);
+  color: var(--color-text-strong);
+}
+
+.legal-text__licence {
+  overflow-x: auto;
+  margin: 0 0 var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-surface);
+  background: var(--color-surface-sunken);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-body);
+  white-space: pre-wrap;
+}

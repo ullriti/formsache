@@ -1,0 +1,23 @@
+name: Funktion vorschlagen
+description: Etwas fehlt oder könnte besser gehen
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Welches Problem löst das?
+      description: >
+        Die Situation, nicht die Lösung. „Wir müssen jede Anmeldung von Hand
+        nachtragen, weil …" sagt mehr als „Bitte einen Export-Knopf".
+    validations:
+      required: true
+  - type: textarea
+    id: vorschlag
+    attributes:
+      label: Wie könnte es aussehen?
+      description: Dein Vorschlag — auch grob ist willkommen.
+  - type: textarea
+    id: umweg
+    attributes:
+      label: Wie behilfst du dir heute?
+      description: Der Umweg verrät oft, wie dringend es ist.

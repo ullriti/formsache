@@ -1,0 +1,720 @@
+/*
+ * form settings (handoff), the organisation's form standards (handoff,
+ * tab „Formular-Standards") and the Systemeinstellungen one layer below
+ * them. One stylesheet, because the three pages are the same
+ * four cards with and without the inheritance switch.
+ *
+ * Measurements follow the prototype's `renderSettings()`/`renderTenantSettings()`:
+ * a narrow centred column of cards, a tinted card header carrying the section
+ * name and the segmented switch, the inherited hint as a sand-toned strip, and
+ * the fields in an 18 px stack underneath.
+ *
+ * **Below 1180 px everything becomes one column**  — the two
+ * grids inside the sections are the only multi-column layouts on the page, and
+ * both collapse. Nothing here has a fixed width, so the 360 px viewport has no
+ * horizontal overflow to measure.
+ */
+
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: var(--layout-settings-max);
+  margin: 0 auto;
+  padding: var(--space-9) var(--space-9) 70px;
+  min-width: 0;
+}
+
+.app-shell--compact .settings {
+  padding: var(--space-7) var(--space-6) 80px;
+}
+
+/* --- loading / error ---------------------------------------------------- */
+
+.settings__state {
+  margin: 0;
+  padding: 48px var(--space-7);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  text-align: center;
+  font-size: var(--font-size-body);
+  color: var(--color-text-muted);
+}
+
+.settings__link {
+  border: none;
+  background: none;
+  /* An underlined text button, so WCAG 1.4.3 applies and 4.5:1 is the bar —
+     `--color-accent-strong` is a surface colour and reaches 3.54:1 with the
+     Dachorganisation's accent colour. `--color-accent-ink` is the same hue, dark enough to be
+     read whatever an organisation typed in (`tokens.css`). */
+  color: var(--color-accent-ink);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  /* WCAG 2.5.8: a text button is as tall as its line, and at 22.3 px that is
+     just under the promise. Measured on „Später einrichten" in the
+     organisation wizard, the first text button standing alone instead of in
+     a row with a real button. `--touch-target-min` is the promise, so it is
+     kept here instead of being noted in a list of exceptions. */
+  min-height: var(--touch-target-min);
+}
+
+/* --- head --------------------------------------------------------------- */
+
+.settings__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.settings__title-block {
+  flex: 1;
+  min-width: 200px;
+}
+
+.settings__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-title);
+  color: var(--color-text);
+}
+
+.settings__subtitle {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-body);
+  color: var(--color-text-subtle);
+}
+
+/*
+ * The live status badge. Three tones, matching the handoff's semantics.
+ *
+ * `flex: 0 1 auto` with `min-width: 0`, not `flex: none`: the long label
+ * („Geschlossen seit 15.08.2026, 23:59 Uhr MESZ") is wider than a 360 px
+ * viewport, and `.app-shell__main` hides horizontal overflow — a badge that
+ * refused to shrink would have been cut off rather than scrolled to. The view
+ * additionally switches to the short label below the breakpoint; this is the
+ * belt to that pair of braces.
+ */
+.settings__status {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: var(--space-2) var(--space-5);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+}
+
+.settings__status--open {
+  background: var(--color-success-bg);
+  color: var(--color-success-alt);
+}
+
+.settings__status--scheduled {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.settings__status--closed {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+/*
+ * „Alle Organisationen" on the Systemeinstellungen — the handoff's red
+ * scope badge. Same geometry as the availability badge above, so the two
+ * sit at the same height in the head row; the tone is the only difference, and
+ * it is the one thing that tells this page apart from the organisation's standards.
+ */
+.settings__scope {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: var(--space-2) var(--space-5);
+  border-radius: var(--radius-pill);
+  background: var(--color-danger-bg);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-danger);
+}
+
+/* Who last wrote the row, and when — a quiet line under the notice. */
+.settings__meta {
+  margin: 0;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-subtle);
+}
+
+/*
+ * A consequence the fields of a section do not show — today the one about the
+ * access word being copied. Info-toned, not warning-toned: nothing is wrong,
+ * something is simply about to happen invisibly.
+ */
+.settings-card__notice {
+  display: flex;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3) var(--space-7);
+  border-bottom: 1px solid var(--color-hairline-faint);
+  background: var(--color-info-bg);
+  font-size: var(--font-size-caption);
+  color: var(--color-info);
+}
+
+/* --- banner to the tenant standards -------------------------------------- */
+
+.settings__banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding: var(--space-4) var(--space-6);
+  border-radius: var(--radius-card);
+  background: var(--color-ink);
+}
+
+.settings__banner-mark {
+  flex: none;
+  font-size: var(--font-size-subheading);
+  color: var(--color-accent);
+}
+
+.settings__banner-text {
+  flex: 1;
+  min-width: 200px;
+  margin: 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-on-ink-faint);
+}
+
+.settings__banner-action {
+  flex: none;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-on-ink-border);
+  border-radius: var(--radius-control);
+  background: var(--color-on-ink-surface-hover);
+  font: inherit;
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-on-ink-muted);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.settings__banner-action:hover {
+  background: var(--color-on-ink-surface);
+}
+
+.settings__banner-action:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-on-ink);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* The sand-toned note above the tenant standards (handoff). */
+.settings__notice {
+  margin: 0;
+  padding: var(--space-4) var(--space-6);
+  border: 1px solid var(--color-warning-bg-soft);
+  border-radius: var(--radius-card);
+  background: var(--color-panel);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-muted);
+}
+
+/* --- save bar ------------------------------------------------------------ */
+
+.settings__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+/*
+ * **The bar brings no margin of its own — its surroundings give it one.**
+ *
+ * As a child of the `.settings` column it stands within the column's side
+ * margin. Standing *inside* a card, however, it is a sibling of
+ * `.settings-card__body` and not its child — and only the body has padding.
+ * „Speichern" therefore stuck to the card edge in four cards
+ * (`MailIdentityCard`, `TenantOidcSection`, `TenantBaseUrlCard`,
+ * `TenantReplyToCard`), and the same fault was waiting for every fifth one.
+ *
+ * The rule therefore hangs on the **card**, not on the four call sites: the
+ * same `--space-7` the body uses, so field and button stand on one alignment
+ * line. The child combinator is essential — a `.settings__alert` *inside* the
+ * body already has its margin and would otherwise get a second one.
+ *
+ * The top spacing comes out of the body's bottom padding; only when the bar
+ * (or the alert) stands as the **first** child is there nothing above it that
+ * could supply it.
+ */
+.settings-card > .settings__actions {
+  padding: 0 var(--space-7) var(--space-6);
+}
+
+.settings-card > .settings__actions:first-child {
+  padding-top: var(--space-6);
+}
+
+/* No `padding`: the alert is a box with padding and a border of its own — its
+   distance from the card edge is a margin. */
+.settings-card > .settings__alert {
+  margin: 0 var(--space-7) var(--space-6);
+}
+
+.settings-card > .settings__alert:first-child {
+  margin-top: var(--space-6);
+}
+
+.settings__save-state {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-subtle);
+}
+
+.settings__save,
+.settings__secondary {
+  flex: none;
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font: inherit;
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+  cursor: pointer;
+}
+
+.settings__save {
+  border-color: transparent;
+  background: var(--gradient-accent);
+  color: var(--color-on-accent);
+  box-shadow: var(--shadow-accent-button);
+}
+
+.settings__save:disabled {
+  background: var(--color-control-off);
+  color: var(--color-text-muted);
+  box-shadow: none;
+  cursor: default;
+}
+
+.settings__secondary:hover {
+  background: var(--color-surface-sunken);
+}
+
+.settings__alert {
+  margin: 0;
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-control);
+  background: var(--color-danger-bg-soft);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-danger);
+}
+
+.settings__note {
+  margin: 0;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-subtle);
+}
+
+.settings__footnote {
+  margin: 0;
+  text-align: center;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-subtle);
+}
+
+/* --- section card -------------------------------------------------------- */
+
+.settings-card {
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card-lg);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.settings-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  padding: var(--space-5) var(--space-7);
+  border-bottom: 1px solid var(--color-hairline-faint);
+  background: var(--color-panel-raised);
+}
+
+.settings-card__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-card__heading {
+  margin: 0;
+  /* Card-level serif heading, not a view title — `--font-size-title-sm` is the
+     step the dashboard cards and the response detail use. */
+  font-size: var(--font-size-title-sm);
+  color: var(--color-text-strong);
+}
+
+.settings-card__hint {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-subtle);
+}
+
+/*
+ * „↳ Standardwert vom Tenant" — the tinted strip the handoff asks for. It says
+ * *why* the fields below cannot be touched; the lock itself is the disabled
+ * fieldset, not this colour.
+ */
+.settings-card__inherited {
+  display: flex;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3) var(--space-7);
+  border-bottom: 1px solid var(--color-hairline-faint);
+  background: var(--color-warning-bg-soft);
+  font-size: var(--font-size-caption);
+  color: var(--color-warning);
+}
+
+.settings-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  margin: 0;
+  padding: var(--space-6) var(--space-7);
+  border: none;
+  min-width: 0;
+}
+
+/*
+ * The dimming rides on `:disabled` rather than on a class of its own, so the
+ * look and the lock can never disagree — the appearance follows the state the
+ * browser is actually in.
+ */
+.settings-card__body:disabled {
+  opacity: 0.55;
+}
+
+/* --- segmented switch „Tenant-Standard ↔ Angepasst" ---------------------- */
+
+.segmented {
+  display: flex;
+  gap: var(--space-2);
+  flex: none;
+  padding: var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-sunken);
+}
+
+.segmented__option {
+  position: relative;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-subtle);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.segmented__option--on {
+  background: var(--color-ink);
+  color: var(--color-on-ink);
+}
+
+/*
+ * The same control used as a **page-level tab bar** rather than as a two-word
+ * switch inside a card header — the shape Systemeinstellungen has used for its tab bar.
+ *
+ * It needs this and the switch does not, because the two sit in different
+ * boxes: in a card header the control is a flex item with `flex: none`, so it
+ * is as wide as its own labels and cannot overflow anything. As a child of the
+ * `.settings` column it is stretched to the column's width, and its options
+ * are `white-space: nowrap` — so „Formular-Standards" plus „Mailserver &
+ * Basis-Adresse" ran 18 px past the viewport at 360 px, which
+ * `expectNoHorizontalScroll` in `e2e/system-settings.spec.ts` caught and the
+ * header of this file had until now been able to claim was impossible
+ * („Nothing here has a fixed width").
+ *
+ * Scrolling rather than wrapping, because that is the answer the sibling
+ * surface one layer up already gives its own four tabs
+ * (`.tenant-admin__tabs`): a pill that breaks into two rows stops reading as
+ * one control. The duplication between the two rules is worth naming — whoever
+ * touches either should fold `.tenant-admin__tabs` onto this class.
+ */
+.segmented--tabs {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* The radio itself covers its label: invisible, still focusable, still the
+   thing a click and a screen reader address. */
+.segmented__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.segmented__input:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+  border-radius: var(--radius-pill);
+}
+
+/* --- one setting row ----------------------------------------------------- */
+
+.setting {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.setting__head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-5);
+}
+
+.setting__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.setting__title {
+  display: block;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+  cursor: pointer;
+}
+
+.setting__description {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-subtle);
+}
+
+/*
+ * A limitation of the setting itself — see `note` on
+ * `ToggleSetting`. Set apart from `.setting__description` by the rule on the
+ * left rather than by a colour of its own: it is a caveat, and it has to read
+ * as one whether the section is unlocked or greyed out under `fieldset[disabled]`.
+ */
+.setting__note {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--color-hairline);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-subtle);
+}
+
+/*
+ * The same caveat, for a setting that gives a guarantee up rather than merely
+ * having a limit (Konzept no. 70's empty verification claim). Only the rule and the
+ * ink change — the sentence has to read as a warning, not as a second kind of
+ * alert box competing with `.settings__alert`.
+ */
+.setting__note--warning {
+  border-left-color: var(--color-warning);
+  color: var(--color-warning);
+}
+
+.setting__extra {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.setting__divider {
+  height: 1px;
+  background: var(--color-hairline-faint);
+}
+
+.setting__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.setting__label {
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-muted);
+}
+
+.setting__control {
+  width: 100%;
+  max-width: 100%;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font: inherit;
+  color: var(--color-text);
+}
+
+.setting__control--mono {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-body-sm);
+}
+
+.setting__control--multiline {
+  min-height: 84px;
+  resize: vertical;
+  line-height: var(--line-height-body);
+}
+
+/*
+ * The select (`SelectSetting`).
+ *
+ * `min-height` and not `height`: the value is a **lower bound**
+ * (`--touch-target-min`, WCAG 2.5.8), and a field that needs its content may
+ * grow. The `max-width: 100%` of `.setting__control` closes the overflow a
+ * `select` otherwise produces — it measures itself against its longest
+ * option, not against its box. Both are findings the AI tab has already paid
+ * for once (`system-ai-settings.css`).
+ */
+.setting__control--select {
+  min-height: var(--touch-target-min);
+  box-sizing: border-box;
+}
+
+.setting__control--number {
+  /* Wide enough for six digits and no wider — the prototype caps these too. */
+  max-width: 130px;
+}
+
+.setting__number {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.setting__unit {
+  font-size: var(--font-size-body);
+  color: var(--color-text-muted);
+}
+
+.setting__zone {
+  margin: 0;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-subtle);
+}
+
+/*
+ * The quiet line under a field — what is allowed, how big, what happens next.
+ * Same slot as `.setting__issue` and deliberately not the same weight: a hint
+ * that shouts reads like a problem.
+ */
+.setting__hint {
+  margin: 0;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-subtle);
+}
+
+/*
+ * A validation message is a message, never a colour alone: the red says
+ * „something", the sentence says what to change.
+ */
+.setting__issue {
+  margin: 0;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-danger);
+}
+
+.setting__control[aria-invalid='true'] {
+  border-color: var(--color-danger-strong);
+}
+
+.setting__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.setting__grid--url {
+  grid-template-columns: 2fr 1fr;
+}
+
+/* Single column below the breakpoint — the whole page collapses with it. */
+.app-shell--compact .setting__grid,
+.app-shell--compact .setting__grid--url {
+  grid-template-columns: 1fr;
+}
+
+/* The switch lives in `styles/switch.css` — one construction for this page
+   and the Builder's Bedingte Anzeige, loaded through `styles/index.css`. */
+
+/* --- live preview of the confirmation page ------------------------------- */
+
+.confirm-preview {
+  padding: var(--space-8) var(--space-7);
+  border: 1px dashed var(--color-control-off);
+  border-radius: var(--radius-card);
+  background: var(--color-panel-raised);
+  text-align: center;
+}
+
+.confirm-preview__eyebrow {
+  margin: 0 0 var(--space-5);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+  color: var(--color-text-faint);
+}
+
+.confirm-preview__mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  margin: 0 auto var(--space-4);
+  border-radius: var(--radius-circle);
+  background: var(--color-accent);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-on-accent);
+}
+
+.confirm-preview__title {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-display);
+  font-size: var(--font-size-heading);
+  color: var(--color-text-strong);
+}
+
+.confirm-preview__message {
+  max-width: 460px;
+  margin: 0 auto;
+  font-size: var(--font-size-body);
+  color: var(--color-text-muted);
+  /* Admin-authored free text: keep line breaks the editor typed without ever
+     rendering it as markup. */
+  white-space: pre-wrap;
+}
+
+.confirm-preview__redirect {
+  margin: var(--space-5) 0 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-faint);
+}

@@ -1,0 +1,126 @@
+/*
+ * The footer under every public view (ADR-0028).
+ *
+ * Tokens only. Designed with restraint and **legible** nonetheless: it is not
+ * decoration but the way by which a participating person learns whom to turn to
+ * with a request for information. Hence `--color-text-muted` and not
+ * `--color-text-faint`, and hence the full line height of running text.
+ */
+
+.legal-footer {
+  width: 100%;
+  max-width: var(--layout-form-max);
+  margin: var(--space-8) auto 0;
+  padding: var(--space-6) var(--space-5) var(--space-8);
+  border-top: 1px solid var(--color-hairline);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-body-sm);
+  line-height: var(--line-height-body);
+}
+
+.legal-footer__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6) var(--space-9);
+}
+
+.legal-footer__group {
+  min-width: 240px;
+}
+
+.legal-footer__label {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+}
+
+.legal-footer__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legal-footer__links a {
+  color: var(--color-info);
+  /*
+    The target size of `--touch-target-min` even when the line is short: two
+    links next to each other in a footer are the classic mis-tap on a
+    telephone.
+  */
+  display: inline-block;
+  min-height: var(--touch-target-min);
+  line-height: var(--touch-target-min);
+}
+
+.legal-footer__copyright {
+  margin: var(--space-6) 0 0;
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-caption);
+}
+
+.legal-footer__copyright a {
+  color: var(--color-info);
+}
+
+/*
+ * The data protection note about **this** form (ADR-0028 no. 4).
+ *
+ * It stands as the first block of the footer, above the label
+ * „Verantwortlich für dieses Formular" — from the particular to the general.
+ * The dividing line below it makes visible that a text ends here and a
+ * navigation begins; the font size is that of the footer and not that of the
+ * form, because it is a footnote to the form and not its content.
+ */
+.legal-footer__notice {
+  margin: 0 0 var(--space-6);
+  padding: 0 0 var(--space-6);
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+/*
+ * `.legal-text` brings the spacings of the legal text pages with it; here only
+ * the font size is pulled back to that of the footer — the same text, but set
+ * as a footnote and not as a page.
+ */
+.legal-footer__notice-body {
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-muted);
+}
+
+/*
+ * **Der Name der verantwortlichen Stelle in einer eigenen Zeile**
+ * (Review-Runde 3 Nr. 8).
+ *
+ * Die Beschriftung ist versal gesetzter Kleindruck; ein Name, der mit
+ * Doppelpunkt daran hängt, erbt Versalien und Sperrung und passt auf keiner
+ * Breite in dieselbe Zeile. Der Umbruch entsteht deshalb nicht durch
+ * Zeilenumbruch, sondern dadurch, dass die Überschrift zwei Blöcke
+ * untereinander stellt — und der Name zurück in die Laufschrift geholt wird.
+ */
+.legal-footer__label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.legal-footer__label-text {
+  display: block;
+}
+
+.legal-footer__owner {
+  display: block;
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--color-text);
+  /* Ein Name ohne Leerzeichen („Arbeitsgemeinschaft-…") sprengt sonst die
+     Spalte, statt umzubrechen. */
+  overflow-wrap: anywhere;
+}

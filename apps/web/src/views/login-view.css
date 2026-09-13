@@ -1,0 +1,214 @@
+/*
+ * Login view. The prototype has no admin login, so this is assembled from the
+ * handoff's form language: shell background, panel card with the
+ * organisation's colour stripe on top, PT Serif title, accent gradient on
+ * the primary button.
+ */
+
+.login {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--space-7) var(--space-5);
+  background: var(--color-shell);
+}
+
+.login__card {
+  width: 100%;
+  max-width: var(--layout-login-max);
+  /* Deliberately *not* `overflow: hidden`. The only thing it was there for was
+     rounding the stripe's top corners, which the stripe now does itself — and
+     clipping would silently swallow anything too wide instead of letting it
+     reach the document, which is the exact failure mode the note in
+     `app-shell.css` describes: not better than a scrollbar, only quieter.
+     The requirement measures this view, and it can only measure what overflows
+     rather than what is cut off. */
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card-hover);
+}
+
+.login__stripe {
+  height: var(--space-3);
+  /* Rounds with the card instead of relying on the card to clip it. */
+  border-radius: var(--radius-card-lg) var(--radius-card-lg) 0 0;
+  background: var(--gradient-stripe);
+}
+
+.login__body {
+  padding: var(--space-9) var(--space-8) var(--space-8);
+}
+
+/* Carries the product mark (ADR-0019). A block element around an
+   `inline-flex` mark, so that the spacing to the title arises here and not
+   in the mark itself — which knows nothing about where it stands. */
+.login__brand {
+  margin: 0 0 var(--space-4);
+}
+
+.login__title {
+  margin: var(--space-1) 0 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-title);
+  color: var(--color-text);
+}
+
+.login__subtitle {
+  margin: var(--space-3) 0 0;
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+  color: var(--color-text-muted);
+}
+
+.login__notice {
+  margin: var(--space-5) 0 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-hairline);
+  border-left: 3px solid var(--color-warning);
+  border-radius: var(--radius-control);
+  background: var(--color-warning-bg-soft);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-muted);
+}
+
+.login__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  margin-top: var(--space-7);
+}
+
+.login__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.login__label {
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.login__input {
+  width: 100%;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-size-body);
+}
+
+.login__input:focus {
+  /* The prototype only tints the border here. The visible ring from
+     `base.css` stays on top of that — see the note there on keyboard use.
+     The tint follows the focus token rather than the accent colour for the
+     same reason the ring does (Konzept no. 19): an organisation with a pale
+     accent colour would have had the fainter of the two indicators. */
+  border-color: var(--color-focus);
+}
+
+.login__error {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-control);
+  background: var(--color-danger-bg-soft);
+  color: var(--color-danger-strong);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+}
+
+.login__submit {
+  padding: var(--space-4) var(--space-6);
+  border: none;
+  border-radius: var(--radius-control-lg);
+  background: var(--gradient-accent);
+  box-shadow: var(--shadow-accent-button);
+  color: var(--color-on-accent);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+}
+
+.login__submit:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+/*
+ * SSO block. Above the password form, because whoever has an
+ * Organisationskonto uses it and the local form is the fallback.
+ *
+ * Anchors styled as buttons — the target is a server route that has to be
+ * navigated to, not fetched (see `LoginView.tsx`). Tokens only, no hard-coded
+ * colours: the login page stands outside any organisation's theme, so it resolves the
+ * shell defaults of `tokens.css`.
+ */
+.login__sso {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+.login__sso-button {
+  padding: var(--space-4) var(--space-6);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  text-align: center;
+  text-decoration: none;
+}
+
+.login__sso-button:hover {
+  border-color: var(--color-focus);
+}
+
+.login__sso-button:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.login__sso-divider {
+  margin: var(--space-2) 0 0;
+  text-align: center;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-subtle);
+}
+
+/*
+ * „Passwort vergessen?" (ADR-0020) — a button that looks like a link.
+ *
+ * A button and not an anchor, because it does not open an address but unfolds
+ * a field; the shape of a link, because it stands in the reading flow below the
+ * form and must not be a second button next to „Anmelden" there.
+ * The underline only on hover and on keyboard focus — without it the sign
+ * that something happens here would be the colour alone.
+ */
+.login__link {
+  align-self: center;
+  margin-top: var(--space-3);
+  border: 0;
+  background: none;
+  padding: var(--space-1) var(--space-2);
+  font: inherit;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-subtle);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.login__link:hover,
+.login__link:focus-visible {
+  color: var(--color-text);
+  text-decoration: underline;
+}

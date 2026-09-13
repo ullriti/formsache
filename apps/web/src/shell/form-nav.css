@@ -1,0 +1,41 @@
+/*
+ * Subheader im Formular-Kontext (handoff, „Informationsarchitektur/Navigation").
+ *
+ * A single row of entries under the colour stripe, scrolling **inside itself**
+ * on narrow viewports rather than widening the page — `.app-shell__main` hides
+ * horizontal overflow, so a row that grew past the viewport would be cut off
+ * instead of reachable.
+ */
+
+.form-nav {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-2) var(--space-6);
+  background: var(--color-panel);
+  border-bottom: 1px solid var(--color-hairline);
+  overflow-x: auto;
+}
+
+.form-nav__item {
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: none;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.form-nav__item:hover {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.form-nav__item--current {
+  border-color: var(--color-hairline);
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+  font-weight: var(--font-weight-bold);
+}

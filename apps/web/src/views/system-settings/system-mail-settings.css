@@ -1,0 +1,24 @@
+/*
+ * Mailserver & Basis-Adresse.
+ *
+ * Only what `settings-view.css`'s shared `.settings-card`/`.setting__field`
+ * classes do not already cover — the same split `tenant-admin-view.css`
+ * makes for its own tab, and for the same reason: base classes live once, a
+ * tab's own few rules live next to the tab.
+ */
+
+.system-mail__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.app-shell--compact .system-mail__grid {
+  grid-template-columns: 1fr;
+}
+
+.system-mail__readonly {
+  margin: 0;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-subtle);
+}

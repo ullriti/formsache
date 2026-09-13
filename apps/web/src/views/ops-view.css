@@ -1,0 +1,240 @@
+/*
+ * Überwachung (ADR-0016) — the second tab of the system administration.
+ *
+ * Cards built on the handoff's design tokens, no hard-coded colour values. The
+ * cards sit in a grid that becomes a single column at 360 px, without a mobile
+ * stylesheet of its own.
+ *
+ * **A pure content column, ever since the operations status is a tab**
+ * (finding 16): maximum width, centring and page padding are carried by the
+ * frame (`system-admin-view.css`), so that the four tabs do not have four
+ * widths.
+ */
+
+.ops-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+/* A tab heading below the frame's title — one step smaller than the
+   `--font-size-title` it carried back when it was the page title. */
+.ops-view__head h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-heading);
+  color: var(--color-text-strong);
+}
+
+.ops-view__lede {
+  margin: var(--space-2) 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-body-sm);
+}
+
+.ops-view__pending,
+.ops-view__error {
+  margin: 0;
+  padding: 48px var(--space-7);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card);
+  background: var(--color-panel);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.ops-view__error {
+  border-color: var(--color-danger-border);
+  background: var(--color-danger-bg);
+  color: var(--color-danger-strong);
+}
+
+.ops-view__panels {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* Three cards side by side, stacked below one another at narrow widths. */
+.ops-view__panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-5);
+}
+
+.ops-view__jobs,
+.ops-view__models,
+.ops-view__foot {
+  grid-column: 1 / -1;
+}
+
+.ops-view__panel,
+.ops-view__models,
+.ops-view__jobs {
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card);
+  background: var(--color-panel);
+  padding: var(--space-6);
+}
+
+/*
+ * The alert colour is the **second** announcement, never the only one: the head
+ * of every card additionally carries the word (`ops-view__badge`). A signal
+ * light that is only colour tells a screen reader nothing — that is the lesson.
+ */
+.ops-view__panel--alert {
+  border-color: var(--color-danger-border);
+  background: var(--color-danger-bg);
+}
+
+.ops-view__panel h3,
+.ops-view__models h3,
+.ops-view__jobs h3 {
+  margin: 0 0 var(--space-4);
+  font-size: var(--font-size-subheading);
+  color: var(--color-text-strong);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.ops-view__badge {
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-danger-strong);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-card);
+  padding: 2px var(--space-3);
+  white-space: nowrap;
+}
+
+.ops-view__figures {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.ops-view__figure {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-4);
+}
+
+.ops-view__figure dt {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-body-sm);
+}
+
+.ops-view__figure dd {
+  margin: 0;
+  color: var(--color-text-strong);
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.ops-view__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-body-sm);
+}
+
+.ops-view__table th,
+.ops-view__table td {
+  text-align: left;
+  padding: var(--space-3) var(--space-2);
+  border-bottom: 1px solid var(--color-hairline-faint);
+  vertical-align: top;
+}
+
+.ops-view__table thead th {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+}
+
+.ops-view__row--alert td,
+.ops-view__row--alert th {
+  background: var(--color-danger-bg);
+  color: var(--color-danger-strong);
+}
+
+/*
+ * ⚠️ `--color-text-subtle`, **not** `--color-text-faint` — and the token
+ * comment had predicted exactly that: *„`--color-text-faint` is the one step
+ * that does not clear AA on the canvas tone (4.34:1) … the axe gate is what
+ * says so if it ever moves onto the canvas."*
+ *
+ * It has moved: this footer sits between the cards, not inside one. The gate
+ * only found it once this view had been entered into the check list — it was
+ * not in there before.
+ */
+.ops-view__foot {
+  margin: 0;
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-caption);
+}
+
+/*
+ * The version is the one piece of this line that has to be **read off** — on
+ * the way back it decides whether a tag can be rolled back.
+ * `--color-text-faint` breaks the AA ratio for it (axe: `color-contrast`), and
+ * that is not a design detail: it stood grey on grey in a view nobody had
+ * checked.
+ */
+.ops-view__foot strong {
+  color: var(--color-text);
+}
+
+/* At narrow widths the table scrolls inside itself instead of widening the page. */
+.ops-view__jobs,
+.ops-view__models {
+  overflow-x: auto;
+}
+
+/*
+ * The identifiers are long and are **read like code** — they appear that way in
+ * the system settings and on the provider's invoice. A proportional font turns
+ * `mistral-medium-2604` and `mistral-medium-2504` into two things that look the
+ * same at a glance.
+ */
+.ops-view__models code {
+  font-family: var(--font-mono);
+  /*
+   * **No font size of its own.** The nearest reach would be
+   * `--font-size-caption` (11.5 px) — and that is exactly the mistake that was
+   * fixed in seven places: small *and* mono is twice as hard to read, and the
+   * identifier here is the information, not the footnote.
+   */
+  color: var(--color-text);
+}
+
+/*
+ * The sentence instead of an empty table — the same colour as the lede, because
+ * it has the same role: it explains, it does not report.
+ */
+.ops-view__empty {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+/*
+ * Numbers right-aligned — otherwise the eye compares digits across edges.
+ *
+ * **The header cell belongs to it.** It is a `th` and therefore fell out of a
+ * rule that named only `td`: „Aufrufe", „Input-Tokens" and „Output-Tokens"
+ * stood left-aligned above right-aligned numbers, every heading thus above the
+ * wrong edge of its own column. An alignment is a statement about the *column*,
+ * not about the cell type.
+ *
+ * `thead th` and not `th`: the first cell of every data row is a `th` as well
+ * (`scope="row"`, the identifier) — that one stays left, where it belongs.
+ */
+.ops-view__models thead th:nth-child(n + 3),
+.ops-view__models td:nth-child(n + 3) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

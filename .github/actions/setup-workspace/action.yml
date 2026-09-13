@@ -1,0 +1,49 @@
+name: Setup workspace
+description: >-
+  Node, the pinned pnpm and an installed workspace — the four steps every CI
+  job would otherwise repeat.
+
+runs:
+  using: composite
+  steps:
+    # Set up Node **before** corepack: `setup-node` puts its own Node on the
+    # PATH, and a corepack shim created for the runner's default Node would be
+    # shadowed by it.
+    - uses: actions/setup-node@v5
+      with:
+        # Same major as the Docker images and as `engines` in package.json.
+        node-version: '22.22.2'
+        # Off, and it has to be: the action reads `packageManager` from
+        # package.json and then calls `pnpm store path` to find the cache — but
+        # pnpm only exists after the corepack step below, so the auto-detection
+        # fails the job with "Unable to locate executable file: pnpm". The
+        # store is cached explicitly a few lines further down.
+        package-manager-cache: false
+
+    # Corepack provides the pnpm version pinned in package.json (ADR-0006) —
+    # one pnpm for humans, agents, CI and the images. `pnpm --version`
+    # materialises the download now, so a later step cannot fail halfway
+    # through with a network error.
+    - shell: bash
+      run: |
+        corepack enable
+        pnpm --version
+
+    # The content-addressed store, keyed by the lockfile. `restore-keys` lets a
+    # changed lockfile start from the previous store instead of from nothing —
+    # most of the packages are the same ones.
+    - id: store
+      shell: bash
+      run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+    - uses: actions/cache@v4
+      with:
+        path: ${{ steps.store.outputs.path }}
+        key: pnpm-store-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+        restore-keys: pnpm-store-${{ runner.os }}-
+
+    # `--frozen-lockfile` is the rule: CI installs the graph
+    # that is committed, or it fails. Without it a lockfile that drifted from
+    # the manifests would be silently repaired here and the pipeline would be
+    # green about a dependency set nobody reviewed.
+    - shell: bash
+      run: pnpm install --frozen-lockfile

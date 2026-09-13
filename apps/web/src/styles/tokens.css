@@ -1,0 +1,468 @@
+/*
+ * Design tokens of Formsache — the requirement.
+ *
+ * Every value here is taken from the high-fidelity prototype
+ * `docs/specs/0001-formularsystem/design-handoff/Formular-Builder.dc.html`
+ * and its README (section "Design Tokens"). Components must never spell a
+ * colour, radius or font size out again; the ESLint rule
+ * `formsache/no-hardcoded-colors` and the guard test `tokens.test.ts` enforce that.
+ *
+ * ## Three layers, in this order
+ *
+ * 1. **Tenant axes** (`--tenant-*`) — the only variables written at runtime.
+ *    They carry exactly the branding a tenant owns per the data model
+ *    : accent colour, header colour, canvas tone, colour stripe
+ *    and the logo aspect. Defaults below are the Dachorganisation tenant.
+ * 2. **Semantic tokens** (`--color-*`, `--gradient-*`, …) — what components
+ *    actually reference. They read the tenant axes where the prototype makes
+ *    them tenant-dependent, and are fixed everywhere else.
+ * 3. **Scales** — radius, spacing, typography, shadow, layout, motion.
+ *
+ * ## How a tenant override works
+ *
+ * The app root element gets the tenant axes as inline custom properties
+ * (`tenantThemeStyle()` in `tenant-theme.ts`). Inline declarations beat this
+ * `:root` block for the whole subtree, so switching tenants is one re-render
+ * of one style object — no stylesheet is generated, parsed or injected, and
+ * no `dangerouslySetInnerHTML` is involved. The rest of the cascade is
+ * untouched, which also means a nested region (e.g. a preview of another
+ * tenant's form) can carry its own scope without leaking outwards.
+ *
+ * ## Naming deliberately differs from the prototype
+ *
+ * The prototype names the accent `--gold`, which is wrong for any tenant whose
+ * accent is not gold (Musterstadt ships `#e30000`). Mapping:
+ * `--gold` → `--color-accent`, `--gold-d` → `--color-accent-strong`,
+ * `--ink` → `--color-header-bg`, `--bg` → `--color-canvas`,
+ * `--shell`/`--panel`/`--hairline` keep their meaning, `--stripe` →
+ * `--gradient-stripe`. The prototype's `--red` is *not* the danger red: its
+ * `renderVals()` assigns the accent to it (line 2027) while the handoff README
+ * documents `#8f1d1d`. We follow the README and keep `--color-danger`
+ * separate — see the worklog note on handoff gaps.
+ */
+
+:root {
+  /* ---------------------------------------------------------------- *
+   * 1. Tenant axes — overwritten at runtime, defaults = Dachorganisation tenant
+   * ---------------------------------------------------------------- */
+
+  --tenant-accent: #cea967;
+  --tenant-header-bg: #212226;
+  --tenant-canvas-bg: #e9e6df;
+  /* The prototype's three-colour stripe of the organisation colours (`stripeFor()`). A tenant
+     with a different colour count overrides `--gradient-stripe` wholesale. */
+  --tenant-stripe-1: #212226;
+  --tenant-stripe-2: #7c0800;
+  --tenant-stripe-3: #cea967;
+  /* Wide word marks (Dachorganisation `wide: true`) render shorter than a logo. */
+  --tenant-logo-height: 34px;
+
+  /* ---------------------------------------------------------------- *
+   * 2. Semantic colours
+   * ---------------------------------------------------------------- */
+
+  /* Brand / accent. The tenant-derived half of this group lives in the
+     `[data-tenant-theme]` rule further down — see the note there. */
+  --color-on-accent: #241d05;
+  /* The light half of the pair above, for the same job on a **dark** brand
+     surface. `--color-on-accent` is the ink written for the Dachorganisation's gold; laid
+     over an organisation's own colour it is whatever that organisation chose — 1.51:1 on the
+     seeded admin red `#7c0800`. Which of the two a surface takes cannot be
+     decided in this file, because the surface is data: `readable-ink.ts` picks
+     it from the colour's luminance, and the two tokens are what it picks
+     between. White rather than `--color-on-ink` (`#f3efe6`): the warm ink
+     falls to 4.41:1 on the seeded editor gold, white reaches 5.06:1. */
+  --color-on-accent-light: #ffffff;
+
+  /* Header / ink surfaces. `--color-header-bg` is the tenant's header colour
+     and is declared with the other tenant-derived tokens further down; the
+     darker inks are the fixed chrome (app header, type pills, sheets). */
+  --color-ink: #17161a;
+  --color-ink-raised: #201f24;
+  --color-ink-muted: #2b2a2f;
+  --color-on-ink: #f3efe6;
+  --color-on-ink-muted: #efe9dc;
+  --color-on-ink-subtle: #c9c2b2;
+  --color-on-ink-faint: #cfc7b5;
+  /* Translucent fills used on dark chrome (buttons, dividers in the header). */
+  --color-on-ink-surface: rgb(255 255 255 / 0.06);
+  --color-on-ink-surface-hover: rgb(255 255 255 / 0.1);
+  --color-on-ink-border: rgb(255 255 255 / 0.14);
+
+  /* Surfaces, light side. `--color-canvas` is tenant-toned and therefore lives
+     in the `[data-tenant-theme]` rule further down. */
+  --color-shell: #e9e6df;
+  --color-panel: #f2efe8;
+  --color-panel-raised: #faf8f3;
+  --color-surface: #ffffff;
+  --color-surface-sunken: #f4f1ea;
+
+  /* Hairlines. The README lists three; the prototype additionally uses
+     `#d1cbbb` for input borders and `#e2ddd0` for table rules. Both are
+     tokenised here rather than re-spelled in components. */
+  --color-hairline: #d8d3c7;
+  --color-hairline-soft: #ddd8cc;
+  --color-hairline-faint: #f0ebdf;
+  --color-field-border: #d1cbbb;
+  --color-table-border: #e2ddd0;
+
+  /* Text.
+
+     **The two lightest steps are darker than the prototype's, and that is the
+     single cause behind most of the requirement.** The handoff spells them
+     `#8b8474` and `#a29b8a`; measured against the surfaces this application
+     actually puts them on, they reach 3.72:1 and 2.77:1 at best — on white, the
+     friendliest background there is. WCAG 1.4.3 asks for 4.5:1 below 24 px, and
+     every use of these two is small text: 11–13.5 px captions, hints, meta
+     lines, KPI labels, save states. The axe gate found them in 30 of its 34
+     blocking findings across sixteen views, in one and the same shape.
+
+     One cause, not thirty: nothing was wrong at the thirty sites, the value was
+     wrong. The correction stays in the same warm grey family (the channels are
+     scaled towards black, the hue is untouched), so the visual hierarchy
+     survives — `--color-text-subtle` still reads clearly lighter than
+     `--color-text-muted` (6.35:1 vs 8.06:1 on white).
+
+     The deviation from the prototype is deliberate and of the same kind as the
+     focus ring further down: the handoff is binding for *looks*, and where a
+     look cannot be read it loses. Measured (`docs/worklog/2026-08-10-f1-a11y-befunde.md`):
+
+       --color-text-subtle  4.80:1 on `--color-shell`, ≥4.62:1 on every other
+                            light surface of this application, 6.35:1 on white.
+       --color-text-faint   4.71:1 on `--color-panel`, 5.40:1 on white.
+
+     `--color-text-faint` is the one step that does **not** clear AA on the
+     shell/canvas tone (4.34:1) — it is the lightest of the scale and every
+     place that uses it is inside a card (`--color-surface`,
+     `--color-panel-raised`, `--color-panel`). That is a constraint, not an
+     oversight: text in this tone belongs on the light card surfaces, and the
+     axe gate is what says so if it ever moves onto the canvas. */
+  --color-text: #1c1b18;
+  --color-text-strong: #33301f;
+  --color-text-muted: #55503f;
+  --color-text-subtle: #645f54;
+  --color-text-faint: #6e6a5e;
+
+  /* Semantics. Two greens exist in the handoff on purpose: the status badge
+     green and the mail-log "sent" green. */
+  --color-success: #1d6b3a;
+  --color-success-alt: #1c6b2e;
+  --color-success-bg: #e4f1e4;
+  --color-danger: #8f1d1d;
+  --color-danger-strong: #9d1c1f;
+  /* Foreground **on** the danger red — its own token, and not a luxury: the
+     filled danger buttons used to borrow `--color-on-accent`, which is the
+     dark ink written for the *gold* brand surface. On `--color-danger-strong`
+     that pairing measures 2.09:1, well under AA, and this milestone made it
+     the standard confirming button on three more views. White measures 8.02:1
+     on the same red. */
+  --color-on-danger: #ffffff;
+  --color-danger-bg: #f6e4e4;
+  --color-danger-bg-soft: #fbf1f1;
+  --color-danger-border: #e7c9c9;
+  /* Darker than the handoff's `#8a6a12` for the same reason the two lightest
+     text greys are (see above): the one place this tone is *text* rather than a
+     dot or a rule is `.settings-card__inherited` („Tenant-Standard"), and there
+     it sits on `--color-warning-bg-soft`, where the handoff value reaches
+     4.27:1 at 11.5 px. `#806311` reaches 4.80:1 there and clears 4.5:1 on every
+     other light surface of this application. */
+  --color-warning: #806311;
+  /* The same correction as `--color-warning` above, one badge later: this tone
+     is the „Entwurf" pill of a form card (`.form-card__badge--draft`) on
+     `--color-warning-bg-soft`, where the handoff's `#8a7a3a` reaches 3.60:1 at
+     11.5 px. `#756831` reaches 4.70:1 there and clears 4.5:1 on every other
+     light surface. */
+  --color-warning-alt: #756831;
+  --color-warning-bg: #fdf0d8;
+  --color-warning-bg-soft: #f2ecd6;
+  --color-info: #25506e;
+  --color-info-bg: #e2edf5;
+
+  /* The Infotext callout (`participantView()`'s `q.type === 'info'` branch,
+     the requirement) — a warm sand, not any of the semantic tones above:
+     nothing is wrong or noteworthy, it is simply the form's own explanatory
+     text. The left edge stays the tenant accent (`--color-accent`) rather
+     than one of these, so the box is branded like every other gold-trimmed
+     surface (Design-Tokens Pflicht). */
+  --color-callout-bg: #f6f2e8;
+  --color-callout-border: #ece4d2;
+
+  /* Role colours of the group editor. */
+  --color-role-admin: #7c0800;
+  --color-role-editor: #8a6a12;
+  --color-role-viewer: #5b6b52;
+
+  /* The product mark (ADR-0019, draft B).
+   *
+   * **The three values are deliberately not a tenant axis and read none.**
+   * Every other colour value of this file belongs to the organisation that is
+   * currently being displayed — this one belongs to the software. A mark that
+   * travels along with the tenant's organisation colour is no longer a brand, but a
+   * second logo; and it stands anyway in places where there is no
+   * tenant: in the browser tab and on the login screen, which everyone
+   * sees before any tenant theme is set.
+   *
+   * The values are the same ones `apps/web/public/favicon.svg` spells out.
+   * That they stand there twice is no oversight: the favicon is delivered
+   * without this cascade and cannot resolve `var()`.
+   * `ProductLockup.test.tsx` holds the two versions against each other.
+   *
+   * Why tokens at all and not `fill="#212226"` in the component: the
+   * ESLint rule `formsache/no-hardcoded-colors` forbids every colour literal in
+   * `apps/web/src/**` — even where the colour is *meant* to be fixed. The rule is
+   * right, it just cannot see the difference; so the value stands here,
+   * where literals belong, and the reasoning stands next to it. */
+  --brand-mark-ground: #212226;
+  --brand-mark-ink: #f3efe6;
+  --brand-mark-accent: #cea967;
+
+  /* Chrome details. */
+  --color-scrollbar-thumb: #c9c4b8;
+  --color-scrim: rgb(15 14 17 / 0.5);
+  --color-control-off: #d3cdbe;
+
+  /* Focus. The prototype sets `outline: none` on inputs and only tints the
+     border — that fails keyboard use, so we keep a visible ring instead
+     (accessibility baseline). Deliberate deviation.
+
+     **The ring has its own colour and is deliberately not the tenant accent**
+     (client decision, Konzept no. 19). It used to read
+     `var(--color-accent-strong)`, which made the indicator as visible as the
+     organisation's Organisationsfarbe happened to be: the Dachorganisation gold reaches roughly 2.4:1 against
+     white, and WCAG 1.4.11/2.4.11 ask for 3:1. An organisation whose Organisationsfarbe is a pale
+     silver would have been worse still — the contrast of a focus ring must not
+     depend on branding data an admin types in.
+
+     The value is the handoff's blue (`#25506e`, the OIDC/info tone, README
+     „Semantik"), spelled out rather than read from `--color-info` so a later
+     change to what „info" means cannot move the focus indicator. Its contrast
+     against every light surface token is asserted in `tokens.test.ts`.
+
+     On dark chrome (header popover, sheets) that blue is the one that fails —
+     2.2:1 against `--color-ink` — so those surfaces get the ink foreground as
+     their ring. Same reasoning, opposite direction. */
+  --color-focus: #25506e;
+  --color-focus-on-ink: #f3efe6;
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+
+  /* ---------------------------------------------------------------- *
+   * 3. Scales
+   * ---------------------------------------------------------------- */
+
+  /* Radius — buttons/inputs 7–9 px, cards 12–14 px, pills 999 px. */
+  --radius-control-sm: 7px;
+  --radius-control: 8px;
+  --radius-control-lg: 9px;
+  --radius-surface: 10px;
+  --radius-card: 12px;
+  --radius-card-lg: 14px;
+  --radius-pill: 999px;
+  --radius-circle: 50%;
+
+  /* Spacing steps of the handoff (4/6/8/12/14/18/20/26–28 px). */
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 14px;
+  --space-6: 18px;
+  --space-7: 20px;
+  --space-8: 26px;
+  --space-9: 28px;
+
+  /* Typography. PT Serif carries every title and is shipped
+     with the bundle in Regular and Bold — `fonts.css` declares the faces and
+     explains why no CDN is involved. The trailing serifs stay in the stack as
+     the fallback for the ~100 ms before the web font is ready.
+
+     Body is deliberately the *system* sans, as the handoff README prescribes
+     ("System-Sans (Body)"). The prototype's inline styles name 'PT Sans'
+     first, but we do not ship that face, and naming it here would make body
+     text depend on whether the viewer's machine happens to have PT Sans
+     installed — a Linux workstation would render the app differently from
+     every participant's phone. */
+  --font-display: 'PT Serif', 'Times New Roman', Georgia, serif;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --font-size-title: 26px;
+  /* Serif titles *inside* a surface: card headings, the detail slide-in. Not
+     the heading of a view — the form name in the builder used to take this and
+     read as a stray field for it; those use `--font-size-title`.
+     The prototype spells these 16–18 px
+     (`renderResponses()` uses 18, the dashboard card 16); one step is enough.
+     Added because four stylesheets already referenced this name while nothing
+     defined it — an undefined custom property makes the declaration invalid at
+     computed-value time, so those titles were silently rendering at body
+     size. */
+  --font-size-title-sm: 18px;
+  --font-size-heading: 20px;
+  --font-size-subheading: 16px;
+  --font-size-body: 13.5px;
+  --font-size-body-sm: 12.5px;
+  --font-size-caption: 11.5px;
+  --font-size-label: 11px;
+
+  --font-weight-regular: 400;
+  --font-weight-bold: 700;
+
+  --letter-spacing-label: 0.5px;
+  --letter-spacing-wide: 1px;
+  --line-height-tight: 1.15;
+  --line-height-body: 1.5;
+
+  /* Shadows. Cards stay border-based; popovers and sheets carry the depth. */
+  --shadow-raised: 0 1px 3px rgb(0 0 0 / 0.05);
+  --shadow-card-hover: 0 2px 8px rgb(0 0 0 / 0.06);
+  --shadow-drag: 0 6px 30px rgb(0 0 0 / 0.12);
+  --shadow-popover: 0 14px 40px rgb(0 0 0 / 0.22);
+  --shadow-sheet: 0 18px 44px rgb(0 0 0 / 0.45);
+  --shadow-sheet-side: 20px 0 60px rgb(0 0 0 / 0.4);
+  /* `--shadow-accent-button` is derived from the accent and therefore lives in
+     the `[data-tenant-theme]` rule further down. */
+
+  /* The smallest a control of this application may render — WCAG 2.5.8
+     „Target Size (Minimum)", and therefore the AA level decided in Konzept no. 78.
+     A token rather than a number per stylesheet because it is a *promise*, not
+     a measurement: `e2e/mobile-targets.spec.ts` measures the rendered boxes
+     against the same 24, and four controls under it were the finding that
+     produced Konzept no. 91.
+
+     ⚠️ **Not 44 px.** That is WCAG 2.5.5, AAA, and above the decided target —
+     the build height of this application is 32–40 px throughout, and raising
+     it would be a design decision, not an accessibility fix. The
+     distance to 44 stays a number in the e2e run. */
+  --touch-target-min: 24px;
+
+  /* Layout. The breakpoint is mirrored in `breakpoints.ts` because media
+     queries cannot read custom properties; a test keeps the two in sync. */
+  --layout-breakpoint-desktop: 1180px;
+  --layout-header-height: 62px;
+  --layout-container-max: 1000px;
+  /* Wide variant for table-heavy views (Antworten, mail log) — the
+     client asked for more room for the table itself,
+     but said explicitly that the same width does *not* suit the
+     Benachrichtigungen view (a single column of section cards, not a table),
+     so that view keeps reading `--layout-container-max` unchanged. */
+  --layout-container-max-wide: 1200px;
+  --layout-form-max: 700px;
+  /* Settings pages: a single column of section cards, which
+     the prototype caps noticeably narrower than the dashboard grid — a row of
+     „title, description, switch" stops being readable long before 1000 px. */
+  --layout-settings-max: 780px;
+  /* Single-column entry surfaces (login today, password reset and the like
+     later). Added because the login card had the value spelled out while the
+     dashboard reads `--layout-container-max` — one hard-coded width next to a
+     token is how a second one gets written. The number is the handoff's narrow
+     panel width; it is a max, so it never widens a 360 px viewport. */
+  --layout-login-max: 420px;
+  --layout-logo-height-wide: 26px;
+  /* Edge length of the product mark (ADR-0019). Smaller than the title below it
+     and larger than the text beside it: the mark is to lead the heading of the
+     login screen, not to compete with it. */
+  --layout-product-mark: 28px;
+  /* Participant fill-in view (`public-form-view.css`): the logo sits in a
+     tall, centred card header rather than the compact header bar, so it gets
+     its own — larger — bounding box instead of inheriting `--tenant-logo-
+     height`. A width *and* a height, not just a height: `object-fit: contain`
+     inside this box fits a portrait logo and a wide word mark equally well,
+     one constrained by height, the other by width. */
+  --layout-logo-height-fill: 96px;
+  --layout-logo-width-fill: 220px;
+
+  /* Motion — the prototype's `bfPop` (0.14–0.18 s ease) and nothing louder. */
+  --motion-pop: 0.16s ease;
+  --motion-fast: 0.15s ease;
+}
+
+/* ------------------------------------------------------------------ *
+ * 8. Tenant-derived tokens — declared where a tenant theme can be seen
+ * ------------------------------------------------------------------ */
+
+/*
+ * **The selector list is the whole point of this block, and it is a bug fix.**
+ *
+ * A custom property's computed value is its specified value **with `var()`
+ * already substituted** (per the CSS Custom Properties specification). `--color-accent: var(--tenant-accent)`
+ * declared on `:root` alone therefore computes to the `:root` accent *there*,
+ * and what inherits down the tree is that finished colour — not the reference.
+ * Overriding `--tenant-accent` further down (`tenant-theme.ts` writes the axes
+ * as inline custom properties on a scope element, deliberately, so a preview
+ * cannot leak its colours into the surrounding chrome) then changed **nothing
+ * visible**: the axis was overridden, and every semantic token that reads it
+ * had already been resolved one level above.
+ *
+ * It stayed invisible because the `:root` defaults *are* the Dachorganisation's colours — so
+ * the one organisation every developer signs in as looked correct, and only a second
+ * Organisation could show it. An E2E case of the requirement did: a Musterstadt session
+ * rendered the Dachorganisation's header colour and the Dachorganisation's accent, and the stripe of the organisation colours
+ * was the only thing that followed — because `tenantThemeStyle` overrides the
+ * composed `--gradient-stripe` wholesale rather than the three axes under it.
+ *
+ * `apps/web/src/styles/tokens.test.ts` asserts `--color-accent: var(--tenant-accent);`
+ * and was green throughout: it reads the *text* of this file, and the text was
+ * never the problem. The cascade was.
+ *
+ * So every token that reads a tenant axis is declared **here**, for `:root` and
+ * for every element that carries a tenant theme (`data-tenant-theme`), which
+ * makes the substitution happen where the axes actually are.
+ */
+:root,
+[data-tenant-theme] {
+  /* Brand / accent. `--color-accent-strong` is derived the same way the
+     prototype derives it — `mix(accent, #000000, 0.22)` — so a tenant only
+     ever sets one accent value and the gradient follows. */
+  --color-accent: var(--tenant-accent);
+  --color-accent-strong: color-mix(in srgb, var(--color-accent) 78%, #000000);
+  --color-accent-tint: color-mix(in srgb, var(--color-accent) 18%, transparent);
+
+  /*
+   * The brand colour when it has to be **read**, not merely seen.
+   *
+   * `--color-accent` and `--color-accent-strong` are surface colours: a filled
+   * button, a progress bar, a tinted card. Seven views additionally paint an
+   * underlined text button in `--color-accent-strong` (the „erneut versuchen"
+   * and text buttons), and the 404 view its numeral in
+   * `--color-accent`. That makes the legibility of *text* a function of what a
+   * Organisation typed into its branding — the Dachorganisation gold reaches 3.54:1 at 13.5 px,
+   * under the 4.5:1 of WCAG 1.4.3, and an organisation with a pale Organisationsfarbe would be far
+   * worse. It is the same argument `--color-focus` makes further up, one step
+   * stricter: a focus ring needs 3:1, body text needs 4.5:1.
+   *
+   * **The organisation's colour is not corrected — it is darkened for this one job.**
+   * The hue stays the organisation's (Musterstadt red stays red, the Dachorganisation gold stays
+   * gold-brown); only the lightness moves, and it moves far enough that the
+   * result holds regardless of the input. 40 % is the guarantee: mixed against
+   * the worst case an admin can type — pure white — it still yields `#666666`,
+   * which is 5.74:1 on `--color-surface`, 5.00:1 on `--color-panel` and 4.61:1
+   * on `--color-shell`. Every lighter mix leaves a colour an organisation could pick
+   * that fails, which is exactly the dependency being removed.
+   *
+   * What this token does **not** do is warn the admin that their Organisationsfarbe is
+   * hard to read (the requirement's other half). That is a product decision and is
+   * written up rather than built — see
+   * `docs/worklog/2026-08-10-f1-a11y-befunde.md`.
+   */
+  --color-accent-ink: color-mix(in srgb, var(--color-accent) 40%, #000000);
+  --gradient-accent: linear-gradient(
+    180deg,
+    var(--color-accent),
+    var(--color-accent-strong)
+  );
+  --gradient-stripe: linear-gradient(
+    90deg,
+    var(--tenant-stripe-1) 0% 33.33%,
+    var(--tenant-stripe-2) 33.33% 66.67%,
+    var(--tenant-stripe-3) 66.67% 100%
+  );
+
+  /* The tenant's header colour; the darker inks next to it are fixed chrome. */
+  --color-header-bg: var(--tenant-header-bg);
+
+  /* Tenant-toned background of the form canvas — admin chrome stays neutral. */
+  --color-canvas: var(--tenant-canvas-bg);
+
+  --shadow-accent-button: 0 2px 8px
+    color-mix(in srgb, var(--color-accent-strong) 40%, transparent);
+}

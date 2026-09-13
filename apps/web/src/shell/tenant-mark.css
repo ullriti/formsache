@@ -1,0 +1,35 @@
+/*
+ * White plate behind a tenant logo — the handoff puts every logo on one so
+ * that dark headers and light sheets show the same mark.
+ */
+
+.tenant-mark {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  max-width: 40vw;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-control-lg);
+  background: var(--color-panel-raised);
+  box-shadow: var(--shadow-raised);
+}
+
+.tenant-mark__image {
+  display: block;
+  /* Tenant axis: wide word marks render shorter than a square logo. */
+  height: var(--tenant-logo-height);
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+/* Compact variant for the rows of the tenant list. */
+.tenant-mark--row {
+  padding: var(--space-1) var(--space-2);
+}
+
+.tenant-mark--row .tenant-mark__image {
+  height: calc(var(--tenant-logo-height) * 0.7);
+}

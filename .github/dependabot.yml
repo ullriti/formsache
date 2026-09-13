@@ -1,0 +1,73 @@
+# Dependency maintenance (ADR-0018).
+#
+# `scripts/audit-report.sh` **reports** what is vulnerable; here is where the
+# way to fix it comes about. Without that way a report kept standing until
+# somebody picked it up by hand — eight reports sat like that until 2026-08-12.
+#
+# **`.github/workflows/dependabot-licences.yml` covers the friction this file
+# creates on its own** (ADR-0031). Every PR here that touches a production
+# dependency's version changes what `tools/licences.ts` would generate, but
+# Dependabot has no way to run that tool and commit its output — so almost
+# every `npm` PR from this file used to land red on `quality`'s licence check.
+# That workflow regenerates the file on the PR branch instead of leaving it to
+# whoever merges the bundle to notice and fix by hand.
+#
+# **Why weekly and grouped:** a repository that gets eight individual PRs a day
+# gets used to closing them unread. One bundle per week and ecosystem is a
+# single item that one actually reads.
+#
+# **Why the prefixes matter:** the PR title becomes the commit message on a
+# squash merge, and GitVersion derives the app version from it (ADR-0009).
+# `fix(deps)` for runtime dependencies raises the patch position
+# — swapping out a shipped library *is* a change to the product.
+# `chore(deps)` for development tooling raises nothing, because none of that
+# reaches the user.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: fix(deps)
+      prefix-development: chore(deps)
+    groups:
+      # One bundle per kind instead of per package: the development tools
+      # move together anyway (eslint + typescript-eslint, vitest + vite).
+      production:
+        dependency-type: production
+        update-types: [minor, patch]
+      development:
+        dependency-type: development
+        update-types: [minor, patch]
+    # Major jumps come one at a time — they need a human who reads the
+    # migration note, and must not block a bundle.
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: ci(deps)
+    groups:
+      actions:
+        patterns: ['*']
+
+  # The two runtime images. The CI's TLS proxy under `.github/ci/` has no
+  # Dockerfile — it is a Caddyfile for a third-party image named by a compose
+  # file; Dependabot does not read compose files. This one version stays manual
+  # work, named instead of forgotten.
+  - package-ecosystem: docker
+    directories:
+      - /apps/api
+      - /apps/web
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: build(deps)

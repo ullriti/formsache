@@ -1,0 +1,176 @@
+/*
+ * System administration (finding 16) — the frame around the four tabs.
+ *
+ * **The column width now belongs to the frame and no longer to the tabs.**
+ * Before, there were three pages with three columns of their own: the
+ * Superadmin-Übersicht on `--layout-container-max`, the operations status on
+ * 980 px, the system settings on `--layout-settings-max`. As three separate
+ * addresses nobody noticed this; as four tabs of one bar the page would change
+ * its width on every tab change — and a bar that jumps while doing so reads
+ * like a loading fault. `.superadmin` and `.ops-view` have therefore become
+ * pure content columns and carry neither page padding nor a maximum width.
+ */
+
+.system-admin {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: var(--layout-container-max);
+  margin: 0 auto;
+  padding: var(--space-9) var(--space-9) 70px;
+  min-width: 0;
+}
+
+.app-shell--compact .system-admin {
+  padding: var(--space-7) var(--space-6) 80px;
+}
+
+/*
+ * The two form tabs, at the width of the form settings.
+ *
+ * Without `margin: 0 auto`: the column stands on the left below the title and
+ * the tab bar instead of floating beneath them. A centred narrow column below
+ * a wide header looks as if the two did not belong together.
+ */
+.system-admin__forms {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: var(--layout-settings-max);
+  min-width: 0;
+}
+
+/* --- „Superadmins" tab (ADR-0029) ---------------------------------------- */
+
+/*
+ * The list of people of the system administration.
+ *
+ * **The same row shape as the member list of an organisation**
+ * (`tenant-admin-view.css`), but with class names of its own and not by
+ * co-using those: `.tenant-admin__*` belongs to a view that this file does
+ * not load, and a view whose appearance hangs on a foreign stylesheet loses it
+ * on the day something is renamed there. What is shared are the design tokens
+ * — and that is the level on which this project shares.
+ *
+ * The rows sit in `.settings-card__body` and therefore do not carry its
+ * padding twice; the `list-style: none` stands here because it is a `<ul>` and
+ * is meant to stay one (the rows are an enumeration, not a table with columns).
+ */
+.system-superadmins__list {
+  gap: 0;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.system-superadmins__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-5) var(--space-7);
+  border-top: 1px solid var(--color-hairline-faint);
+}
+
+.system-superadmins__row:first-child {
+  border-top: none;
+}
+
+/*
+ * The initials in the colour of the role `admin` — and that is no borrowing
+ * here but the statement: `--color-role-admin` is the colour of the widest
+ * grant of rights in this application, and none goes wider than this one.
+ *
+ * ⚠️ **The ink is the light half of the pair, not `--color-on-accent`.** That
+ * token is the dark ink written for the Dachorganisation's gold; on this red
+ * it measures **1.51:1** — a number `tokens.css` names at the token itself,
+ * and axe found it here as a `serious` `color-contrast` violation on
+ * 2026-08-19. `--color-on-accent-light` (white) reaches 11.1:1 on the same
+ * red. No `readable-ink.ts` is needed for the choice: unlike the header
+ * colour, `--color-role-admin` is fixed and carries no tenant axis.
+ */
+.system-superadmins__avatar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-circle);
+  background: var(--color-role-admin);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-on-accent-light);
+}
+
+.system-superadmins__text {
+  flex: 1;
+  min-width: 160px;
+}
+
+.system-superadmins__name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+}
+
+.system-superadmins__meta {
+  margin-top: var(--space-1);
+  overflow: hidden;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-subtle);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.system-superadmins__badge {
+  flex: none;
+  padding: 1px var(--space-3);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-muted);
+  background: var(--color-surface-sunken);
+}
+
+/*
+ * „Ernennung zurücknehmen" spells its name out and is not an „×".
+ *
+ * The cross of the member list stands next to a role selection that already
+ * explains the context. Here there is exactly one action per row, and it takes
+ * away someone's access to every organisation of the installation — a sign
+ * that has to be interpreted is the wrong label for that.
+ */
+.system-superadmins__revoke {
+  flex: none;
+  padding: var(--space-2) var(--space-4);
+  min-height: var(--touch-target-min);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font: inherit;
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-danger-strong);
+  cursor: pointer;
+}
+
+.system-superadmins__revoke:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* The prompt and the refusal stand below the row, across the full width. */
+.system-superadmins__confirm,
+.system-superadmins__alert {
+  flex-basis: 100%;
+}
+
+.system-superadmins__flash {
+  margin: 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-accent);
+}

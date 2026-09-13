@@ -1,0 +1,464 @@
+/*
+ * Dashboard layout of the handoff: centred container (~1000 px), KPI row as a
+ * wrapping flex line with 12 px gaps, card grid `auto-fill / minmax(300px)`
+ * with 14 px gaps.
+ */
+
+.dashboard {
+  max-width: var(--layout-container-max);
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-9) 60px;
+}
+
+.dashboard__head {
+  margin-bottom: var(--space-6);
+}
+
+.dashboard__title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-title);
+}
+
+.dashboard__subtitle {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-body);
+  color: var(--color-text-subtle);
+}
+
+.dashboard__notice {
+  margin: 0 0 var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--color-hairline);
+  border-left: 3px solid var(--color-warning);
+  border-radius: var(--radius-control);
+  background: var(--color-warning-bg-soft);
+  font-size: var(--font-size-body-sm);
+  line-height: var(--line-height-body);
+  color: var(--color-text-muted);
+}
+
+.dashboard__kpis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  /* `<dl>` brings a user-agent margin; the layout sets its own spacing. */
+  margin: 0 0 var(--space-5);
+}
+
+/* `<dd>` is indented by the user agent — the tile places its own text. */
+.dashboard__kpis dd {
+  margin: 0;
+}
+
+.dashboard__kpi {
+  /* The group is `<dt>` then `<dd>` — the order HTML prescribes and the one a
+     screen reader reads ("Formulare, 0"). The handoff shows the figure above
+     its label, so the *visual* order is reversed here and only here. Safe for
+     keyboard users because neither element is focusable: nothing can be
+     tabbed to in an order that contradicts what is on screen. */
+  display: flex;
+  flex-direction: column-reverse;
+  flex: 1 1 150px;
+  padding: var(--space-5) var(--space-6);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card-lg);
+  background: var(--color-surface);
+}
+
+.dashboard__kpi-value {
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  color: var(--color-text);
+}
+
+.dashboard__kpi-value--success {
+  color: var(--color-success);
+}
+
+.dashboard__kpi-value--accent {
+  color: var(--color-accent-strong);
+}
+
+.dashboard__kpi-label {
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-subtle);
+}
+
+.dashboard__grid {
+  display: grid;
+  /* `min(300px, 100%)` instead of a plain 300 px minimum: on a 360 px phone a
+     rigid track would be wider than its container and push a horizontal
+     scrollbar onto the page. This collapses to one column on
+     its own — no second breakpoint needed. */
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+  gap: var(--space-5);
+}
+
+.dashboard__empty {
+  /* Spans the whole grid so the empty state is centred, not stuck in the
+     first column. */
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 48px var(--space-7);
+  border: 1px dashed var(--color-control-off);
+  border-radius: var(--radius-card-lg);
+  background: var(--color-surface);
+  text-align: center;
+  font-size: var(--font-size-subheading);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-muted);
+}
+
+.dashboard__empty-hint {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-faint);
+}
+
+.app-shell--compact .dashboard {
+  padding: var(--space-7) var(--space-6) 60px;
+}
+
+/* --- create form ----------------------------------------- */
+
+.dashboard__create {
+  margin-bottom: var(--space-4);
+}
+
+.dashboard__create-row {
+  display: flex;
+  /* The button aligns with the input, not with the label above it. */
+  align-items: flex-end;
+  gap: var(--space-2);
+  /* Since „✦ KI-Formular" stands beside it (finding 18) there are three
+     elements in this row; at 360 px they do not fit side by side, and the
+     field must not shrink to the point of being unusable. */
+  flex-wrap: wrap;
+}
+
+.dashboard__create-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.dashboard__create-label {
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-muted);
+}
+
+.dashboard__create-field input[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+
+.dashboard__create-hint {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-label);
+  color: var(--color-danger);
+}
+
+.dashboard__create-field input {
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font: inherit;
+  color: var(--color-text);
+}
+
+/*
+ * The template select next to the name field (review finding 17).
+ *
+ * It does not grow along with it: the name is the field that gets typed into,
+ * and the select needs exactly as much room as its longest template measures.
+ */
+.dashboard__create-template {
+  flex: 0 1 16rem;
+}
+
+.dashboard__create-field select {
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font: inherit;
+  color: var(--color-text);
+}
+
+.dashboard__create-button {
+  flex: none;
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  border-radius: var(--radius-control);
+  background: var(--gradient-accent);
+  color: var(--color-on-accent);
+  font: inherit;
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+}
+
+.dashboard__create-button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/*
+ * „✦ KI-Formular" (finding 18) — the same geometry as „+ Neues Formular"
+ * beside it, but as an outline instead of a surface.
+ *
+ * They are two ways to the same result, and one of them is the accustomed one.
+ * A second filled button beside it would put both on a par and leave the row
+ * with two main actions; the outline says „this works too" without
+ * shifting the precedence. `--color-accent-ink` and not `--color-accent`:
+ * text on a light ground has to reach 4,5:1, and the colour of an
+ * organisation is a surface colour (`tokens.css`).
+ */
+.dashboard__create-ai {
+  flex: none;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-accent-ink);
+  font: inherit;
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+}
+
+/* --- form card (Handoff) -------------------------------------------- */
+
+.form-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  height: 100%;
+  padding: var(--space-4);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+.form-card__head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.form-card__title {
+  flex: 1 1 auto;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-title-sm);
+  color: var(--color-text-strong);
+  /* Two lines, as the handoff specifies — a long Jahrestagung title must not
+     push the action row out of alignment across the grid. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.form-card__badge {
+  flex: none;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+}
+
+.form-card__badge--active {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.form-card__badge--draft {
+  background: var(--color-warning-bg-soft);
+  color: var(--color-warning-alt);
+}
+
+.form-card__meta {
+  margin: 0;
+  font-size: var(--font-size-label);
+  color: var(--color-text-subtle);
+}
+
+.form-card__actions {
+  /* Pushed to the bottom so every card's action row lines up, whatever the
+     title length — `height: 100%` above is what makes that possible. */
+  margin-top: auto;
+  padding-top: var(--space-3);
+}
+
+.form-card__primary {
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  border-radius: var(--radius-control);
+  background: var(--gradient-accent);
+  color: var(--color-on-accent);
+  font: inherit;
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+}
+
+.form-card__secondary {
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font: inherit;
+  color: var(--color-text-strong);
+  cursor: pointer;
+}
+
+.form-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.form-card__duplicate {
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font: inherit;
+  color: var(--color-text-strong);
+  cursor: pointer;
+}
+
+.form-card__duplicate:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.form-card__delete {
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font: inherit;
+  color: var(--color-danger-strong);
+  cursor: pointer;
+}
+
+.form-card__delete:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.form-card__confirm {
+  padding-top: var(--space-3);
+}
+
+.form-card__error {
+  margin: 0;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-danger-strong);
+}
+
+/* --- search bar and pager  --------------------------------------- */
+
+/*
+ * The Suchleiste of the handoff, between the KPI row and the create box.
+ * `align-items: flex-end` for the reason the create row has it: the button
+ * lines up with the field, not with the label above it.
+ */
+.dashboard__search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.dashboard__search-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.dashboard__search-label {
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-muted);
+}
+
+.dashboard__search-field input {
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font: inherit;
+  color: var(--color-text);
+}
+
+.dashboard__search-reset {
+  flex: none;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font: inherit;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.dashboard__search-reset:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* The Trefferzähler takes the whole next line rather than squeezing between
+   field and button, so it never pushes the button off on a narrow screen. */
+.dashboard__search-count {
+  flex: 1 0 100%;
+  margin: 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-subtle);
+}
+
+.dashboard__pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+}
+
+.dashboard__pager-button {
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font: inherit;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.dashboard__pager-button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.dashboard__pager-state {
+  margin: 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-subtle);
+}

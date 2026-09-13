@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Sicherheitslücke melden
+    url: https://github.com/ullriti/formsache/security/advisories/new
+    about: Bitte nicht öffentlich — siehe SECURITY.md
+  - name: Frage zum Betrieb
+    url: https://github.com/ullriti/formsache/blob/main/docs/kb/09-betrieb.md
+    about: Das Betriebshandbuch beantwortet die meisten davon

@@ -1,0 +1,13 @@
+/*
+ * The templates page (ADR-0022, continuation 2026-08-18).
+ *
+ * Almost nothing: the cards, fields and switches are the shared building
+ * blocks from `settings-view.css`. What stands here is the one row that does
+ * not exist there — the two buttons under the list.
+ */
+
+.notification-templates__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}

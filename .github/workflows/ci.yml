@@ -1,0 +1,1530 @@
+name: CI
+
+# Every commit on every branch — a check run hangs off the commit SHA, so the
+# run the push starts is the one a pull request and a branch protection rule
+# see. `pull_request` is added for **forks only**: a push into somebody else's
+# repository triggers nothing here, so without it a contribution from outside
+# would arrive with no checks at all. Restricting it to forks keeps the
+# duplicate run away that a same-repository branch would otherwise get.
+on:
+  push:
+    branches: ['**']
+    tags-ignore: ['**']
+  pull_request:
+    types: [opened, synchronize, reopened]
+  # The `load` job below does **not** run on every push (it takes minutes and
+  # blocks nothing): by hand on request, and once a week, so that the baseline
+  # does not age without anybody noticing.
+  workflow_dispatch:
+  schedule:
+    - cron: '17 4 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  # A fork's pull request run gets its own group, otherwise it and the push
+  # run of the same branch would cancel each other.
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  # Superseded commits on a branch are not worth a runner. On `main` every
+  # commit keeps its own verdict — that is the history a release refers back to.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  # Four jobs (measured before/after in docs/kb/04-build-run.md, "Die
+  # Pipeline"): `quality` bundles what used to be four separate jobs
+  # (`version`, `quality` matrix ×3, `docs`, `build`) into named *steps* of one
+  # job, `test`/`e2e`/`stack` each still get their own job because they need
+  # different runtime setups (a database service, browsers, Docker-in-Docker).
+
+  quality:
+    name: quality
+    # On `pull_request` for forks only: for a branch of this repository the
+    # push run has already done the same work.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name != github.repository
+    # ⚠️ **All jobs run on the same runner label**, and it deliberately
+    # stands there verbatim seven times instead of in a variable: `runs-on` is
+    # the one line a reader of a job should see immediately, and an
+    # indirection via `vars.` would move the answer to "where does this run?"
+    # into the repository settings, where it shows up in no diff.
+    #
+    # **What this label has to be capable of:** a **Docker daemon including
+    # the compose plugin** (`stack` and `restore` build images, start compose
+    # and run `down -v`), **service containers** (`test` and `e2e` hang off a
+    # PostgreSQL 17) and **`dotnet`** (GitVersion is a dotnet tool). If one of
+    # them is missing, it is not one job that fails but a whole group.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-workspace
+      # Each check keeps its own step name — that is now what makes a red
+      # check name the spot, since these five no longer have a job name each
+      # to tell them apart.
+      #
+      # `if: ${{ !cancelled() }}` on every step after the first: without it,
+      # a failing `lint` would skip `format:check`/`typecheck`/`build`/docs and
+      # the job would report exactly one problem per run even when several
+      # exist — the reason this used to be `fail-fast: false` across four
+      # jobs. `!cancelled()` runs a step after a *failed* prior step (a workflow
+      # cancellation is the only thing that still short-circuits it), while the
+      # job's overall conclusion stays red the moment any one step fails — this
+      # is documented GitHub Actions behaviour, not yet confirmed against a
+      # real multi-failure run of *this* file (no push happened from this
+      # session; see the work report).
+      # `!cancelled()` on *every* check including the first: without it a failed
+      # `setup-workspace` skips `lint` while the four steps below still run, so
+      # the one run that most needs to be readable reports three findings
+      # instead of four.
+      - name: lint
+        if: ${{ !cancelled() }}
+        run: pnpm lint
+      - name: format:check
+        if: ${{ !cancelled() }}
+        run: pnpm format:check
+      # `typecheck` and `build` stay separate steps, not one `pnpm -r build &&
+      # pnpm typecheck` — they check different things: `build`
+      # produces artifacts, `typecheck` additionally covers test-, e2e- and
+      # tooling files. Merging them would make a red step ambiguous about
+      # which of the two failed.
+      - name: typecheck
+        if: ${{ !cancelled() }}
+        run: pnpm typecheck
+      - name: build
+        if: ${{ !cancelled() }}
+        run: pnpm -r build
+      # No path filter for this job: `format:check` and `check-ai-docs.sh`
+      # check exactly `docs/**`, so a `quality` that skipped on docs-only pushes
+      # would skip the one job meant to catch a docs mistake.
+      - name: check-ai-docs.sh
+        if: ${{ !cancelled() }}
+        run: scripts/check-ai-docs.sh
+      # **Die Liste der Drittkomponenten ist aktuell** (Review-Runde 3 Nr. 14).
+      #
+      # Sie wird aus der Sperrdatei erzeugt (`tools/licences.ts`) und liegt
+      # eingecheckt unter `apps/web/public/`, weil das Web-Image sie sonst
+      # nicht hätte — dessen Install sieht die Laufzeitabhängigkeiten der API
+      # gar nicht. Eingecheckt heißt aber: sie kann veralten, und eine
+      # veraltete Lizenzliste ist die eine Art Fehler, die diese Anwendung
+      # öffentlich ausliefert. Dieser Schritt ist der Wächter dagegen.
+      #
+      # *Nachstellung:* eine Laufzeitabhängigkeit hinzufügen und die Liste
+      # nicht neu erzeugen → rot, mit dem Befehl in der Meldung.
+      - name: Drittkomponenten-Liste gegen die Sperrdatei
+        if: ${{ !cancelled() }}
+        run: node tools/licences.ts --check
+      - name: ci-docs-only.sh scenarios
+        if: ${{ !cancelled() }}
+        run: scripts/tests/ci-docs-only.test.sh
+      # The dead-path guard over KB, specs and ADRs — and, more importantly,
+      # its counter-check: two
+      # scenarios take the measured set away from it and demand **red**
+      # instead of quietly green. A guard that has never said the opposite
+      # proves nothing.
+      - name: check-doc-links.ts scenarios
+        if: ${{ !cancelled() }}
+        run: scripts/tests/check-doc-links.test.sh
+      # **`pnpm audit` as a report, not as a gate**.
+      #
+      # Blocking, it would be red from day one — eight reports are open, six of
+      # them on the **Prisma CLI**, which no production server executes. A gate
+      # that is red right away gets switched off instead of read; the same trap
+      # as with the secret scan of the `publish` job.
+      #
+      # So that the step does not become invisible after three weeks, it
+      # compares against `.github/audit-baseline.json` and reports **only what
+      # is new** as a `::warning`. `continue-on-error` sits on the step and not
+      # on the job: the rest of `quality` stays blocking.
+      #
+      # ⚠️ The step fails **hard** if `pnpm audit` delivers nothing at all
+      # (no network, broken output) — "nothing measured" must not look like
+      # "nothing found".
+      - name: pnpm audit (Bericht, blockiert nicht)
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        run: scripts/audit-report.sh
+      # The `.env` sync: the variables that left
+      # `.env.example` have to be *reported* in an existing `.env`, not
+      # quietly left standing. Every scenario runs against a throwaway copy.
+      - name: dev-setup.sh scenarios
+        if: ${{ !cancelled() }}
+        run: scripts/tests/dev-setup.test.sh
+      # The counterpart for the server. It checks what never shows up on a
+      # development machine: that `.env.prod.example` carries **no** secret and
+      # no seed line, that the three random values really are generated — and
+      # that a second run rotates **no** key. A rotated `SECRET_BOX_KEY` yields
+      # an installation that starts, renders and no longer lets anybody through
+      # a protected form; nothing else turns red on that.
+      - name: prod-setup.sh scenarios
+        if: ${{ !cancelled() }}
+        run: scripts/tests/prod-setup.test.sh
+      # The second way to the first access (ADR-0022). What hangs on this and
+      # never shows up on a development machine: that a password is accepted
+      # **only** from the environment or hidden from view — `--password` would
+      # write it into the process list and into the shell history.
+      - name: create-superadmin.sh scenarios
+        if: ${{ !cancelled() }}
+        run: scripts/tests/create-superadmin.test.sh
+      # The shape of the production stack.
+      # `docker compose config` is client-side and needs **no** daemon — which
+      # is why the test runs here and not in the `stack` job, where it would
+      # cost a minute of Docker-in-Docker to say the same thing.
+      # Whether the stack *runs* is proven by `stack` alone.
+      - name: docker-compose.prod.yml — Gestalt des Produktions-Stacks
+        if: ${{ !cancelled() }}
+        run: scripts/tests/compose-prod.test.sh
+      # The smoke test against a stand-in. It proves that `smoke.sh` **turns
+      # red** when one of the six promises breaks — against the real stack the
+      # `stack` job runs it, but nothing is broken there, and a smoke test that
+      # has never been red is a supposition.
+      - name: smoke.sh scenarios
+        if: ${{ !cancelled() }}
+        run: scripts/tests/smoke.test.sh
+      # The shape of the `publish` job. A textual guard over the pipeline's
+      # own file, and it replaces none of the four proofs — it makes the three
+      # reproductions reproducible without anybody having to push to `main`.
+      - name: publish-Job — Gestalt der Veröffentlichung
+        if: ${{ !cancelled() }}
+        run: scripts/tests/publish-job.test.sh
+      # The shape of the Dependabot licence fixup (ADR-0031) — same reasoning
+      # as the guard above: a real run only happens on an actual Dependabot
+      # PR, so the reproductions that matter (a fork pretending to be
+      # Dependabot, a missing `--ignore-scripts`) are made mechanical here
+      # instead.
+      - name: dependabot-licences.yml — Gestalt des Fixup-Workflows
+        if: ${{ !cancelled() }}
+        run: scripts/tests/dependabot-licences-workflow.test.sh
+      # Instruction and drill must not drift apart.
+      # A text comparison, not behaviour — which is why it belongs here and not
+      # in the `restore` job, which proves the restoration itself.
+      - name: restore-drill.sh gegen 09-betrieb.md
+        if: ${{ !cancelled() }}
+        run: scripts/tests/restore-drill.test.sh
+
+  test:
+    name: test (unit + integration)
+    # On `pull_request` for forks only: for a branch of this repository the
+    # push run has already done the same work.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    # Same credentials and port as `.env.example` (and therefore as
+    # `docker compose`'s `db` service) — so `setup-env` below is the entire
+    # configuration for this job, the same step a developer runs, not a second
+    # private setup that only CI knows.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: formsache
+          POSTGRES_PASSWORD: change-me-locally
+          POSTGRES_DB: formsache
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U formsache -d formsache"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # ADR-0008's external path, pointed at the service above instead of
+      # Testcontainers-per-call. Measured, not assumed: the suite calls
+      # `acquireTestDatabase()` 28 times across 27 files, and the
+      # Testcontainers path starts one container *per call* — that was the
+      # bulk of this job's ~5 minutes. The external path still creates and
+      # drops its own disposable database per call
+      # (`formsache_test_<timestamp>_<hex>`, `DROP DATABASE … WITH (FORCE)` on
+      # release) — the same boundary the parallel-worker isolation rests on —
+      # so the suite's assertion is unchanged, only where the server comes
+      # from is. (Formerly this pointed at nothing on purpose, forcing
+      # Testcontainers; now it deliberately points at a real, shared server —
+      # see the step below for why the Testcontainers path itself is not left
+      # unexercised.)
+      TEST_DATABASE_STRATEGY: external
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # `ci-docs-only.sh` needs the full history to compute the merge base
+          # with the default branch — that ref itself is what has to be
+          # reachable (`before` is only consulted on the default branch
+          # itself; see the script).
+          fetch-depth: 0
+      - id: docs-only
+        run: |
+          # `ci-docs-only.sh` compares against the merge base with the default
+          # branch, so that ref has to exist locally. `actions/checkout` with
+          # `fetch-depth: 0` normally brings it along; this makes it explicit
+          # rather than relying on that. A failed fetch is not fatal — the
+          # script then reports the ref as unreachable and answers `false`,
+          # which costs minutes instead of skipping a test.
+          git fetch --no-tags --quiet origin \
+            "+refs/heads/${DEFAULT_BRANCH}:refs/remotes/origin/${DEFAULT_BRANCH}" || true
+          scripts/ci-docs-only.sh "${{ github.event.before }}" "${{ github.sha }}" \
+            "refs/remotes/origin/${DEFAULT_BRANCH}"
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      # Runs unconditionally, but everything after it is skipped on a
+      # docs-only push (docs/kb/04-build-run.md, "Die Pipeline") — the job
+      # itself always reports a result, never `skipped`, so a future branch
+      # protection rule can require it without an unrunnable check blocking a
+      # merge.
+      - uses: ./.github/actions/setup-workspace
+        if: steps.docs-only.outputs.docs_only != 'true'
+      - uses: ./.github/actions/setup-env
+        if: steps.docs-only.outputs.docs_only != 'true'
+      - name: pnpm -r test
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: pnpm -r test
+      # ⚠️ **The client has to be at least as new as the server.**
+      #
+      # `pg_dump` aborts against a *newer* server right away ("aborting
+      # because of server version mismatch") — deliberately, because an old
+      # dumper does not know the new server's catalogue tables. This project
+      # runs on PostgreSQL 17 everywhere (`docker-compose.yml`, the service
+      # above, `test-database.ts`); the runner image brings the **16** client.
+      #
+      # Without this step `backup.test.sh` fails within a second, and the
+      # message looks like a broken script instead of like a tool that is two
+      # major versions apart. Locally it did not show up: there client and
+      # server are the same version.
+      - name: PostgreSQL-17-Client (pg_dump gegen einen 17er Server)
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: |
+          set -euo pipefail
+          # The proof instead of the assumption: what stands here is the
+          # client that `backup.sh` is about to use — before and after.
+          if command -v pg_dump > /dev/null; then
+            echo "vorhanden: $(pg_dump --version)"
+            major="$(pg_dump --version | awk '{print $3}' | cut -d. -f1)"
+          else
+            echo 'kein pg_dump im Pfad'
+            major=0
+          fi
+          if [ "$major" -ge 17 ]; then
+            echo 'neu genug — nichts zu tun'
+            exit 0
+          fi
+          # `sudo` only if it is there: the runner label can be a GitHub
+          # image (unprivileged user with `sudo`) or a container of one's own
+          # (already `root`, often without `sudo`). And the codename comes
+          # from `/etc/os-release` instead of from `lsb_release` — that tool
+          # is missing in slim images.
+          if [ "$(id -u)" -eq 0 ]; then as_root=''; else as_root='sudo'; fi
+          # Without a codename no PGDG line — and then better to abort here
+          # with the reason than three lines later on `${VERSION_CODENAME}` as
+          # an "unbound variable". Alpine, for one, has none and no apt either.
+          [ -r /etc/os-release ] && . /etc/os-release
+          if [ -z "${VERSION_CODENAME:-}" ]; then
+            echo "::error::dieser Runner hat keinen Debian/Ubuntu-Codenamen — postgresql-client-17 muss ins Runner-Bild, nicht in diesen Schritt"
+            exit 1
+          fi
+          $as_root install -d /usr/share/postgresql-common/pgdg
+          $as_root curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] http://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" \
+            | $as_root tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          $as_root apt-get update -qq
+          $as_root apt-get install -y -qq postgresql-client-17 || {
+            echo "::error::postgresql-client-17 ließ sich nicht nachrüsten — der Runner braucht einen pg_dump >= dem Server (17), sonst kann backup.sh nichts sichern"
+            exit 1
+          }
+          echo "jetzt: $(pg_dump --version)"
+      # The backup scripts: scenarios against a real throwaway database, in
+      # this job, because a PostgreSQL runs here. What they do **not** check is
+      # the restoration of a whole stack — that is the `restore` job.
+      - name: backup.sh scenarios
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: scripts/tests/backup.test.sh
+      # The point of ADR-0008's Testcontainers path is that it runs the suite
+      # on the exact image `docker-compose.yml` starts — and nothing above
+      # exercises it any more now that `test` runs on the external path.
+      # Without this step a broken Testcontainers path would go unnoticed
+      # until someone without a reachable database server tried to run the
+      # suite locally (the agent environment has no Docker daemon — this is
+      # the only CI step that ever starts one). Scoped to the provider's own
+      # test, not the whole suite: measured ~45 s, inside this job's already
+      # rounded-up minute.
+      - name: the Testcontainers provider still works (ADR-0008)
+        if: steps.docs-only.outputs.docs_only != 'true'
+        env:
+          TEST_DATABASE_STRATEGY: testcontainers
+        # The assertion in `test-database.spec.ts` accepts *either* strategy
+        # (`expect(['testcontainers','external']).toContain(...)`), so a green
+        # step alone would not tell us the container path ran — if the variable
+        # above ever stopped arriving, this step would pass while proving
+        # nothing. The provider announces the road it took; that line is the
+        # proof, and its absence is an error.
+        run: |
+          pnpm --filter @formsache/api exec vitest run \
+            test/database/test-database.spec.ts 2>&1 | tee provider.log
+          grep -q 'strategy=testcontainers' provider.log || {
+            echo "::error::the provider did not take the Testcontainers path"
+            exit 1
+          }
+
+  e2e:
+    name: e2e (Playwright)
+    # On `pull_request` for forks only: for a branch of this repository the
+    # push run has already done the same work.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    # A browser that never answers would otherwise hold a runner for six hours,
+    # which is the default. That is the whole job of this number, and 40 does
+    # it as well as 20 did.
+    #
+    # **Why it is no longer 20.** The 20 was set back when "roughly three and
+    # a half minutes" stood here. On 2026-08-18 the suite takes **12,2
+    # minutes** locally for 447 cases, and the runner has two cores — the four
+    # `durchlauf-*` projects also run serially and strictly one after another
+    # (`dependencies`), so precisely not wider if there were more cores.
+    #
+    # **Measured, not estimated** — and the measurement refuted the first
+    # supposition. For a short while 40 minutes stood here with the note to
+    # revisit the number after the first green run; that is hereby redeemed.
+    #
+    # | Run | Result | Job |
+    # |------|----------|-----|
+    # | `001ec73` | cancelled | 20,3 min (limit) |
+    # | `55ac7f0` | green | 15,9 min |
+    # | `5be7898` | green | 16,7 min |
+    #
+    # A **green** run takes just under 17 minutes and would have fitted into
+    # the old 20 as well. `001ec73` was cancelled not because the suite is too
+    # long, but because **failures are expensive**: each one drags `retries: 2`
+    # behind it, and one torn `afterAll` of the acceptance runs costs 300 s on
+    # its own. A limit that carries only the green case cuts off exactly when
+    # the report is needed — hence 30 and not 20.
+    #
+    # That this never showed up before: `durchlauf-organisationen` hangs off
+    # `mobile-360x740` and, as long as something was red there, did **not run
+    # at all** ("27 did not run"). Only since the probes are right does the
+    # suite run its full length.
+    timeout-minutes: 30
+    services:
+      # Credentials and port match `.env.example` exactly, so `dev-setup.sh`
+      # below is the whole configuration — the same step a developer runs. A
+      # service whose password differed would be a second, private
+      # configuration that only CI knows.
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: formsache
+          POSTGRES_PASSWORD: change-me-locally
+          POSTGRES_DB: formsache
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U formsache -d formsache"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # see the comment on the same step in the `test` job
+      - id: docs-only
+        run: |
+          # `ci-docs-only.sh` compares against the merge base with the default
+          # branch, so that ref has to exist locally. `actions/checkout` with
+          # `fetch-depth: 0` normally brings it along; this makes it explicit
+          # rather than relying on that. A failed fetch is not fatal — the
+          # script then reports the ref as unreachable and answers `false`,
+          # which costs minutes instead of skipping a test.
+          git fetch --no-tags --quiet origin \
+            "+refs/heads/${DEFAULT_BRANCH}:refs/remotes/origin/${DEFAULT_BRANCH}" || true
+          scripts/ci-docs-only.sh "${{ github.event.before }}" "${{ github.sha }}" \
+            "refs/remotes/origin/${DEFAULT_BRANCH}"
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      - uses: ./.github/actions/setup-workspace
+        if: steps.docs-only.outputs.docs_only != 'true'
+      # Not a bare `cp`: `.env.example` ships `SECRET_BOX_KEY` empty on purpose
+      # and the API refuses to start without it, so this job would go red
+      # before Playwright ever opened a browser.
+      - uses: ./.github/actions/setup-env
+        if: steps.docs-only.outputs.docs_only != 'true'
+      # Only Chromium, and only what it needs: the suite runs two viewport
+      # projects of the same engine (`playwright.config.ts`), so downloading
+      # Firefox and WebKit would cost minutes for browsers no test opens.
+      - name: playwright install --with-deps chromium
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: pnpm exec playwright install --with-deps chromium
+      # Playwright would build this itself (its `webServer` command starts with
+      # `pnpm -r build`), but then a cold build counts against the server's
+      # start-up budget — which is exactly how this job first went red, with a
+      # timeout that blamed the server. Built here, the build has its own step
+      # and its own error message, and only the incremental rebuild happens
+      # inside the budget.
+      - name: pnpm -r build
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: pnpm -r build
+      # `globalSetup` migrates and seeds the database, then Playwright starts
+      # both servers.
+      - name: pnpm e2e
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: pnpm e2e
+      # `failure()` ignores the `if:`s above, so this needs the guard itself —
+      # the same reason spelled out on the two closing steps of `stack`.
+      - if: ${{ failure() && steps.docs-only.outputs.docs_only != 'true' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  stack:
+    name: stack (images + compose)
+    # On `pull_request` for forks only: for a branch of this repository the
+    # push run has already done the same work.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    # Same reason as `e2e`: the wait loop below has its own two-minute bound,
+    # but a hanging image build has none.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Two independent reasons for the same flag: GitVersion derives the
+          # version from the history (a shallow clone has none, and the step
+          # below fails rather than guessing), and `ci-docs-only.sh` needs the
+          # full history to compute the merge base with the default branch
+          # (`before` itself is only consulted on the default branch; see the
+          # script).
+          fetch-depth: 0
+      - id: docs-only
+        run: |
+          # `ci-docs-only.sh` compares against the merge base with the default
+          # branch, so that ref has to exist locally. `actions/checkout` with
+          # `fetch-depth: 0` normally brings it along; this makes it explicit
+          # rather than relying on that. A failed fetch is not fatal — the
+          # script then reports the ref as unreachable and answers `false`,
+          # which costs minutes instead of skipping a test.
+          git fetch --no-tags --quiet origin \
+            "+refs/heads/${DEFAULT_BRANCH}:refs/remotes/origin/${DEFAULT_BRANCH}" || true
+          scripts/ci-docs-only.sh "${{ github.event.before }}" "${{ github.sha }}" \
+            "refs/remotes/origin/${DEFAULT_BRANCH}"
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+
+      # `version` used to be its own job feeding `needs.version.outputs.semver`
+      # into this one — but this job was its only consumer, so the extra job
+      # (and the coordination it required) bought nothing. It moved here as
+      # plain steps instead.
+      - uses: gittools/actions/gitversion/setup@v4.7.0
+        if: steps.docs-only.outputs.docs_only != 'true'
+        with:
+          versionSpec: '6.x'
+      # The tool itself rather than `gitversion/execute`. That action calls the
+      # same binary with `/l console`, which writes GitVersion's log lines into
+      # the stream it then parses as JSON — one warning from the tool and the
+      # step dies with "Expected property name or '}' in JSON at position 1",
+      # saying nothing about the actual problem. Observed on this repository;
+      # the identical call without `/l console` printed clean JSON in the very
+      # same job.
+      - id: gitversion
+        name: GitVersion
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: |
+          "$GITVERSION_PATH/dotnet-gitversion" /config GitVersion.yml /output json \
+            > gitversion.json
+          cat gitversion.json
+          semver="$(jq -r .SemVer gitversion.json)"
+          # An empty or literal-null version would otherwise travel on and tag
+          # an image with nothing at all.
+          case "$semver" in
+            '' | null) echo "::error::GitVersion produced no version"; exit 1 ;;
+          esac
+          # A job-level `env:` cannot see a step output (it is evaluated before
+          # any step runs) — `$GITHUB_ENV` is what makes APP_VERSION visible to
+          # every step below without repeating `env:` on each of them.
+          echo "APP_VERSION=$semver" >> "$GITHUB_ENV"
+
+      # The documented way, and here it is load-bearing: compose interpolates
+      # the *whole* file before it starts anything, and `SECRET_BOX_KEY` has no
+      # default — a bare `cp .env.example .env` would not get past
+      # `docker compose build`.
+      - name: Configure the stack the documented way
+        if: steps.docs-only.outputs.docs_only != 'true'
+        uses: ./.github/actions/setup-env
+
+      # The no-`.env`-in-the-build-context guarantee, and a real check rather
+      # than a reading of `.dockerignore`: `.env` exists on disk at this
+      # point, so a context that still carried it would fail here.
+      - name: The build context carries no .env
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: |
+          printf 'FROM busybox\nCOPY . /ctx\nRUN test ! -e /ctx/.env\n' \
+            | docker build --no-cache -f - .
+
+      - name: Build the images
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: docker compose build
+
+      - name: The images are tagged with the derived version
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: |
+          docker image inspect "formsache-api:${APP_VERSION}" > /dev/null
+          docker image inspect "formsache-web:${APP_VERSION}" > /dev/null
+
+      # The same guarantee, its other half: containers must not run as root.
+      # `--entrypoint` so the check does not depend on what the image would
+      # otherwise start; both must answer with something other than 0.
+      - name: Both images run as a non-root user
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: |
+          for image in "formsache-api:${APP_VERSION}" "formsache-web:${APP_VERSION}"; do
+            uid="$(docker run --rm --entrypoint id "$image" -u)"
+            echo "$image runs as uid $uid"
+            [ "$uid" != "0" ] || { echo "::error::$image runs as root"; exit 1; }
+          done
+
+      # Not `--wait`: the stack contains a one-shot migration service, and a
+      # container that exits is not a state `--wait` has an opinion about. The
+      # front door answering is the condition that actually matters — it can
+      # only answer once migrations ran and the API came up healthy.
+      - name: Start the stack
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: |
+          docker compose up -d
+          for attempt in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8080/api/health > /dev/null; then
+              echo "stack answered after ${attempt} attempts"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::the stack did not answer within 120 s"
+          exit 1
+
+      # The running-version guarantee: the running application reports the
+      # version its image is tagged with. Through port 8080, so this also
+      # proves that the nginx front door passes `/api` through unrewritten.
+      - name: /api/health reports the version of this run
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: |
+          reported="$(curl -fsS http://127.0.0.1:8080/api/health | jq -r .version)"
+          echo "health reports $reported, image tag is $APP_VERSION"
+          [ "$reported" = "$APP_VERSION" ] || {
+            echo "::error::health reports $reported, expected $APP_VERSION"; exit 1;
+          }
+
+      - name: The front door serves the application
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: curl -fsS http://127.0.0.1:8080/ | grep -q 'id="root"'
+
+      # The working-login guarantee: the container path ends at a working
+      # login, not merely at a page that renders. The seed is the documented
+      # development step.
+      - name: Seeded administrator can log in through the stack
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: |
+          docker compose run --rm migrate db seed
+          status="$(curl -sS -o /tmp/login.json -w '%{http_code}' \
+            -D /tmp/login.headers \
+            -H 'content-type: application/json' \
+            -d '{"email":"admin@example.org","password":"change-me-locally"}' \
+            http://127.0.0.1:8080/api/auth/login)"
+          echo "login answered $status"
+          [ "$status" = "200" ] || { echo "::error::login answered $status"; exit 1; }
+          grep -qi '^set-cookie: formsache_session=' /tmp/login.headers
+
+      # Readiness against liveness — on the *running* stack, not on the
+      # stand-in (ADR-0016 §1). The unit tests check the branching;
+      # what can only be checked here: that a dead database flips the
+      # readiness route over, liveness **not**, and that the API container
+      # does **not restart** while it happens.
+      - name: readiness answers 503 while liveness stays 200
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: |
+          set -euo pipefail
+          probe() { curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:8080/api/$1"; }
+          started_at() { docker inspect -f '{{.State.StartedAt}}' "$(docker compose ps -q api)"; }
+
+          before="$(started_at)"
+          echo "ready=$(probe health/ready) live=$(probe health) (Datenbank oben)"
+          [ "$(probe health/ready)" = "200" ] || { echo "::error::readiness is not 200 with a healthy database"; exit 1; }
+
+          docker compose stop db
+          # The connection pool does not notice the outage right away; the
+          # route has a 2-second deadline, so it is decided after ~5 s at the
+          # latest.
+          for _ in 1 2 3 4 5 6 7 8 9 10; do
+            [ "$(probe health/ready)" = "503" ] && break
+            sleep 2
+          done
+          ready="$(probe health/ready)"; live="$(probe health)"
+          echo "ready=$ready live=$live (Datenbank gestoppt)"
+          [ "$ready" = "503" ] || { echo "::error::readiness answered $ready with the database stopped"; exit 1; }
+          # The second part of the pair, and the actual reason for two
+          # routes: the process is alive, it is merely not ready.
+          [ "$live" = "200" ] || { echo "::error::liveness answered $live — it must not depend on the database"; exit 1; }
+
+          docker compose start db
+          for _ in 1 2 3 4 5 6 7 8 9 10; do
+            [ "$(probe health/ready)" = "200" ] && break
+            sleep 2
+          done
+          [ "$(probe health/ready)" = "200" ] || { echo "::error::readiness did not recover"; exit 1; }
+
+          # `restart:` reacts to the container exiting, not to the health
+          # status — this line records exactly that instead of believing it:
+          # the same start time means there was no restart.
+          after="$(started_at)"
+          echo "api started at $before / $after"
+          [ "$before" = "$after" ] || { echo "::error::the api container restarted while only the database was down"; exit 1; }
+
+      # The smoke test against the *running* installation.
+      # Six promises, and the sixth checks the **file signature** of the export
+      # instead of its status — the finding behind it was status 200, every
+      # header right, and the file was JSON.
+      #
+      # Here, in the `stack` job, because it is the only place where a
+      # complete stack runs: the same call an operator runs after a release
+      # and after a restoration.
+      #
+      # ⚠️ **Promise 4 needs a mail server, otherwise it measures nothing.**
+      # The stack starts without one (`Kein Mailserver konfiguriert`), the
+      # `mail_log` row would stay on `queued`, and the smoke test would report
+      # „der Mail-Worker arbeitet nicht" — correctly observed, but about an
+      # installation that has no way out at all. That is why a **sink** stands
+      # here: Mailpit in the same Docker network, and the SMTP block is set
+      # through the route a superadmin uses as well. With that the stack's mail
+      # path is proven end to end for the first time — submission →
+      # notification → queue → `sent`.
+      - name: scripts/smoke.sh gegen den laufenden Stack
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: |
+          set -uo pipefail
+          base='http://127.0.0.1:8080'
+          # The stack's network, read from the container instead of guessed
+          # from the name: a renamed compose project would change it.
+          net="$(docker inspect \
+            -f '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}} {{end}}' \
+            "$(docker compose ps -q api)" | awk '{ print $1 }')"
+          [ -n "$net" ] || { echo '::error::das Netz des Stacks war nicht zu ermitteln'; exit 1; }
+          echo "Netz des Stacks: $net"
+          # Mailpit: an SMTP sink that accepts everything and forwards
+          # nothing. **Only here, never in an image of this application** — it
+          # is a tool of the run, not a dependency of the product, and
+          # therefore deliberately does not stand in `docker-compose.yml`.
+          # Pinned to no version, because this run demands nothing of it but
+          # "accept SMTP"; what it does with the mail nobody checks.
+          docker run -d --name formsache-mailpit --network "$net" \
+            axllent/mailpit:latest > /dev/null
+
+          jar="$(mktemp)"
+          curl -sS -c "$jar" -H 'content-type: application/json' \
+            -d '{"email":"admin@example.org","password":"change-me-locally"}' \
+            "$base/api/auth/login" > /dev/null
+          csrf="$(awk '$6 == "formsache_csrf" { print $7 }' "$jar")"
+
+          # Full replacement with an optimistic lock: the document is read
+          # and written back with `smtp` set — the other fields stay as they
+          # are (the route knows no patch).
+          current="$(curl -sS -b "$jar" "$base/api/admin/system-settings/mail")"
+          body="$(node -e '
+            const doc = JSON.parse(process.argv[1]);
+            process.stdout.write(JSON.stringify({
+              smtp: { host: "formsache-mailpit", port: 1025, secure: false,
+                      auth: null, from: "rauchtest@example.org" },
+              publicBaseUrl: doc.values.publicBaseUrl,
+              replyTo: doc.values.replyTo,
+              opsAlertEmail: doc.values.opsAlertEmail,
+              lock: doc.lock,
+            }));
+          ' "$current")"
+          code="$(curl -sS -o /tmp/mail-settings.json -w '%{http_code}' -X PUT \
+            -b "$jar" -H 'content-type: application/json' \
+            -H "x-csrf-token: $csrf" -d "$body" \
+            "$base/api/admin/system-settings/mail")"
+          [ "$code" = '200' ] || {
+            echo "::error::der SMTP-Block ließ sich nicht setzen ($code): $(head -c 300 /tmp/mail-settings.json)"
+            docker rm -f formsache-mailpit > /dev/null
+            exit 1
+          }
+
+          # **And the organisation's mail server** (ADR-0023). The block
+          # above belongs to the installation and serves only what the
+          # application itself sends — operations alerts, test mail, account
+          # mails. An organisation no longer inherits it since ADR-0023, and
+          # the smoke test submits a form: that is its post. Without this
+          # second call the `mail_log` row stays on `queued` (withheld, not
+          # failed), and promise 4 of the smoke test fails — that is exactly
+          # how this step went red on the first run after the separation.
+          code="$(curl -sS -o /tmp/tenant-smtp.json -w '%{http_code}' -X PUT \
+            -b "$jar" -H 'content-type: application/json' \
+            -H "x-csrf-token: $csrf" \
+            -d '{"smtp":{"host":"formsache-mailpit","port":1025,"secure":false,"auth":null,"from":"rauchtest@example.org"}}' \
+            "$base/api/tenant/smtp")"
+          [ "$code" = '200' ] || {
+            echo "::error::der SMTP-Block der Organisation ließ sich nicht setzen ($code): $(head -c 300 /tmp/tenant-smtp.json)"
+            docker rm -f formsache-mailpit > /dev/null
+            exit 1
+          }
+
+          scripts/smoke.sh "$base"
+          result=$?
+          docker rm -f formsache-mailpit > /dev/null
+          exit $result
+
+      # -----------------------------------------------------------------------
+      # The production stack — a **standalone** file, the same images. Plus a
+      # CI overlay with a TLS proxy: the three proofs below (TLS, `__Host-`
+      # cookie, counting of `X-Forwarded-For`) need one, and in production the
+      # operator brings their own along.
+      #
+      # `down` without `-v`: the volumes (and with them the seed administrator
+      # that the login step above created) stay put, otherwise a second seeding
+      # would have to happen below — with a `migrate` service that in
+      # production no longer has any seed variables.
+      - name: Den Produktions-Stack starten
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: |
+          set -euo pipefail
+          docker compose down
+          # Put the images just built under the names the registry would
+          # deliver them under. On a branch nothing is published (publishing
+          # runs only on `main`), and the production file **must** not build —
+          # that is precisely its promise.
+          echo "IMAGE_PREFIX=$IMAGE_PREFIX"
+          for image in api web migrate; do
+            docker tag "formsache-$image:${APP_VERSION}" "$IMAGE_PREFIX/formsache-$image:${APP_VERSION}"
+          done
+          docker compose -f docker-compose.prod.yml -f .github/ci/docker-compose.ci.yml up -d
+          # The TLS proxy issues its certificate itself (`tls internal`),
+          # which takes a moment. `-k`, because this run's CA is known to
+          # nobody — what is checked below is *that* TLS speaks, not who
+          # signed.
+          for attempt in $(seq 1 60); do
+            if curl -fsSk https://localhost/api/health > /dev/null 2>&1; then
+              echo "der TLS-Proxy antwortete nach ${attempt} Versuchen"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::der Produktions-Stack antwortete nicht innerhalb von 120 s"
+          exit 1
+        env:
+          # Lower-cased, because a registry takes no capital letters in the
+          # path and GitHub organisations very much do have them.
+          IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}
+          TLS_DOMAIN: localhost
+          TLS_MODE: internal
+
+      # Proof 1, first part: `/api/health` answers **through the TLS
+      # proxy** — and with the same version as in the base shape.
+      - name: /api/health antwortet durch den TLS-Proxy
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: |
+          set -euo pipefail
+          reported="$(curl -fsSk https://localhost/api/health | jq -r .version)"
+          [ "$reported" = "$APP_VERSION" ] || {
+            echo "::error::health meldet $reported, erwartet $APP_VERSION"; exit 1;
+          }
+          # And http redirects to https instead of answering in the clear.
+          code="$(curl -sS -o /dev/null -w '%{http_code}' http://localhost/api/health)"
+          case "$code" in
+            30[128]) echo "http antwortet $code (Umleitung auf https)" ;;
+            *) echo "::error::http antwortet $code statt einer Umleitung"; exit 1 ;;
+          esac
+
+      # Proof 1, second part: `SESSION_COOKIE_SECURE` is not a line in the
+      # YAML but a `Secure` cookie on the wire. The name changes along with it:
+      # behind TLS the session is called `__Host-formsache_session` (session-cookie.ts).
+      # The production file pins the variable to `true`; `NODE_ENV=production`
+      # would be its fallback if it were unset, so a missing prefix here means
+      # one of the two did not arrive.
+      - name: Die Anmeldung setzt ein Secure-Cookie
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: |
+          set -euo pipefail
+          status="$(curl -sSk -o /dev/null -w '%{http_code}' -D /tmp/prod-login.headers \
+            -H 'content-type: application/json' \
+            -d '{"email":"admin@example.org","password":"change-me-locally"}' \
+            https://localhost/api/auth/login)"
+          [ "$status" = "200" ] || { echo "::error::die Anmeldung antwortete $status"; exit 1; }
+          cookie="$(grep -i '^set-cookie: __Host-formsache_session=' /tmp/prod-login.headers || true)"
+          [ -n "$cookie" ] || {
+            echo "::error::kein __Host-formsache_session — SESSION_COOKIE_SECURE (bzw. NODE_ENV=production als Vorgabe) kam nicht an"
+            grep -i '^set-cookie' /tmp/prod-login.headers || true
+            exit 1
+          }
+          case "$cookie" in
+            *[Ss]ecure*) echo "Sitzungs-Cookie: Secure gesetzt" ;;
+            *) echo "::error::das Sitzungs-Cookie trägt kein Secure"; exit 1 ;;
+          esac
+
+      # Proof 1, third part — **and the only one that checks something
+      # difficult**: that behind two proxies the API counts the *caller's*
+      # address and not the proxy's.
+      #
+      # ⚠️ **What is checked is the counting, not the header.** A test that
+      # sends `X-Forwarded-For` and sees a 401 stays green for *every* value
+      # of `TRUST_PROXY_HOPS` — it measures that the application answers.
+      # What is measured here instead is the bucket of the login rate limit
+      # (10/min per counted address, `login-rate-limit.ts`):
+      #
+      #   * Two **different containers** call in. Each gets its own address in
+      #     the compose network — that is the only way to be two callers on
+      #     one machine.
+      #   * Caller A exhausts its bucket (10 × 401, then 429).
+      #   * Caller B is **fresh** afterwards (401). Were the API to count the
+      #     proxy instead of the caller, the two would share one bucket, and B
+      #     would get 429 — the case in which ten failed attempts lock out the whole organisation.
+      #   * A with a made-up `X-Forwarded-For` stays locked out (429). If a
+      #     made-up header bought a fresh bucket, every rate limit of the
+      #     public paths would count into the void.
+      #
+      # *Reproduction:* switch off `real_ip_recursive` in the
+      # front door (`apps/web/docker/default.conf.template`) → the front door
+      # then writes the TLS proxy's address into the replaced header, both
+      # callers share one bucket, **B gets 429 instead of 401** and this step
+      # turns red.
+      #
+      # ⚠️ **A reproduction has to hit the spot the promise really hangs on.**
+      # Changing `TRUST_PROXY_HOPS` in the production file does **not** break
+      # this step: the resolution happens in the front door, and the number
+      # already stands at 1 in both shapes — setting it twice to the same
+      # value is no reproduction.
+      - name: Zwei Aufrufer, zwei Eimer — TRUST_PROXY_HOPS zählt richtig
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: |
+          set -euo pipefail
+          net="$(docker inspect -f '{{range $k, $v:= .NetworkSettings.Networks}}{{$k}}{{end}}' formsache-tls-proxy)"
+          echo "Compose-Netz: $net"
+
+          # ⚠️ **Both callers live at the same time — and that is the core
+          # of this proof, not a convenience.**
+          #
+          # "A different container, hence a different address" is **wrong** as
+          # soon as the first one has already finished: Docker hands out the
+          # lowest free address, and a `docker run --rm` that has just
+          # completed releases its own again. That is exactly what happened —
+          # nginx logged all thirteen calls of both "callers" from **one**
+          # address (`172.18.0.6`), B landed in A's exhausted bucket, got 429,
+          # and the step reported an application error that was none. What it
+          # measured was Docker's address allocation.
+          #
+          # Hence: two **held** containers, the calls via `docker exec` — and
+          # the precondition is checked instead of believed. Without that
+          # check the mistake repeats itself silently.
+          for name in smoke-caller-a smoke-caller-b; do
+            docker run -d --name "$name" --network "$net" --entrypoint sh \
+              curlimages/curl:8.11.1 -c 'sleep 300' > /dev/null
+          done
+          trap 'docker rm -f smoke-caller-a smoke-caller-b > /dev/null 2>&1 || true' EXIT
+
+          address_of() {
+            docker inspect -f \
+              '{{range $k, $v := .NetworkSettings.Networks}}{{$v.IPAddress}} {{end}}' \
+              "$1" | awk '{ print $1 }'
+          }
+          address_a="$(address_of smoke-caller-a)"
+          address_b="$(address_of smoke-caller-b)"
+          echo "A=$address_a B=$address_b"
+          [ -n "$address_a" ] && [ -n "$address_b" ] || {
+            echo "::error::ein Aufrufer hat keine Adresse im Compose-Netz"; exit 1;
+          }
+          [ "$address_a" != "$address_b" ] || {
+            echo "::error::beide Aufrufer teilen sich die Adresse $address_b — der Beleg misst nichts"
+            exit 1
+          }
+
+          # `--connect-to`, so that the SNI stays `localhost` (that is what
+          # the certificate is made out to) and the connection still goes to
+          # the container.
+          attempt='curl -sk -o /dev/null -w "%{http_code}\n" --connect-to localhost:443:tls-proxy:443 \
+              -H "content-type: application/json" \
+              -d "{\"email\":\"admin@example.org\",\"password\":\"falsch\"}" \
+              https://localhost/api/auth/login'
+          attempt_forged='curl -sk -o /dev/null -w "%{http_code}\n" --connect-to localhost:443:tls-proxy:443 \
+              -H "content-type: application/json" \
+              -H "X-Forwarded-For: 203.0.113.7" \
+              -d "{\"email\":\"admin@example.org\",\"password\":\"falsch\"}" \
+              https://localhost/api/auth/login'
+
+          # ⚠️ **The forged call belongs in the same caller.** Out of a
+          # second one it would come from a fresh bucket anyway, and the step
+          # would prove nothing. Twelve lines from *one* address: ten ordinary
+          # ones, the eleventh above the limit, the twelfth with a made-up
+          # header entry.
+          echo "== Aufrufer A ($address_a): zwölf Versuche =="
+          a="$(docker exec smoke-caller-a sh -c "for i in \$(seq 1 11); do $attempt; done; $attempt_forged")"
+          echo "$a"
+          [ "$(printf '%s\n' "$a" | head -n 10 | sort -u)" = '401' ] || {
+            echo "::error::A: die ersten zehn Versuche waren nicht durchweg 401"; exit 1;
+          }
+          [ "$(printf '%s\n' "$a" | sed -n 11p)" = '429' ] || {
+            echo "::error::A: der elfte Versuch war keine 429 — das Rate-Limit greift gar nicht"; exit 1;
+          }
+          # A made-up `X-Forwarded-For` must not buy a fresh bucket. Were it
+          # to get 401, `TRUST_PROXY_HOPS` would stand too high, and every
+          # rate limit of the public paths would count into the void.
+          [ "$(printf '%s\n' "$a" | sed -n 12p)" = '429' ] || {
+            echo "::error::A: ein erfundener X-Forwarded-For kaufte einen frischen Eimer"; exit 1;
+          }
+
+          echo "== Aufrufer B ($address_b): eine andere Adresse, ein eigener Eimer =="
+          b="$(docker exec smoke-caller-b sh -c "$attempt")"
+          echo "$b"
+          [ "$b" = '401' ] || {
+            echo "::error::B bekam $b statt 401 — die API zählt den Proxy, nicht den Aufrufer (TRUST_PROXY_HOPS)"
+            exit 1
+          }
+          docker rm -f smoke-caller-a smoke-caller-b > /dev/null
+
+      # Both `failure()` and `always()` run regardless of earlier `if:`s — so
+      # both still need the `docs_only` guard themselves. Without it, a
+      # docs-only push (where `setup-env` above never wrote `.env`) would hit
+      # `docker compose down -v` here, compose would refuse to interpolate the
+      # file without `SECRET_BOX_KEY`, and a job meant to cost one quiet minute
+      # would go red instead.
+      #
+      # Both run the production file **and** the CI overlay: after the part
+      # above a `tls-proxy` is running that neither of the two files knows on
+      # its own, and a `down` without the overlay would leave the runner with a
+      # running proxy and two volumes.
+      - if: ${{ failure() && steps.docs-only.outputs.docs_only != 'true' }}
+        run: docker compose -f docker-compose.prod.yml -f .github/ci/docker-compose.ci.yml logs --no-color --tail 200
+        env:
+          IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}
+
+      - if: ${{ always() && steps.docs-only.outputs.docs_only != 'true' }}
+        run: docker compose -f docker-compose.prod.yml -f .github/ci/docker-compose.ci.yml down -v
+        env:
+          IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}
+
+  # ---------------------------------------------------------------------------
+  # The restoration drill (ADR-0017 §4).
+  #
+  # **The most expensive proof, and the only one that answers the actual
+  # question:** not "did the script run without errors", but "is the data
+  # back". It runs a whole stack, creates data through the **API**, backs up,
+  # destroys everything with `down -v` and checks **afterwards**.
+  #
+  # ⚠️ `down -v`, not `down`. Without `-v` the volume survives, the drill
+  # restores into a database that still has the data, and **every** check is
+  # green — including the one that restored nothing.
+  restore:
+    name: restore (Sicherung + Wiederherstellung)
+    # On `pull_request` for forks only: for a branch of this repository the
+    # push run has already done the same work.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: docs-only
+        run: |
+          git fetch --no-tags --quiet origin \
+            "+refs/heads/${DEFAULT_BRANCH}:refs/remotes/origin/${DEFAULT_BRANCH}" || true
+          scripts/ci-docs-only.sh "${{ github.event.before }}" "${{ github.sha }}" \
+            "refs/remotes/origin/${DEFAULT_BRANCH}"
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+
+      - uses: ./.github/actions/setup-workspace
+        if: steps.docs-only.outputs.docs_only != 'true'
+      - uses: ./.github/actions/setup-env
+        if: steps.docs-only.outputs.docs_only != 'true'
+
+      - name: Stack starten
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: |
+          set -euo pipefail
+          docker compose up -d --build
+          for _ in $(seq 1 60); do
+            [ "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/api/health/ready)" = "200" ] && break
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:8080/api/health/ready
+          # ⚠️ **The seed is a step of its own — `migrate` only pulls
+          # migrations.** Without it there is no `admin@example.org`, the
+          # drill got a **401** on its very first call and reported „kein
+          # Sitzungs-Cookie": a message that sounds like a broken cookie and
+          # means a missing row in the database. The `stack` job has had that
+          # line all along, this job never had it — and that is why it has been
+          # red since it came into being.
+          docker compose run --rm migrate db seed
+
+      # Through the **API**, not via SQL: what is to be backed up is what the
+      # application writes — with attachment, with `mail_log` row, with
+      # everything a submission sets off.
+      - name: Daten anlegen (Formular, Antwort, Anlage)
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: scripts/restore-drill.sh seed
+
+      - name: Sichern
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: scripts/restore-drill.sh backup
+
+      # The point of no return. From here on the archive is the only source.
+      - name: Alles vernichten (down -v)
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: docker compose down -v
+
+      - name: Stack neu und wiederherstellen
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: scripts/restore-drill.sh restore
+
+      # What is checked is what came back: the response, **the attachment
+      # with the same checksum**, the `mail_log` row and the login.
+      - name: Prüfen, was zurückkam
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: scripts/restore-drill.sh verify
+
+      - if: ${{ failure() && steps.docs-only.outputs.docs_only != 'true' }}
+        run: docker compose logs --no-color --tail 200
+      - if: ${{ always() && steps.docs-only.outputs.docs_only != 'true' }}
+        run: docker compose down -v
+
+  # ---------------------------------------------------------------------------
+  # Publishing the images (ADR-0009, addendum
+  # 2026-08-11).
+  #
+  # **Why at all.** Up to today CI builds both images and throws them away. A
+  # deployment that builds for itself is a deployment without a way back: the
+  # previous artifact no longer exists, because there never was one. From here
+  # on there is an image for every state on `main` that a server can pull — and
+  # only that makes the cheap part of the fallback path possible at all.
+  #
+  # **Where to.** GHCR, **public** . CI runs here anyway, it needs no
+  # additional credentials — the `GITHUB_TOKEN` with `packages: write` is
+  # enough —, and the target server needs no read token.
+  #
+  # ⚠️ **Public means: anybody pulls the finished state of the application.**
+  # The promise "there is no secret in the image" thereby stops being a
+  # declaration of intent; it is the last step of this job and the condition
+  # under which "public" is bearable.
+  publish:
+    name: publish (GHCR, nur main)
+    # **Proof 3, and it is a proof in its own right:** a branch that is not
+    # `main` does not publish. The condition sits on the job and not on the
+    # steps — an overlooked step without an `if:` would otherwise be exactly
+    # the publication nobody ordered.
+    if: ${{ github.ref == 'refs/heads/main' }}
+    # Green first, then published. An image from a run with red tests is an
+    # artifact that somebody pulls later because it is "lying in the registry
+    # after all".
+    needs: [quality, test, e2e, stack, restore]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      # The one additional permission, and it stands here instead of at the
+      # top of the file: every other job of this pipeline gets by with
+      # `contents: read`.
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # GitVersion derives the version from the history; a shallow clone
+          # has none.
+          fetch-depth: 0
+
+      # **The docs-only guard, and here it is the most important one.** On a
+      # pure docs push to `main`, `test`, `e2e`, `stack` and `restore` skip
+      # their steps and still report **green** — that is intentional and saves
+      # minutes. Without this step `publish` read that green as "everything
+      # checked" and published an image for which **not a single test was
+      # run** in that run.
+      #
+      # Nothing is lost in the process: the image of the last run with code
+      # lies in the registry, and a docs push does not change it. What is
+      # dropped is a new tag on unchanged content.
+      - id: docs-only
+        run: |
+          git fetch --no-tags --quiet origin \
+            "+refs/heads/${DEFAULT_BRANCH}:refs/remotes/origin/${DEFAULT_BRANCH}" || true
+          scripts/ci-docs-only.sh "${{ github.event.before }}" "${{ github.sha }}" \
+            "refs/remotes/origin/${DEFAULT_BRANCH}"
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+
+      - uses: gittools/actions/gitversion/setup@v4.7.0
+        if: steps.docs-only.outputs.docs_only != 'true'
+        with:
+          versionSpec: '6.x'
+      # Word for word the same as in the `stack` job, for the same reason
+      # (see there): the tool itself instead of `gitversion/execute`, because
+      # its `/l console` writes log lines into the stream it reads as JSON.
+      - id: gitversion
+        name: GitVersion
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: |
+          "$GITVERSION_PATH/dotnet-gitversion" /config GitVersion.yml /output json \
+            > gitversion.json
+          semver="$(jq -r .SemVer gitversion.json)"
+          case "$semver" in
+            '' | null) echo "::error::GitVersion produced no version"; exit 1 ;;
+          esac
+          echo "APP_VERSION=$semver" >> "$GITHUB_ENV"
+          # **The rolling tags, and the condition under which they exist at
+          # all** (review round 3 no. 1). `x`, `x.y` and `latest` may only
+          # ever move onto a **stable** version: a pre-release
+          # (`1.2.0-something.4`) that took `latest` with it would put a state
+          # nobody released behind the tag the production file falls back to.
+          # `PreReleaseTag` is GitVersion's own answer to that question and is
+          # empty exactly for a release build; the job runs only on `main`
+          # anyway, so this is the second lock and not the only one.
+          major="$(jq -r .Major gitversion.json)"
+          minor="$(jq -r .Minor gitversion.json)"
+          prerelease="$(jq -r '.PreReleaseTag // ""' gitversion.json)"
+          if [ -z "$prerelease" ] || [ "$prerelease" = 'null' ]; then
+            echo "APP_ROLLING_TAGS=$major $major.$minor latest" >> "$GITHUB_ENV"
+          else
+            echo "::notice::$semver ist eine Vorabfassung - keine rollenden Marken"
+            echo "APP_ROLLING_TAGS=" >> "$GITHUB_ENV"
+          fi
+          # Lower-cased: a registry takes no capital letters in the path,
+          # GitHub organisations very much do carry them.
+          owner="$(printf '%s' "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
+          echo "IMAGE_PREFIX=ghcr.io/$owner" >> "$GITHUB_ENV"
+
+      # `docker compose build` needs a `.env` — compose interpolates the
+      # whole file before it builds anything.
+      - uses: ./.github/actions/setup-env
+        if: steps.docs-only.outputs.docs_only != 'true'
+
+      - name: Die Images bauen
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: docker compose build
+
+      - name: An der Registry anmelden
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: |
+          printf '%s' '${{ secrets.GITHUB_TOKEN }}' \
+            | docker login ghcr.io -u '${{ github.actor }}' --password-stdin
+
+      # **Proof 1: two immutable tags, and the second is the more important
+      # one.** The GitVersion version is the one people talk about; the commit
+      # SHA is the one that is unambiguous. Two runs on the same state can
+      # carry the same SemVer (GitVersion counts commits, not runs) — the SHA
+      # cannot.
+      #
+      # **On top of them three moving ones: `x`, `x.y` and `latest`** (review
+      # round 3 no. 1). Until then this job deliberately published none, with
+      # the argument that a moving tag destroys the way back — „the previous
+      # image" would mean nothing. The argument was half right and the
+      # conclusion was wrong, in two ways:
+      #
+      #   1. **The way back is not touched.** It hangs on the two immutable
+      #      tags, and they stay exactly as they were. `latest` moving does not
+      #      make `1.4.2` move; a server that pins a version keeps pinning it,
+      #      and the roll-back is still „set `APP_VERSION` to the previous
+      #      one".
+      #   2. **`docker-compose.prod.yml` already reads `${APP_VERSION:-latest}`
+      #      — and pointed at a tag that did not exist.** Whoever followed the
+      #      documented path without setting `APP_VERSION` got a manifest error
+      #      from the registry, not a warning about pinning. Refusing the tag
+      #      did not enforce the pin; it broke the default.
+      #
+      # `x` and `x.y` are what an operator upgrades along: „stay on 1.4" is a
+      # decision about compatibility that a plain `latest` cannot express and a
+      # pinned `1.4.2` cannot follow.
+      #
+      # ⚠️ **Only on a stable version** — the `APP_ROLLING_TAGS` above is empty
+      # for a pre-release, and the loop then simply has nothing to move.
+      #
+      # **Three images, not two.** Only `formsache-api` and `formsache-web` are demanded by name; the
+      # stack has a third, `formsache-migrate` (its own image, because the
+      # runtime image of the API carries no Prisma CLI). Without it a server
+      # could not run the migrations without building — and "a production
+      # server does not build" is the promise of the production file.
+      - name: Veröffentlichen — Fassung, Commit-SHA und rollende Marken
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: |
+          set -euo pipefail
+          # Unquoted on purpose — the variable carries a space-separated list
+          # of tags, and quoting it would push one tag called „1 1.4 latest".
+          # shellcheck disable=SC2206
+          for image in api web migrate; do
+            src="formsache-$image:${APP_VERSION}"
+            for tag in "${APP_VERSION}" "sha-${GITHUB_SHA}" ${APP_ROLLING_TAGS}; do
+              docker tag "$src" "$IMAGE_PREFIX/formsache-$image:$tag"
+              docker push "$IMAGE_PREFIX/formsache-$image:$tag"
+              echo "veröffentlicht: $IMAGE_PREFIX/formsache-$image:$tag"
+            done
+          done
+
+      # **Proof 1b: the rolling tags point at this run's image, not at an
+      # older one.** A `docker tag`/`docker push` pair that silently pushed the
+      # copy still lying around from a previous build would be the one failure
+      # of the moving tags nobody notices — `latest` would lag a release
+      # behind, and every server that follows it with it. Compared is the
+      # **digest in the registry**, so what is measured is what was published
+      # and not what lies on this runner.
+      - name: Die rollenden Marken zeigen auf dieselbe Fassung
+        if: steps.docs-only.outputs.docs_only != 'true' && env.APP_ROLLING_TAGS != ''
+        run: |
+          set -euo pipefail
+          digest_of() {
+            docker buildx imagetools inspect --format '{{.Manifest.Digest}}' "$1"
+          }
+          for image in api web migrate; do
+            want="$(digest_of "$IMAGE_PREFIX/formsache-$image:${APP_VERSION}")"
+            # shellcheck disable=SC2206
+            for tag in ${APP_ROLLING_TAGS}; do
+              got="$(digest_of "$IMAGE_PREFIX/formsache-$image:$tag")"
+              [ "$got" = "$want" ] || {
+                echo "::error::formsache-$image:$tag zeigt auf $got statt $want"
+                exit 1
+              }
+              echo "formsache-$image:$tag = $want"
+            done
+          done
+
+      # **Proof 2 — the step that checks the running version, now behind the
+      # publishing.** It used to compare the tag of the *locally built* image
+      # with `/api/health`; that proves the build is right and says nothing
+      # about what lies in the registry. What is measured is therefore the
+      # **pulled** image — and in the production stack at that, because that is
+      # the shape it will run in.
+      #
+      # `image rm` first: otherwise compose would take the copy still lying
+      # around from the build, and the pull would be a claim. The CI overlay is
+      # only the TLS proxy the check goes through.
+      - name: /api/health des veröffentlichten Images meldet seine Fassung
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: |
+          set -euo pipefail
+          for image in api web migrate; do
+            docker image rm -f "$IMAGE_PREFIX/formsache-$image:${APP_VERSION}" > /dev/null
+          done
+          docker compose -f docker-compose.prod.yml -f .github/ci/docker-compose.ci.yml pull
+          docker compose -f docker-compose.prod.yml -f .github/ci/docker-compose.ci.yml up -d
+          for _ in $(seq 1 60); do
+            curl -fsSk https://localhost/api/health > /dev/null 2>&1 && break
+            sleep 2
+          done
+          reported="$(curl -fsSk https://localhost/api/health | jq -r .version)"
+          echo "das gezogene Image meldet $reported, getaggt ist es als $APP_VERSION"
+          [ "$reported" = "$APP_VERSION" ] || {
+            echo "::error::das veröffentlichte Image meldet $reported statt $APP_VERSION"; exit 1;
+          }
+
+      # **Proof 4: no secret in the image.** The most important of the four,
+      # because it is the only one that carries the decision "public".
+      #
+      # It is run over the **exported file tree** of each image, not over
+      # `docker run … find`: an image that has no shell could not be checked
+      # otherwise, and an image with a manipulated entry point would check
+      # itself.
+      #
+      # Three things are searched for:
+      #   1. a `.env` (any except `.env.example`) — the obvious one,
+      #   2. key material (PEM header line),
+      #   3. the **real values of this run** from the `.env` that `setup-env`
+      #      has just generated. Point 3 is the actual test: it also finds a
+      #      file that is called something else.
+      #
+      # ⚠️ **One named exception, and it is closed:** in the `migrate` image
+      # `prisma/seed.ts` stands there as source, and the documented Zod
+      # defaults stand in it (`change-me-locally`). A public default in public
+      # source is no secret — and the production stack does not pass the
+      # `SEED_*` variables through, so they are never read there. The two
+      # images that see traffic are checked by the step
+      # **without** this exception.
+      #
+      # *Reproduction:* copy a `.env` into the image (e.g. `COPY .env .` in the
+      # Dockerfile) → this step turns red, at point 1 **and** at point 3.
+      - name: Kein Geheimnis im Image
+        if: steps.docs-only.outputs.docs_only != 'true'
+        run: |
+          set -euo pipefail
+          secret_box="$(grep -m1 '^SECRET_BOX_KEY=' .env | cut -d= -f2-)"
+          pg_password="$(grep -m1 '^POSTGRES_PASSWORD=' .env | cut -d= -f2-)"
+          [ -n "$secret_box" ] || { echo "::error::kein SECRET_BOX_KEY in .env — der Scan prüfte nichts"; exit 1; }
+
+          fail=0
+          for image in api web migrate; do
+            ref="$IMAGE_PREFIX/formsache-$image:${APP_VERSION}"
+            echo "::group::$ref"
+            cid="$(docker create "$ref")"
+            docker export "$cid" > /tmp/image.tar
+            docker rm -f "$cid" > /dev/null
+
+            # 1. File names.
+            if tar -tf /tmp/image.tar | grep -E '(^|/)\.env($|\.)' | grep -v '\.env\.example$'; then
+              echo "::error::$ref trägt eine .env"
+              fail=1
+            else
+              echo "keine .env"
+            fi
+
+            # 2. The **real value of this run**. `SECRET_BOX_KEY` is
+            # generated afresh per run by `dev-setup.sh` — it stands in no file
+            # of the repository, so every hit is a find, including one in a
+            # library. `grep -a`, because the tar stream is binary.
+            #
+            # ⚠️ **`POSTGRES_PASSWORD` does not belong here, and that is the
+            # second finding of the first `main` run.** Its value in CI is
+            # `change-me-locally` — the same public placeholder that
+            # `.env.example` carries and that `prisma/seed.ts` keeps as a Zod
+            # default. The scan consequently found it in the `migrate` image,
+            # in the source for which ADR-0009 has the named exception; it
+            # reported a "secret" that is none. A check pattern that is
+            # identical to a public placeholder does not measure the secret
+            # but the placeholder. It therefore runs along in group 3 —
+            # there, where the exception for `migrate` applies.
+            if [ "$secret_box" = 'change-me-locally' ]; then
+              echo "::error::SECRET_BOX_KEY steht auf dem Platzhalter — der Scan prüfte nichts"
+              exit 1
+            fi
+            # `grep` directly on the **file**, not behind a pipe: here there
+            # is no SIGPIPE that could swallow the find.
+            if grep -aqF -- "$secret_box" /tmp/image.tar; then
+              echo "::error::$ref enthält den SECRET_BOX_KEY dieses Laufs"
+              fail=1
+            fi
+
+            # 3. The **generic** patterns — they leave the *foreign*
+            # libraries out, and only those.
+            #
+            # ⚠️ Measured on 2026-08-12, first real `main` run (348): across
+            # the whole stream they are **unusable**. `dotenv` explains in two
+            # READMEs how to write a private key into a variable,
+            # `@mistralai/mistralai` keeps a test file about redaction rules,
+            # and `ssh2` (in the build tree of the `migrate` image) carries
+            # both markers as constants of its key parser. A guard that is red
+            # on every run gets switched off, not read.
+            #
+            # **`node_modules/@formsache/*` stays in** (a review finding): in
+            # the deploy tree `@formsache/shared` lies exactly there, and that
+            # is our code, not a foreign dependency.
+            #
+            # ⚠️⚠️ **And `grep -c` instead of `grep -q`, measured.** Under
+            # `set -euo pipefail` `grep -q` bails out at the first hit, `tar`
+            # dies of SIGPIPE, `pipefail` turns that into a pipeline failure —
+            # and the `if` condition becomes **false**. Reproduced with a 40 MB
+            # archive whose needle lies inside it: „VERPASST". A scan that
+            # stays silent on a real find is worse than none. `grep -c` reads
+            # the stream to the end.
+            own_stream() {
+              tar -xOf /tmp/image.tar --exclude='*node_modules/*' 2>/dev/null
+              tar -xOf /tmp/image.tar --wildcards '*node_modules/@formsache/*' 2>/dev/null || true
+            }
+            for needle in 'BEGIN OPENSSH PRIVATE KEY' 'BEGIN RSA PRIVATE KEY'; do
+              hits="$(own_stream | grep -acF -- "$needle" || true)"
+              if [ "${hits:-0}" -ne 0 ]; then
+                echo "::error::$ref enthält Schlüsselmaterial (Muster: ${needle:0:12}…)"
+                fail=1
+              fi
+            done
+
+            # Seed credentials.
+            #
+            # Until 2026-08-12 this fired on the `api` image as well, and the
+            # reason was not library text: `pnpm deploy --prod` copies the
+            # **whole** package content, hence also `apps/api/prisma/seed.ts`,
+            # `src/` and `test/`. The runtime image thereby carried the
+            # complete source including test fixtures. Fixed via `files` in
+            # `apps/api/package.json`; this guard is what found it.
+            #
+            # `change-me-locally` is the public placeholder and therefore
+            # carries the `migrate` exception from ADR-0009. **A real**
+            # `POSTGRES_PASSWORD` is something else: then it is treated like
+            # the `SECRET_BOX_KEY` — across all three images and the whole
+            # stream, without any exception.
+            if [ "$image" != 'migrate' ]; then
+              hits="$(own_stream | grep -acF -- 'change-me-locally' || true)"
+              if [ "${hits:-0}" -ne 0 ]; then
+                echo "::error::$ref enthält Seed-Zugangsdaten"
+                fail=1
+              fi
+            fi
+            if [ "$pg_password" != 'change-me-locally' ] \
+                 && grep -aqF -- "$pg_password" /tmp/image.tar; then
+              echo "::error::$ref enthält das Datenbank-Kennwort dieses Laufs"
+              fail=1
+            fi
+
+            rm -f /tmp/image.tar
+            echo "::endgroup::"
+          done
+          [ "$fail" -eq 0 ] || exit 1
+          echo "drei Images geprüft: keine .env, kein Schlüsselmaterial, keine Seed-Zugangsdaten"
+
+      - if: ${{ always() && steps.docs-only.outputs.docs_only != 'true' }}
+        run: docker compose -f docker-compose.prod.yml -f .github/ci/docker-compose.ci.yml down -v
+
+  # ---------------------------------------------------------------------------
+  # The load test as a **report**, not as a gate.
+  #
+  # The *order* — error rate 0 and seats handed out exactly — stays in the
+  # blocking part, where it belongs: `pnpm -r test` runs the concurrency cases
+  # against the same assurance. What runs here is the **throughput**, and that
+  # is no assurance: on the agent machine it scattered by more than a factor
+  # of 2. A number with this spread as a gate would have only one effect — it
+  # would soon be switched off.
+  #
+  # Hence: its own job, `continue-on-error`, three runs per stage, and the
+  # range as an artifact. It never runs on an ordinary push, but on request
+  # (`workflow_dispatch`) and weekly.
+  load:
+    name: load (Bericht, blockiert nicht)
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: formsache
+          POSTGRES_PASSWORD: change-me-locally
+          POSTGRES_DB: formsache
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U formsache -d formsache"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-workspace
+      - uses: ./.github/actions/setup-env
+      - name: Migrationen anwenden
+        run: pnpm --filter @formsache/api exec prisma migrate deploy
+      # Three runs, not one. A single throughput value without a spread is
+      # exactly the number that has shown itself unfit as a baseline: it does
+      # not say whether the next run is half as fast.
+      - name: Lasttest dreimal
+        run: |
+          set -euo pipefail
+          for run in 1 2 3; do
+            echo "::group::Lauf ${run}/3"
+            pnpm --filter @formsache/api load-test 2>&1 | tee "load-${run}.log"
+            echo "::endgroup::"
+          done
+      # The machine belongs to the number. Without it a throughput value is a
+      # claim about nothing — exactly the deficiency that §10 no. 75 held
+      # against the inherited measurement of the page size.
+      - name: Maschine protokollieren
+        if: always()
+        run: |
+          {
+            echo "runner: ${{ runner.os }} / ${{ runner.arch }}"
+            echo "cpus: $(nproc)"
+            echo "mem: $(free -h | awk '/^Mem:/ {print $2}')"
+            uname -a
+          } | tee machine.txt
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: load-report
+          path: |
+            load-*.log
+            machine.txt
+          retention-days: 30

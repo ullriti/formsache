@@ -1,0 +1,102 @@
+/*
+ * The toggle switch — **one construction, two views**.
+ *
+ * It started in `settings-view.css` (`ToggleSetting`) and was copied into
+ * `builder-view.css` for the *Bedingte Anzeige*, with a comment claiming the
+ * builder could never reach the original because that stylesheet „only loads
+ * with `SettingsView`". The build says otherwise: `AppShell.tsx` imports both
+ * views statically, there is no `React.lazy` anywhere in the shell, and Vite
+ * emits **one** CSS asset carrying both blocks. So the copy bought nothing and
+ * cost the usual price of a copy — two identical blocks people are asked to
+ * keep in step by hand.
+ *
+ * It lives in the style layer rather than beside one of the two views because
+ * neither owns it, and it is pulled in by `styles/index.css`, the app's single
+ * stylesheet entry point — so it is in the bundle exactly once, whichever view
+ * happens to render first.
+ *
+ * Unscoped selectors, unlike the builder's former `.props .switch`: nothing in
+ * either view declares a competing rule for these class names, and the element
+ * rules of `base.css` (specificity 0,0,1) lose to a class either way.
+ */
+
+.switch {
+  position: relative;
+  flex: none;
+  width: 42px;
+  height: 24px;
+}
+
+.switch__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.switch__track {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--color-control-off);
+  transition: background var(--motion-fast);
+
+  /*
+    The decoration must not take the pointer. `.switch__knob` is positioned and
+    comes after the input in the DOM, so it paints *above* the transparent
+    `<input>` that covers the whole switch — which made the middle 18 of 42 px,
+    the exact spot anyone aims at, a dead zone. Only the thin rim around the
+    knob toggled, and the same defect class ("tote Zonen") had already been
+    reported once for drag-and-drop.
+
+    Not fixed with a `z-index` on the input: that would work until the next
+    decorative layer is added. Decoration that cannot be clicked at all is the
+    property worth having — the element carrying `role="switch"` is then the
+    only thing a pointer can reach, which is also what the E2E case asserts by
+    clicking the switch rather than its label.
+  */
+  pointer-events: none;
+}
+
+.switch__knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-circle);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-raised);
+  transition: left var(--motion-fast);
+}
+
+.switch__input:checked ~ .switch__track {
+  background: var(--color-accent);
+}
+
+.switch__input:checked ~ .switch__track .switch__knob {
+  left: 21px;
+}
+
+.switch__input:focus-visible ~ .switch__track {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.switch__input:disabled {
+  cursor: default;
+}
+
+/*
+ * The dimmed track came from the builder's copy, where the switch is disabled
+ * while no earlier question can be a source. It now applies to the settings
+ * switches too, which is the point of merging: a switch that refuses a click
+ * has to look like it does, and the cursor alone says so only to a mouse.
+ */
+.switch__input:disabled ~ .switch__track {
+  opacity: 0.5;
+}

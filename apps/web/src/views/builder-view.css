@@ -1,0 +1,2057 @@
+/*
+ * Form builder (Handoff): three columns on desktop, off-canvas sheets
+ * below the breakpoint.
+ *
+ * Colours come from the tokens only — never a literal, which the lint rule in
+ * `eslint.config.js` and `tokens.test.ts` enforce. The
+ * canvas carries the tenant tone (`--color-canvas`) while the surrounding
+ * chrome stays neutral, exactly as the handoff describes.
+ */
+
+.builder {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+  min-width: 0;
+  /* The same side gutter as the app header above (`.app-header`), so the form
+     name lines up with the tenant mark and „Veröffentlichen" stops sitting
+     flush against the window edge. The view was full-bleed, which only became
+     visible once the title lost its box. */
+  padding: 0 var(--space-7) var(--space-7);
+}
+
+/* 20 px of gutter on each side is a sixth of a 360 px screen; the columns need
+   that width more than the margin does. */
+.builder--compact {
+  padding: 0 var(--space-4) var(--space-6);
+}
+
+.builder__state {
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.builder__link {
+  border: none;
+  background: none;
+  color: var(--color-accent-strong);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* --- top bar ------------------------------------------------------------ */
+
+.builder__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-4) 0 var(--space-3);
+}
+
+/*
+ * The form name: the `<h1>` of this view, set in the shared editable-heading
+ * type below.
+ *
+ * `max-width` rather than `overflow: hidden`: the box must not widen the page
+ * at 360 px (B12), but clipping here would also cut the focus ring off the
+ * field inside it.
+ */
+.builder__heading {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+}
+
+/*
+ * Width by content.
+ *
+ * An input's intrinsic width has nothing to do with what is in it, so the
+ * mirror text — `data-value`, written by `BuilderView` — is laid out in the
+ * same grid cell and the cell takes the wider of the two. `size="1"` on the
+ * input is what makes that work in both directions: without it the input's own
+ * ~20-character default wins for every shorter name, the cell never shrinks,
+ * and the hover underline runs on across empty space — the very thing that
+ * made this title read as a stray form field.
+ */
+.builder__title-sizer {
+  display: inline-grid;
+  max-width: 100%;
+}
+
+.builder__title-sizer::after {
+  content: attr(data-value);
+  visibility: hidden;
+  white-space: pre;
+  /* Room for the caret past the last glyph. */
+  padding-right: var(--space-1);
+}
+
+.builder__title-sizer::after,
+.builder__title {
+  grid-area: 1 / 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.builder__title::placeholder {
+  color: var(--color-text-faint);
+  font-weight: var(--font-weight-regular);
+}
+
+/* --- editable headings -------------------------------------------------- */
+
+/*
+ * The builder has two of them — the form name in the bar and the page title in
+ * the canvas — and they are the same idea twice: a heading that happens to be
+ * editable, carrying no border and no fill until it is pointed at. One rule
+ * for both, because a fix to the affordance that lands on one and misses the
+ * other is exactly how they drifted before.
+ *
+ * `--font-size-title` (26 px) is the size `.dashboard__title` and
+ * `.responses__title` use for the heading of a view; `--font-size-title-sm`
+ * (18 px) is for serif headings *inside* a card.
+ *
+ * The mirror text of the sizer is in the list because it only measures
+ * correctly when it is set in exactly the same type as the field.
+ */
+.builder__title,
+.builder__title-sizer::after,
+.canvas__title {
+  min-width: 0;
+  margin: 0;
+  padding: 2px 0;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  font-family: var(--font-display);
+  font-size: var(--font-size-title);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  color: var(--color-text-strong);
+}
+
+/* A hairline says „editierbar", the focus colour says „wird gerade bearbeitet".
+   The focus ring of `base.css` stays on top of that: an underline alone is a
+   1 px hint and would be the only indicator otherwise. The underline follows
+   the focus token rather than the accent colour for the same reason the ring does
+   (Konzept no. 19) — a pale accent colour would have made it invisible. */
+.builder__title:hover,
+.canvas__title:hover {
+  border-bottom-color: var(--color-hairline);
+}
+
+.builder__title:focus,
+.canvas__title:focus {
+  border-bottom-color: var(--color-focus);
+}
+
+.builder__save-state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: none;
+  /* 12.5 px, the handoff's size for meta text next to a title — `--font-size-
+     label` (11 px) is the uppercase eyebrow size and reads as a leftover
+     beside a 26 px heading. */
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-subtle);
+}
+
+/* A state deserves a state marker: without it two grey words float next to the
+   heading with nothing saying they belong together. Same dot as the tenant
+   indicator in the header (`.app-header__dot`). */
+.builder__save-state::before {
+  content: '';
+  flex: none;
+  width: var(--space-3);
+  height: var(--space-3);
+  border-radius: var(--radius-circle);
+  background: var(--color-control-off);
+}
+
+/* Unsaved work is the one state a builder must never make look calm. */
+.builder__save-state--dirty {
+  color: var(--color-warning);
+  font-weight: var(--font-weight-bold);
+}
+
+.builder__save-state--dirty::before {
+  background: var(--color-warning);
+}
+
+/* Pushed to the far end, so the bar reads title first, actions last however
+   many buttons the breakpoint adds. */
+.builder__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+/*
+ * „⚙ Einstellungen" once stood here as well (review finding 18) and is gone —
+ * the way there lies in the subheader above. „Änderungen verwerfen" takes its
+ * place, the same geometry as „Speichern" beside it: it is a button of the
+ * same bar and of the same consequence, only in the other direction.
+ */
+.builder__save,
+.builder__publish,
+.builder__discard,
+.builder__sheet-trigger {
+  flex: none;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font: inherit;
+  color: var(--color-text-strong);
+  cursor: pointer;
+}
+
+.builder__publish {
+  border-color: transparent;
+  background: var(--gradient-accent);
+  color: var(--color-on-accent);
+  font-weight: var(--font-weight-bold);
+}
+
+.builder__discard:hover:enabled {
+  background: var(--color-surface-sunken);
+}
+
+.builder__save:disabled,
+.builder__publish:disabled,
+.builder__discard:disabled,
+.builder__sheet-trigger:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/*
+ * The publish state — the counterpart to `.builder__save-state`, on its own
+ * line at the end of the bar.
+ *
+ * `flex-basis: 100%` rather than a fifth item wedged between the buttons: the
+ * sentences here are whole clauses („Erst speichern, dann veröffentlichen"),
+ * and one of those in the action row would shove the buttons sideways every
+ * time the state changed. Right-aligned, so it sits under the control it talks
+ * about rather than under the form name.
+ *
+ * `min-height` keeps the bar from jumping by a line as the text comes and goes.
+ * The region is in the DOM at all times — a `role="status"` element that
+ * appears together with its text is frequently not announced at all — and an
+ * empty one would otherwise collapse to nothing.
+ */
+.builder__publish-state {
+  flex: 0 0 100%;
+  min-height: 1.2em;
+  margin-top: calc(-1 * var(--space-1));
+  text-align: right;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-subtle);
+}
+
+.builder__alert {
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-surface);
+  background: var(--color-danger-bg-soft);
+  color: var(--color-danger);
+  font-size: var(--font-size-body-sm);
+}
+
+/*
+ * „Diese Rolle darf nicht speichern".
+ *
+ * Deliberately **not** `builder__alert`: nothing failed, and the danger colours
+ * would send an editor looking for a fault instead of reading the sentence. It
+ * is the same quiet, informative weight the notice on the dashboard carries.
+ */
+.builder__readonly {
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-surface);
+  background: var(--color-panel);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-body-sm);
+}
+
+/*
+ * The public address: **one** quiet strip, in one row.
+ *
+ * It used to be three things with three weights — a bordered status line, a
+ * bordered monospace box and a bordered button — which read as a form inside
+ * the builder rather than as the one address the editor came here to copy. Now
+ * the strip is the container, the address is the only thing in it that carries
+ * weight, and status and copy recede beside it.
+ */
+.builder__published {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-hairline-faint);
+  border-radius: var(--radius-surface);
+  background: var(--color-panel-raised);
+}
+
+/* The status badge of the handoff — deliberately the same pill as
+   `.form-card__badge--active` on the dashboard, so "veröffentlicht" looks the
+   same wherever it is stated. */
+.builder__published-status {
+  flex: none;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+}
+
+/*
+ * The address itself: body size, no box. Monospace was a deviation from the
+ * handoff (which sets none anywhere in the builder) and it is what made this
+ * read as a read-only input.
+ *
+ * Text colour rather than the accent, and the underline in that same colour:
+ * `--color-accent-strong` on this surface is 3.3:1, short of the 4.5:1 body
+ * text owes, and this is the most important string on the page. The underline
+ * — not a colour — is what says „Link", and it is the accent that answers the
+ * hover.
+ */
+.builder__slug {
+  /* Content width, not the whole row: „Kopieren" belongs next to the address
+     it copies, and stretching the link would park the button at the far edge
+     with a hand's width of nothing between them. */
+  flex: 0 1 auto;
+  min-width: 0;
+  /*
+   * `inline-flex` plus a floor, the same pattern as `.q-card__type` below:
+   * this is a link — a control — and WCAG 2.5.8 wants 24 px of it in both
+   * directions. As plain inline text it measured 304–311 × 20.3 px, a tenth
+   * of a line short of the floor because the address is body-size text with
+   * no box around it. `min-height` alone would do it without `inline-flex`,
+   * but the flex context keeps the text vertically centred in the taller box
+   * rather than sitting at its top. Neither `overflow-wrap` nor the wrapping
+   * of a long address changes: `inline-flex` still wraps its content exactly
+   * like inline text does when the container is too narrow for it.
+   */
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-target-min);
+  overflow-wrap: anywhere;
+  font-size: var(--font-size-body);
+  color: var(--color-text);
+  text-decoration: underline;
+  text-decoration-color: currentcolor;
+  /* Triple-click selects the whole address — the fallback for browsers or
+     contexts where the copy button's `navigator.clipboard` call fails. */
+  user-select: all;
+}
+
+.builder__slug:hover,
+.builder__slug:focus-visible {
+  color: var(--color-accent-strong);
+}
+
+/* A text button, not a second bordered control: it acts on the address next to
+   it and must not compete with it. The box appears on hover, where it is
+   needed to show what the click will hit. */
+.builder__copy {
+  flex: none;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: none;
+  font: inherit;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.builder__copy:hover {
+  border-color: var(--color-hairline);
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+}
+
+/*
+ * In the strip, not on a line reserved below it: while idle it is empty and
+ * takes no space at all.
+ *
+ * It is the **last** item of the flex row on purpose. Flex lines are filled in
+ * order, so a message too long for the remaining space wraps itself onto a
+ * second line and leaves the button exactly where the pointer just clicked it;
+ * an earlier position would push „Kopieren" away as the message appears.
+ *
+ * 12.5 px because this is a sentence to be read, not a caption.
+ */
+.builder__copy-feedback {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-success);
+}
+
+.builder__copy-feedback--error {
+  color: var(--color-danger);
+}
+
+/* --- columns ------------------------------------------------------------ */
+
+.builder__columns {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr) 300px;
+  gap: var(--space-3);
+  align-items: start;
+  min-width: 0;
+}
+
+.builder--compact .builder__columns {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.builder__pages,
+.builder__panel {
+  padding: var(--space-3);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-surface);
+  background: var(--color-panel);
+  min-width: 0;
+}
+
+/* --- canvas ------------------------------------------------------------- */
+
+.canvas {
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-surface);
+  /* The tenant tone, and the only place in the admin UI that carries it. */
+  background: var(--color-canvas);
+}
+
+/* The page title of the handoff — 26 px PT Serif, set with the form name in
+   the shared editable-heading rule above. The heading around it carries no
+   style of its own. */
+.canvas__heading {
+  margin: 0;
+}
+
+/* The whole column, unlike the form name: nothing sits beside it in this row,
+   so there is no reason to fit it to its text. */
+.canvas__title {
+  width: 100%;
+}
+
+/* „Seite 1 von 3" — 12.5 px in the handoff, which is `--font-size-body-sm`. */
+.canvas__meta {
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-subtle);
+}
+
+/*
+ * The page description — no prototype precedent, styled
+ * like the other free-text inputs of this column (`.canvas__title`) rather
+ * than invented from scratch: borderless until focused, so it reads as part
+ * of the page header and not as a form field competing with the questions
+ * below it.
+ */
+.canvas__description {
+  width: 100%;
+  margin: 0 0 var(--space-4);
+  padding: var(--space-2) 0;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  resize: vertical;
+  font: inherit;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-muted);
+}
+
+.canvas__description:hover {
+  border-bottom-color: var(--color-hairline);
+}
+
+.canvas__description:focus-visible {
+  border-bottom-color: var(--color-focus);
+  outline: none;
+}
+
+.canvas__empty {
+  margin: 0;
+  padding: var(--space-6) var(--space-3);
+  text-align: center;
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-body-sm);
+}
+
+.canvas__cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+
+/* --- question card ------------------------------------------------------ */
+
+.q-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+.q-card--full {
+  flex: 1 1 100%;
+}
+
+/*
+ * Half width is a **desktop** layout. Below the breakpoint the
+ * rule is overridden further down, and the stored `width` is untouched — the
+ * document says "half", the small screen simply renders it full.
+ */
+.q-card--half {
+  flex: 1 1 calc(50% - (var(--space-3) / 2));
+}
+
+.q-card--selected {
+  border-color: var(--color-accent);
+  box-shadow: 0 2px 12px var(--color-accent-tint);
+}
+
+.q-card--dragging {
+  opacity: 0.6;
+}
+
+/* The docking hints of the handoff: a bar on the side that would be joined. */
+.q-card--over-left {
+  box-shadow: inset 5px 0 0 var(--color-accent);
+}
+
+.q-card--over-right {
+  box-shadow: inset -5px 0 0 var(--color-accent);
+}
+
+/*
+ * The reordering hint. The dashed outline is the prototype's, and it names the
+ * card the drop is measured against; the solid bar is new and says on *which
+ * side* of it the card lands. Direction is the whole point — a hint that only
+ * highlighted a card left the two possible outcomes indistinguishable.
+ *
+ * Top and bottom, rather than the side the row actually runs along, because
+ * the canvas stacks full-width cards nearly always; the outline carries the
+ * "which card" in the rarer half-width row.
+ */
+.q-card--over-before,
+.q-card--over-after {
+  outline: 2px dashed var(--color-accent);
+  outline-offset: 2px;
+}
+
+.q-card--over-before {
+  box-shadow: inset 0 4px 0 var(--color-accent);
+}
+
+.q-card--over-after {
+  box-shadow: inset 0 -4px 0 var(--color-accent);
+}
+
+/*
+ * Held by the keyboard — the same affordance a pointer drag shows.
+ *
+ * **Deliberately still the accent colour**, unlike the focus rules of Konzept
+ * no. 19. This is not a focus indicator: it says „diese Karte ist
+ * aufgenommen", and it appears together with the focus ring that `base.css`
+ * draws in `--color-focus` — the contrast guarantee is carried there. The drop
+ * indicators next to it (`--over-before`/`--over-after`) speak the same accent
+ * language, and painting one of the three blue would split a single visual
+ * vocabulary for a rule that does not apply to it.
+ */
+.q-card--held {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.q-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/*
+ * `min-width`, not a wider padding: the grip measured **23,9 px** — a tenth
+ * under the 24 × 24 of WCAG 2.5.8 , and only visible at all
+ * because `mobile-targets.spec.ts` carries a decimal. Its height was already
+ * 30 px, so the box needs a floor rather than a size, and padding would push
+ * the glyph off centre in the one direction that was fine.
+ *
+ * It matters more here than the tenth suggests: on a phone the grip is the
+ * only way to reorder, the keyboard alternative being no
+ * help without one.
+ */
+.q-card__grip,
+.page-row__grip {
+  flex: none;
+  min-width: var(--touch-target-min);
+  min-height: var(--touch-target-min);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--color-text-subtle);
+  font: inherit;
+  cursor: grab;
+  /*
+   * Without this the browser claims the gesture and scrolls the page instead
+   * of sending pointermove — the single most common reason a hand-written
+   * touch drag "does not work on mobile" .
+   */
+  touch-action: none;
+}
+
+.q-card__grip:focus-visible,
+.page-row__grip:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+.q-card__grip[aria-pressed='true'],
+.page-row__grip[aria-pressed='true'] {
+  border-color: var(--color-accent);
+  color: var(--color-accent-strong);
+  cursor: grabbing;
+}
+
+/*
+  A `<button>` since 2026-08-12 (a review finding: the saved question could
+  not be opened without a mouse). It looks like the badge it was before —
+  hence the three lines the browser would otherwise bring along.
+*/
+.q-card__type {
+  appearance: none;
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
+  flex: none;
+  /*
+    ⚠️ **As a `<span>` this was a caption, as a button it is a control** — and
+    with that the 24 px promise applies (WCAG 2.5.8). `mobile-targets.spec.ts`
+    measured it, at once: 42,6 × **18**. The height therefore comes from
+    `--touch-target-min` and not from the padding; `inline-flex` keeps the text
+    centred while doing so, without the badge growing wider.
+  */
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-target-min);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-ink);
+  color: var(--color-on-ink);
+  font-size: var(--font-size-caption);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.q-card__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+}
+
+.q-card__required {
+  color: var(--color-danger);
+}
+
+/* The requirement — the mark a question with a *Bedingte Anzeige* carries. */
+.q-card__condition {
+  flex: none;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-accent-tint);
+  color: var(--color-accent-strong);
+  font-size: var(--font-size-caption);
+}
+
+/*
+ * A condition pointing at a question that was deleted, retyped or dragged
+ * behind this card. It reads as a *defect*, not as an accent: the form cannot
+ * be published in this state, and the card is where an
+ * editor finds out before the publish button tells them.
+ */
+.q-card__condition--broken {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.q-card__duplicate,
+.q-card__delete,
+.page-row__delete {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.q-card__duplicate:hover {
+  border-color: var(--color-accent);
+  background: var(--color-accent-tint);
+  color: var(--color-accent-strong);
+}
+
+.q-card__delete:hover,
+.page-row__delete:hover:not(:disabled) {
+  border-color: var(--color-danger-border);
+  background: var(--color-danger-bg-soft);
+  color: var(--color-danger);
+}
+
+.page-row__delete:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.q-card__hint {
+  margin: 0;
+  font-size: var(--font-size-label);
+  color: var(--color-text-subtle);
+}
+
+.q-card__split-hint {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-2);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-size: var(--font-size-caption);
+}
+
+/* --- live preview ------------------------------------------------------- */
+
+.q-preview__input {
+  width: 100%;
+  padding: var(--space-2);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-sunken);
+  font: inherit;
+  color: var(--color-text-subtle);
+}
+
+.q-preview__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
+
+.q-preview__choice {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-muted);
+}
+
+/*
+ * Bewertung. Always unfilled here (see `QuestionPreview.tsx`), so only
+ * the „off" star colour is needed — the accent used for a filled one lives
+ * next to the real, clickable stars in `public-form-view.css`.
+ */
+.q-preview__rating {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.q-preview__star {
+  font-size: var(--font-size-title);
+  line-height: 1;
+  color: var(--color-control-off);
+}
+
+/*
+ * Adresse — the same two-column grid as the real control
+ * (`.field__address`, `public-form-view.css`), reused here rather than
+ * reinvented so the preview and the fill-in view cannot silently disagree
+ * about the layout an editor is previewing.
+ */
+.q-preview__address {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.q-preview__address-wide {
+  grid-column: 1 / -1;
+}
+
+/* --- page list ---------------------------------------------------------- */
+
+.page-list__caption,
+.palette__caption,
+.props__caption {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-label);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--color-text-subtle);
+}
+
+.page-list__rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-2);
+  padding: 0;
+  list-style: none;
+}
+
+.page-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-surface);
+}
+
+/*
+ * The row's switch. It sits *next to* the grip and the delete button rather
+ * than around them — nesting buttons is invalid — and reaches the rest of the
+ * row through the overlay below, so „egal wo man hinklickt" holds without a
+ * click handler on the `<li>` that keyboard users could not reach.
+ *
+ * **The trap:** the overlay is positioned against `.page-row` only because
+ * this button is *not* positioned itself. Adding `position: relative` here
+ * shrinks the click target back to the text, and `overflow: hidden` clips it —
+ * both silently, and no component test can see it because jsdom has no layout.
+ * The click area of the whole row is covered by `e2e/builder-drag.spec.ts`
+ * instead; change these two properties and that test is what will tell you.
+ */
+.page-row__select {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.page-row__select::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-surface);
+}
+
+/*
+ * The focus ring goes on the overlay, not on the button box: the row is what
+ * the click target is, so the row is what the ring has to show.
+ */
+.page-row__select:focus-visible {
+  outline: none;
+}
+
+.page-row__select:focus-visible::after {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/*
+ * Above the overlay, so the two controls with an effect of their own keep it:
+ * the grip starts a drag, the delete button deletes, and neither switches the
+ * page on the way.
+ */
+.page-row__grip,
+.page-row__delete {
+  position: relative;
+  z-index: 1;
+}
+
+.page-row--active {
+  border-color: var(--color-accent);
+  background: var(--color-surface);
+}
+
+/* The row that is lifted — the same affordance the question cards show. */
+.page-row--dragging {
+  opacity: 0.6;
+}
+
+/*
+ * Where the row would land — a line in the gap, not a moved row.
+ *
+ * `--drop-after` exists for the gap below the *last* row, which has no row of
+ * its own to mark. It is the target of every "move this page to the end", and
+ * while it drew nothing a downward drag looked like it had done nothing.
+ */
+.page-row--drop-before {
+  box-shadow: inset 0 3px 0 var(--color-accent);
+}
+
+.page-row--drop-after {
+  box-shadow: inset 0 -3px 0 var(--color-accent);
+}
+
+/* The page-list counterpart of `.q-card--held` — same reasoning, see there. */
+.page-row--held {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.page-row__badge {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  background: var(--color-ink);
+  color: var(--color-on-ink);
+  font-size: var(--font-size-caption);
+}
+
+.page-row__body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.page-row__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+}
+
+.page-row__meta {
+  font-size: var(--font-size-caption);
+  color: var(--color-text-subtle);
+}
+
+.page-list__add,
+.page-list__templates,
+.page-list__save-template,
+.props__template,
+.palette__item,
+.props__small {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font: inherit;
+  color: var(--color-text-strong);
+  cursor: pointer;
+}
+
+/*
+ * The three template controls of the sidebar (Handoff).
+ *
+ * Full width and stacked under „+ Seite hinzufügen", which is where the
+ * handoff puts them. `▤ Vorlagen & Blöcke` carries the inverted fill it has
+ * there — it is the way *in* to the drawer, the two ☆ buttons only put
+ * something into it.
+ */
+.page-list__templates,
+.page-list__save-template,
+.props__template {
+  display: block;
+  width: 100%;
+  margin-top: var(--space-2);
+  text-align: center;
+}
+
+.page-list__templates {
+  border-color: var(--color-ink);
+  background: var(--color-ink);
+  color: var(--color-surface);
+  font-weight: var(--font-weight-bold);
+}
+
+/* --- palette and properties -------------------------------------------- */
+
+.palette__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--space-2);
+}
+
+.props {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.props__field,
+.props__check {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.props__check {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.props__label {
+  font-size: var(--font-size-label);
+  color: var(--color-text-muted);
+}
+
+.props__note {
+  font-size: var(--font-size-caption);
+  color: var(--color-text-subtle);
+}
+
+.props__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.props__field input,
+.props__field select,
+.props__field textarea,
+.props__option input {
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-2);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font: inherit;
+  color: var(--color-text);
+}
+
+/*
+ * A mandatory caption with its message — see `CaptionInput`.
+ *
+ * A box of its own, because otherwise the message would stand in a row like
+ * `.props__option` (caption, ↑/↓, ×) as a further flex item *beside* the
+ * buttons. As a column inside the box it lands under the field, and the
+ * buttons stay where they were.
+ *
+ * Without a `flex` declaration of its own: in a column (`.props__field`) the
+ * main axis is vertical, and a basis there would be a height. The two rows in
+ * which the box is meant to grow each say so themselves below.
+ */
+.props__caption-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+/* Takes the space in the row that the buttons leave over. */
+.props__option > .props__caption-box {
+  flex: 1 1 4rem;
+}
+
+.props__field-error {
+  color: var(--color-danger);
+  font-size: var(--font-size-caption);
+}
+
+.props__options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.props__option-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.props__option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.props__option button {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.props__option button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/*
+ * A Veranstaltung in the properties panel — the handoff's Kachel:
+ * the Bezeichnung in bold at the top with the three entry buttons beside it,
+ * then Termin, then the bound, then „Restplätze anzeigen".
+ *
+ * A **column**, not a wrapping row: the panel is 300 px wide, and seven controls
+ * flowing into each other made the ↑/↓ pair of one entry sit next to the
+ * Obergrenze of the same one — two different kinds of action in one line. Each
+ * row here is one question about the Veranstaltung.
+ */
+.props__event {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border: 1px solid var(--color-hairline-faint);
+  border-radius: var(--radius-control);
+  background: var(--color-panel-raised);
+}
+
+.props__event-head,
+.props__event-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* The Bezeichnung takes what the three buttons leave. */
+.props__event-head > .props__caption-box {
+  flex: 1 1 6rem;
+}
+
+.props__event-label {
+  /* Fills the box that now negotiates the width within the row. */
+  width: 100%;
+  min-width: 0;
+  font-weight: var(--font-weight-bold);
+}
+
+.props__event input[type='number'] {
+  width: 5.5rem;
+}
+
+.props__event button {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.props__event button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Checkbox and caption on one line — „ohne Grenze", „Restplätze anzeigen". */
+.props__inline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-muted);
+}
+
+.props__bulk {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--color-hairline-faint);
+  border-radius: var(--radius-surface);
+  background: var(--color-panel-raised);
+}
+
+.props__issue {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: var(--font-size-label);
+}
+
+/* --- bedingte Anzeige  ---------------------------------- */
+
+.props__condition {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-hairline);
+}
+
+.props__condition-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.props__condition-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* The switch itself lives in `styles/switch.css` — one construction for this
+   panel and the form settings, loaded through `styles/index.css`. */
+
+/* --- mobile ------------------------------------------------------------- */
+
+/*
+ * Below the breakpoint the bar carries two sheet triggers on top of everything
+ * else, so the heading takes a row of its own instead of competing with them
+ * for the first one — and it steps down to 20 px, which shows roughly a third
+ * more of a long form name in 360 px than 26 px would.
+ */
+.builder--compact .builder__heading {
+  flex-basis: 100%;
+}
+
+.builder--compact .builder__title,
+.builder--compact .builder__title-sizer::after {
+  font-size: var(--font-size-heading);
+}
+
+.builder__sheet {
+  position: fixed;
+  inset: auto 0 0 0;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: var(--space-4);
+  border-top-left-radius: var(--radius-surface);
+  border-top-right-radius: var(--radius-surface);
+  background: var(--color-panel);
+  box-shadow: 0 -14px 40px var(--color-scrim);
+  z-index: 20;
+}
+
+.builder__sheet-close {
+  margin-bottom: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font: inherit;
+  cursor: pointer;
+}
+
+@media (max-width: 1179px) {
+  /*
+    Every card full width below the breakpoint. A *presentation*
+    rule: `width: 'half'` stays in the document, so switching back to a wide
+    window restores the layout the editor built.
+  */
+  .q-card--half {
+    flex: 1 1 100%;
+  }
+}
+
+.props__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.props__head .props__caption {
+  margin-bottom: 0;
+}
+
+/* --- publish notice ----------------------------------------------------- */
+
+/*
+ * The notice before republishing over existing answers (Konzept no. 23).
+ *
+ * Centred rather than a side slide-in: this is a decision that blocks, not a
+ * detail to read beside the thing it belongs to. The scrim and the raised
+ * panel are the same two tokens the other two dialogs use, so it does not look
+ * like a third kind of overlay.
+ */
+.publish-notice {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* The gutter that keeps the panel off the window edge at 360 px — together
+     with `width: min(...)` below it is why this cannot widen the page. */
+  padding: var(--space-4);
+}
+
+.publish-notice__scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--color-scrim);
+}
+
+.publish-notice__panel {
+  position: relative;
+  /* `100%` is the padded row, not the viewport, so 360 px screens get the
+     gutter above rather than a panel that reaches past the edge. */
+  width: min(560px, 100%);
+  max-height: 86vh;
+  overflow-y: auto;
+  padding: var(--space-6);
+  border-radius: var(--radius-surface);
+  background: var(--color-panel-raised);
+  box-shadow: 0 18px 48px var(--color-scrim);
+  animation: publish-notice-appear var(--motion-pop);
+}
+
+@keyframes publish-notice-appear {
+  from {
+    transform: scale(0.98);
+    opacity: 0;
+  }
+
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.publish-notice__title {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-display);
+  font-size: var(--font-size-title-sm);
+  color: var(--color-text-strong);
+}
+
+/* „Es liegen bereits N Antworten vor." — the sentence the whole notice exists
+   for, so it carries the weight in it. */
+.publish-notice__lead {
+  margin: 0 0 var(--space-4);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+}
+
+.publish-notice__problem {
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3);
+  border: 1px solid var(--color-warning-bg-soft);
+  border-radius: var(--radius-surface);
+  background: var(--color-warning-bg);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-warning);
+}
+
+/* The block can carry two groups — the conditions and the
+   placeholders. The lists end flush (`margin: 0`), so the second group's
+   sentence would sit directly on the first group's last item. */
+.publish-notice__list + .publish-notice__problem {
+  margin-top: var(--space-4);
+}
+
+/*
+ * The overview once the draft has moved on: still readable — it is what the
+ * editor just took the decision on — but visibly no longer in force. Removing
+ * it would leave them with „bitte speichern" and nothing to remember.
+ */
+.publish-notice__body--outdated {
+  opacity: 0.6;
+}
+
+.publish-notice__group {
+  margin-bottom: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-hairline-faint);
+}
+
+.publish-notice__group-title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+}
+
+.publish-notice__list {
+  margin: 0;
+  padding-left: var(--space-5);
+  font-size: var(--font-size-body);
+  color: var(--color-text);
+}
+
+.publish-notice__list li {
+  margin-bottom: var(--space-1);
+  /* A question label can be a whole sentence; it wraps rather than pushing the
+     panel wider than the window. */
+  overflow-wrap: anywhere;
+}
+
+.publish-notice__type {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-body-sm);
+}
+
+/*
+ * The block of what refuses the publish: a placeholder pointing at a question
+ * the new version drops and,/0.2, a bedingte Anzeige whose
+ * source no longer resolves. Toned like a refusal rather than like the advisory
+ * groups above it, because it is one — the confirm button is not offered while
+ * it stands.
+ */
+.publish-notice__blocked {
+  margin-bottom: var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-control);
+  background: var(--color-danger-bg-soft);
+}
+
+/*
+ * The notice about incomplete legal texts (ADR-0028).
+ *
+ * In the **warning colour** and not in the danger colour beside it, and that
+ * is the whole difference between the two boxes: the upper one blocks
+ * publishing, this one does not. Two boxes that look alike, of which one
+ * blocks and the other does not, would be a control that keeps quiet about
+ * its own effect.
+ */
+.publish-notice__legal {
+  margin-bottom: var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid var(--color-warning-alt);
+  border-radius: var(--radius-control);
+  background: var(--color-warning-bg);
+}
+
+.publish-notice__token {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-body-sm);
+  overflow-wrap: anywhere;
+}
+
+/* What actually happens to the answers of that group — the part that keeps
+   „entfernt" from reading as „gelöscht". */
+.publish-notice__note {
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-muted);
+}
+
+.publish-notice__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+}
+
+.publish-notice__cancel,
+.publish-notice__confirm {
+  flex: none;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font: inherit;
+  color: var(--color-text-strong);
+  cursor: pointer;
+}
+
+.publish-notice__cancel:hover {
+  background: var(--color-surface-sunken);
+}
+
+.publish-notice__confirm {
+  border-color: transparent;
+  background: var(--gradient-accent);
+  color: var(--color-on-accent);
+  font-weight: var(--font-weight-bold);
+}
+
+.publish-notice__confirm:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.publish-notice__cancel:focus-visible,
+.publish-notice__confirm:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* --- „Ungespeicherte Änderungen" (leave dialog) ------------------------- */
+
+/*
+ * The same build as the publish notice above — scrim, panel, button row —,
+ * only narrower: the dialog asks a question and shows no list. Deliberately
+ * *not* run through the same classes: two dialogs with one name are two
+ * dialogs that put each other out of true at the next polish of either one.
+ */
+.draft-guard {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+}
+
+.draft-guard__scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--color-scrim);
+}
+
+.draft-guard__panel {
+  position: relative;
+  width: min(440px, 100%);
+  padding: var(--space-6);
+  border-radius: var(--radius-surface);
+  background: var(--color-panel-raised);
+  box-shadow: 0 18px 48px var(--color-scrim);
+  animation: publish-notice-appear var(--motion-pop);
+}
+
+.draft-guard__title {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-display);
+  font-size: var(--font-size-title-sm);
+  color: var(--color-text-strong);
+}
+
+.draft-guard__body {
+  margin: 0;
+  font-size: var(--font-size-body);
+  color: var(--color-text);
+}
+
+.draft-guard__note {
+  margin: var(--space-3) 0 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-muted);
+}
+
+.draft-guard__error {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-control);
+  background: var(--color-danger-bg-soft);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-danger);
+}
+
+.draft-guard__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+}
+
+.draft-guard__cancel,
+.draft-guard__discard,
+.draft-guard__save {
+  flex: none;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font: inherit;
+  color: var(--color-text-strong);
+  cursor: pointer;
+}
+
+.draft-guard__cancel:hover,
+.draft-guard__discard:hover {
+  background: var(--color-surface-sunken);
+}
+
+/* „Verwerfen" is the one answer that destroys work — and it says so. */
+.draft-guard__discard {
+  border-color: var(--color-danger-border);
+  color: var(--color-danger);
+}
+
+.draft-guard__save {
+  border-color: transparent;
+  background: var(--gradient-accent);
+  color: var(--color-on-accent);
+  font-weight: var(--font-weight-bold);
+}
+
+.draft-guard__cancel:disabled,
+.draft-guard__discard:disabled,
+.draft-guard__save:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.draft-guard__cancel:focus-visible,
+.draft-guard__discard:focus-visible,
+.draft-guard__save:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/*
+ * Matrix and Tabelle — one grid style for both previews, because the
+ * handoff draws them as one (`renderPreview`'s table and matrix branches share
+ * their `overflowX: auto` wrapper, `borderCollapse` and `minWidth: 360px`).
+ *
+ * The wrapper scrolls **itself** rather than letting the card grow: a Matrix
+ * with a six-step scale is wider than the canvas at 360 px, and a page that
+ * scrolls sideways as a whole is the same 18-px defect all over again.
+ */
+.q-preview__scroll {
+  overflow-x: auto;
+}
+
+/*
+ * „Zeilen ergänzbar" in the preview.
+ *
+ * A **sibling** of `.q-preview__scroll`, not a child of it: inside the
+ * scrolling area the button of a wide table would drift out of sight with
+ * the last column, and it is the one thing here that is not about a column.
+ * Both sit directly in `.q-card`, which is already a column flex with a gap —
+ * so this adds no wrapper, and the mobile promise „das Raster scrollt in sich,
+ * nicht die Seite" (`question-types-mobile.spec.ts`) keeps measuring the same
+ * element in the same place.
+ */
+.q-preview__add-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.q-preview__add-row-button {
+  padding: var(--space-1) var(--space-3);
+  border: 1px dashed var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-panel-raised);
+  font: inherit;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-muted);
+}
+
+.q-preview__add-row-note {
+  font-size: var(--font-size-caption);
+  color: var(--color-text-subtle);
+}
+
+.q-preview__grid {
+  width: 100%;
+  min-width: 360px;
+  border-collapse: collapse;
+}
+
+.q-preview__grid th,
+.q-preview__grid td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-hairline-faint);
+  text-align: left;
+}
+
+.q-preview__grid thead th {
+  font-size: var(--font-size-caption);
+  font-weight: 700;
+  color: var(--color-text-muted);
+  border-bottom: 2px solid var(--color-table-border);
+}
+
+.q-preview__grid tbody th {
+  font-size: var(--font-size-body);
+  font-weight: 400;
+  color: var(--color-text);
+}
+
+/* A Matrix cell is the control itself, centred under its scale step. */
+.q-preview__grid tbody td {
+  text-align: center;
+}
+
+.q-preview__cell-box {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--color-control-off);
+  border-radius: var(--radius-control-sm);
+  background: var(--color-surface);
+}
+
+/* „Eine Auswahl je Zeile" is round, „Mehrfachauswahl" square — the handoff's
+   own distinction (`borderRadius: q.multi ? '4px' : '50%'`). */
+.q-preview__cell-box--round {
+  border-radius: var(--radius-circle);
+}
+
+/*
+ * Tabelle: a column and its Zelltyp on one line, the option list of a
+ * „Liste" column indented under it. A list item rather than a fieldset because
+ * the surrounding `.props__option-list` already is one.
+ */
+.props__table-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/*
+ * Datei-Upload — the handoff's own file preview (`renderPreview`'s
+ * file branch): a dashed drop area with the arrow, the type name and the rule
+ * underneath. Inert like every other preview, and deliberately the same shape
+ * the fill-in view renders (`.field__dropzone`, `public-form-view.css`), so an
+ * editor sees the field a participant gets rather than a drawing of it.
+ */
+/*
+ * The Veranstaltungen in the preview — the handoff's Kachel with
+ * the editor's own numbers in it: name and Termin on the left, the Obergrenze
+ * (and whether the Restplätze will be visible) on the right, then a dead number
+ * box. Same geometry as `.field__event` in `public-form-view.css`, so an editor
+ * previewing a Veranstaltung sees the tile a participant gets — what differs is
+ * the badge, and it differs for a stated reason (`QuestionPreview.tsx`).
+ */
+.q-preview__events {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.q-preview__event {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--color-hairline-faint);
+  border-radius: var(--radius-control);
+}
+
+.q-preview__event-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  font-weight: var(--font-weight-bold);
+}
+
+.q-preview__event-when,
+.q-preview__event-limit {
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-muted);
+}
+
+.q-preview__event-limit {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.q-preview__event-note {
+  color: var(--color-text-subtle);
+}
+
+.q-preview__event-count {
+  flex: none;
+  width: 4.5rem;
+}
+
+.q-preview__dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-5);
+  border: 2px dashed var(--color-field-border);
+  border-radius: var(--radius-surface);
+  background: var(--color-panel-raised);
+  text-align: center;
+}
+
+.q-preview__dropzone-glyph {
+  font-size: var(--font-size-heading);
+  line-height: 1;
+  color: var(--color-text-faint);
+}
+
+.q-preview__dropzone-label {
+  font-size: var(--font-size-body);
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.q-preview__dropzone-hint {
+  font-size: var(--font-size-caption);
+  color: var(--color-text-subtle);
+}
+
+/*
+ * Vorlagen & Blöcke (Handoff).
+ *
+ * A drawer from the **left** and not a centred dialog, which is the handoff's
+ * own shape and also the honest one: this is a shelf to pick from beside the
+ * document, not a decision that blocks. The scrim and the raised panel are the
+ * same two tokens the other overlays use, so it does not read as a fourth kind
+ * of surface.
+ */
+.template-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.template-drawer__scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--color-scrim);
+}
+
+.template-drawer__panel {
+  position: relative;
+  /* `90%` keeps the panel off the right edge at 360 px; without it the drawer
+     would be the full width of a phone and there would be no visible way back
+     to the document behind it. */
+  width: min(420px, 90%);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-panel-raised);
+  box-shadow: 0 18px 48px var(--color-scrim);
+}
+
+.template-drawer__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-hairline);
+}
+
+.template-drawer__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-title-sm);
+  color: var(--color-text-strong);
+}
+
+.template-drawer__close {
+  /* A minimum measure rather than chance: with plain `padding` the button
+     measured 23.3 × 24 px — seven tenths of a pixel under the promise
+     (`--touch-target-min` is 24px), and exactly the kind of deviation only a
+     measurement finds (a review finding). */
+  min-width: var(--touch-target-min);
+  min-height: var(--touch-target-min);
+  padding: var(--space-1) var(--space-2);
+  border: none;
+  border-radius: var(--radius-control);
+  background: none;
+  font-size: var(--font-size-body);
+  color: var(--color-text-subtle);
+  cursor: pointer;
+}
+
+.template-drawer__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-5);
+}
+
+.template-drawer__state {
+  margin: 0 0 var(--space-4);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-subtle);
+}
+
+.template-drawer__group {
+  margin-bottom: var(--space-5);
+}
+
+.template-drawer__group-title {
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+}
+
+.template-drawer__group-sub {
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-subtle);
+}
+
+.template-drawer__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Two rows, not two columns: the confirmation of the physical deletion
+    stands **under** the entry, as in the trash, instead of
+   squeezing the buttons together in a 320 px drawer. */
+.template-drawer__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.template-drawer__row-main {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
+.template-drawer__use {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  /* `min-width: 0` so a long template name shrinks the button instead of
+     pushing the row past the panel — the drawer must never scroll sideways. */
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-surface);
+  background: var(--color-panel);
+  text-align: left;
+  cursor: pointer;
+}
+
+.template-drawer__use:hover:not(:disabled) {
+  border-color: var(--color-accent);
+}
+
+.template-drawer__use:disabled,
+.template-drawer__side:disabled,
+.template-drawer__delete:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.template-drawer__icon {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-control);
+  background: var(--color-ink);
+  color: var(--color-accent);
+}
+
+.template-drawer__text {
+  min-width: 0;
+}
+
+.template-drawer__name {
+  display: block;
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+  overflow-wrap: anywhere;
+}
+
+.template-drawer__desc {
+  display: block;
+  font-size: var(--font-size-label);
+  color: var(--color-text-subtle);
+}
+
+.template-drawer__action {
+  flex: none;
+  margin-left: auto;
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-accent-strong);
+}
+
+/* „Umbenennen" and „Aus diesem Formular aktualisieren"  carry
+   the same narrow shape as the delete beside them: three equally large targets
+   at the right edge, so that the 320 px drawer does not wrap. The difference
+   between them lies in the confirmation prompt — the one has none, the other
+   the red one —, not in the colour of the button. */
+.template-drawer__side,
+.template-drawer__delete {
+  flex: none;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-surface);
+  background: none;
+  cursor: pointer;
+}
+
+/* The rename field stands under the row, like the confirmation prompts — in a
+   drawer of this width there is no room for an input field beside the name. */
+.template-drawer__rename {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.template-drawer__rename-field {
+  /* `min-width: 0` for the same reason as on `__use`: a long name may shrink
+     the row, never make the drawer scroll sideways. */
+  flex: 1;
+  min-width: 0;
+}
+
+.template-drawer__rename-save {
+  font-weight: var(--font-weight-bold);
+}

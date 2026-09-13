@@ -1,0 +1,138 @@
+/*
+ * Off-canvas menu of the handoff: bottom sheet on dark chrome, scrim behind.
+ */
+
+.app-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+}
+
+.app-sheet__scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--color-scrim);
+}
+
+.app-sheet__panel {
+  position: relative;
+  width: 100%;
+  max-height: 100%;
+  overflow-y: auto;
+  padding: var(--space-3) var(--space-4) var(--space-7);
+  border-radius: var(--radius-card-lg) var(--radius-card-lg) 0 0;
+  background: var(--color-ink-raised);
+  box-shadow: var(--shadow-sheet);
+  animation: fs-pop var(--motion-fast);
+}
+
+.app-sheet__grabber {
+  width: 40px;
+  height: var(--space-1);
+  margin: var(--space-2) auto var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--color-on-ink-border);
+}
+
+.app-sheet__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.app-sheet__title {
+  flex: 1;
+  font-family: var(--font-display);
+  font-size: var(--font-size-subheading);
+  color: var(--color-on-ink);
+}
+
+.app-sheet__close {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--color-on-ink-border);
+  border-radius: var(--radius-control);
+  background: var(--color-on-ink-surface);
+  color: var(--color-on-ink-muted);
+  font-size: var(--font-size-subheading);
+  cursor: pointer;
+}
+
+.app-sheet__user {
+  margin: var(--space-2) 0 0;
+  padding: 0 var(--space-1);
+  font-size: var(--font-size-caption);
+  color: var(--color-on-ink-subtle);
+  overflow-wrap: anywhere;
+}
+
+.app-sheet__section {
+  margin: 0;
+  padding: var(--space-5) var(--space-4) var(--space-2);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+  /* Deliberate deviation: the prototype's section labels sit at 4.4:1 on this
+     surface, just under the 4.5:1 that small text needs. The "on ink" subtle
+     tone carries the same visual hierarchy at 9.3:1. */
+  color: var(--color-on-ink-subtle);
+}
+
+.app-sheet__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-4) var(--space-5);
+  border: none;
+  border-radius: var(--radius-surface);
+  background: transparent;
+  color: var(--color-on-ink-muted);
+  font-size: var(--font-size-subheading);
+  font-weight: var(--font-weight-bold);
+  text-align: left;
+  cursor: pointer;
+}
+
+.app-sheet__item--current {
+  background: var(--color-accent-tint);
+  color: var(--color-accent);
+}
+
+.app-sheet__logout {
+  width: 100%;
+  margin-top: var(--space-6);
+  padding: var(--space-4);
+  border: 1px solid var(--color-on-ink-border);
+  border-radius: var(--radius-control-lg);
+  background: var(--color-on-ink-surface);
+  color: var(--color-on-ink-muted);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+}
+
+.app-sheet__logout:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+/*
+ * Focus inside the off-canvas sheet — dark surface, so the ink foreground is
+ * the ring rather than the light-surface focus colour (see `app-header.css`).
+ * The offset is negative because the rows run edge to edge: an outset ring
+ * would be clipped by the panel.
+ */
+.app-sheet__close:focus-visible,
+.app-sheet__item:focus-visible,
+.app-sheet__logout:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-on-ink);
+  outline-offset: calc(-1 * var(--focus-ring-offset));
+}

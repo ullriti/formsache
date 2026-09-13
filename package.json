@@ -1,0 +1,33 @@
+{
+  "name": "formsache",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Formsache — mandantenfähige Formular- und Umfrageplattform zum Selbsthosten",
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22.12.0",
+    "pnpm": ">=10.33.0"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "failed=''; for p in tsconfig.json packages/shared/tsconfig.json packages/test-idp/tsconfig.json apps/api/tsconfig.json apps/web/tsconfig.json; do echo \"== typecheck $p\"; tsc -p \"$p\" --noEmit || failed=\"$failed $p\"; done; if [ -n \"$failed\" ]; then echo \"typecheck failed:$failed\" >&2; exit 1; fi",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "e2e": "playwright test --project=setup --project=smoke --project=desktop-1280x800 --project=mobile-360x740 --project=durchlauf-organisationen --project=durchlauf-funktionsumfang --project=durchlauf-ki-und-export --project=durchlauf-erstinbetriebnahme"
+  },
+  "devDependencies": {
+    "@formsache/test-idp": "workspace:*",
+    "@axe-core/playwright": "^4.12.1",
+    "@eslint/js": "catalog:",
+    "@playwright/test": "1.56.1",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.8.0",
+    "prettier": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:"
+  }
+}

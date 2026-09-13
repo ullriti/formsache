@@ -1,0 +1,816 @@
+/*
+ * Superadmin-Übersicht (handoff).
+ *
+ * Measurements follow the prototype's `renderSuperadmin()`: a centred column
+ * capped at the same width as the mail log and the trash
+ * (`--layout-container-max`), KPI tiles in a wrapping row, and a table that
+ * scrolls its own width rather than the page (AGENTS.md's responsive rule).
+ */
+
+/*
+ * **A pure content column, ever since the overview became a tab** (finding 16).
+ * Maximum width, centring and side margin are carried by the frame
+ * (`system-admin-view.css`); were they to stand here a second time, one margin
+ * would lie inside the other and the four tabs would have four widths.
+ */
+.superadmin {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+/* --- loading / error ---------------------------------------------------- */
+
+.superadmin__state {
+  margin: 0;
+  padding: 48px var(--space-7);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  text-align: center;
+  font-size: var(--font-size-body);
+  color: var(--color-text-muted);
+}
+
+.superadmin__link {
+  border: none;
+  background: none;
+  /* An underlined text button, so WCAG 1.4.3 applies and 4.5:1 is the bar —
+     `--color-accent-strong` is a surface colour and reaches 3.54:1 with the
+     Dachorganisation's accent colour. `--color-accent-ink` is the same hue, dark enough to be
+     read whatever an organisation typed in (`tokens.css`). */
+  color: var(--color-accent-ink);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* --- head ----------------------------------------------------------------- */
+
+.superadmin__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.superadmin__title-block {
+  flex: 1;
+  min-width: 200px;
+}
+
+/* A tab heading under the frame's title — one step smaller than the
+   `--font-size-title` it carried when it was the page title. */
+.superadmin__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-heading);
+  color: var(--color-text);
+}
+
+.superadmin__subtitle {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-body);
+  color: var(--color-text-subtle);
+}
+
+.superadmin__create-open {
+  flex: none;
+  padding: var(--space-4) var(--space-6);
+  border: none;
+  border-radius: var(--radius-control-lg);
+  background: var(--gradient-accent);
+  color: var(--color-on-accent);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+}
+
+/* --- „+ Neue Organisation" panel ------------------------------------------------ */
+
+.superadmin__create {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-6);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card-lg);
+  background: var(--color-surface);
+}
+
+.superadmin__create-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.superadmin__create-title {
+  margin: 0;
+  font-size: var(--font-size-subheading);
+  color: var(--color-text-strong);
+}
+
+.superadmin__create-close {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-subheading);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.superadmin__create-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5);
+}
+
+@media (max-width: 640px) {
+  .superadmin__create-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.superadmin__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+}
+
+.superadmin__field input {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  font: inherit;
+  font-weight: var(--font-weight-regular);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.superadmin__field input:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/*
+ * The minimum-length hint on the password field (review finding 7) — said
+ * before submitting, and not only in the error line underneath.
+ */
+.superadmin__field-hint {
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-muted);
+}
+
+/*
+ * „Mich selbst als ersten Administrator eintragen" (review finding 7).
+ *
+ * Across the whole width of the grid, because the three fields below it depend
+ * on it: a switch in one column next to a field would read as though it
+ * belonged to that one field.
+ */
+.superadmin__check {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+}
+
+.superadmin__check input:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* The hint under the switch explains its consequence — across both columns too. */
+.superadmin__create-grid .superadmin__create-note {
+  grid-column: 1 / -1;
+}
+
+.superadmin__field-error {
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-danger-strong);
+}
+
+.superadmin__create-note {
+  margin: 0;
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-control-lg);
+  background: var(--color-panel);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-muted);
+  line-height: var(--line-height-body);
+}
+
+.superadmin__create-error {
+  margin: 0;
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-danger-strong);
+}
+
+.superadmin__create-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.superadmin__create-cancel {
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control-lg);
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+}
+
+.superadmin__create-submit {
+  padding: var(--space-3) var(--space-6);
+  border: none;
+  border-radius: var(--radius-control-lg);
+  background: var(--gradient-accent);
+  color: var(--color-on-accent);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+}
+
+.superadmin__create-cancel:disabled,
+.superadmin__create-submit:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* --- KPI tiles -------------------------------------------------------------- */
+
+.superadmin__kpis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.superadmin__kpi {
+  flex: 1 1 150px;
+  padding: var(--space-6) var(--space-7);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card-lg);
+  background: var(--color-surface);
+}
+
+.superadmin__kpi-number {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+}
+
+.superadmin__kpi-number--success {
+  color: var(--color-success);
+}
+
+.superadmin__kpi-number--info {
+  color: var(--color-info);
+}
+
+.superadmin__kpi-label {
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-subtle);
+}
+
+/* --- table ------------------------------------------------------------------ */
+
+.superadmin__table-card {
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card-lg);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+/* The table scrolls its own width — the page body must not (AGENTS.md's
+   responsive rule, and the same technique the mail log uses). */
+.superadmin__table-scroll {
+  overflow-x: auto;
+}
+
+.superadmin__table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+}
+
+.superadmin__table th {
+  padding: var(--space-4) var(--space-5);
+  text-align: left;
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  border-bottom: 2px solid var(--color-table-border);
+  white-space: nowrap;
+}
+
+.superadmin__table td {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-hairline-faint);
+  font-size: var(--font-size-body);
+  color: var(--color-text);
+  vertical-align: middle;
+}
+
+.superadmin__table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.superadmin__table-center {
+  text-align: center;
+}
+
+.superadmin__table-num {
+  font-variant-numeric: tabular-nums;
+}
+
+.superadmin__tenant-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.superadmin__tenant-identity {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.superadmin__tenant-name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 240px;
+}
+
+/*
+ * The fixed, contrast-checked success pair (`.form-card__badge--active` on
+ * the dashboard is the precedent) rather than the tenant-derived accent this
+ * badge carried before: this page runs in no single organisation's colour
+ * scheme — it lists all of them — so an accent that changes with whichever
+ * tenant happens to be active was never the right source for it, and
+ * different accent choices pushed the pair below the required 4.5:1 for
+ * body-size text (a11y.spec.ts, „Systemverwaltung · Organisationen").
+ */
+.superadmin__tenant-active-badge {
+  flex: none;
+  padding: 1px var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  font-size: 10px;
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+}
+
+.superadmin__tenant-short {
+  font-size: var(--font-size-caption);
+  color: var(--color-text-subtle);
+}
+
+.superadmin__login-badge {
+  padding: 3px var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--color-panel);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-subtle);
+  white-space: nowrap;
+}
+
+.superadmin__login-badge--oidc {
+  background: var(--color-info-bg);
+  color: var(--color-info);
+}
+
+.superadmin__table-actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+
+.superadmin__switch-button {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.superadmin__switch-button:disabled {
+  cursor: default;
+}
+
+.superadmin__manage-button {
+  padding: var(--space-3) var(--space-4);
+  border: none;
+  border-radius: var(--radius-control);
+  background: var(--color-ink);
+  color: var(--color-on-ink);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.superadmin__manage-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Information instead of a disabled button: this organisation has no membership. */
+.superadmin__no-membership {
+  font-size: var(--font-size-caption);
+  color: var(--color-text-subtle);
+  white-space: normal;
+}
+
+.superadmin__switch-error {
+  margin: 0;
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--color-danger-border);
+  background: var(--color-danger-bg-soft);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-danger-strong);
+}
+
+/* --- „Löschen" on an organisation row  -------------- */
+
+.superadmin__delete-button {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-danger-strong);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.superadmin__delete-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.superadmin__delete-cell {
+  padding: 0;
+  border-bottom: 1px solid var(--color-hairline-faint);
+}
+
+.superadmin__delete-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-6);
+  background: var(--color-danger-bg);
+}
+
+.superadmin__delete-text {
+  margin: 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-strong);
+}
+
+.superadmin__delete-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-width: 320px;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+}
+
+.superadmin__delete-field input {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  font: inherit;
+  font-weight: var(--font-weight-regular);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.superadmin__delete-field input:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.superadmin__delete-error {
+  margin: 0;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-danger-strong);
+}
+
+.superadmin__delete-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.superadmin__delete-yes,
+.superadmin__delete-no {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-control);
+  font: inherit;
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+}
+
+.superadmin__delete-yes {
+  border: 1px solid var(--color-danger-strong);
+  background: var(--color-danger-strong);
+  /* `--color-on-danger`, not `--color-on-accent` — the same 2.09:1 pairing
+     `confirm-prompt.css` carried; see the token's own note. */
+  color: var(--color-on-danger);
+}
+
+.superadmin__delete-yes:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.superadmin__delete-no {
+  border: 1px solid var(--color-field-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+/* --- „Gelöschte Organisationen"  ----------------------- */
+
+.superadmin__deleted-section {
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card-lg);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.superadmin__deleted-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-6);
+  background: var(--color-panel-raised);
+  border-bottom: 1px solid var(--color-hairline-faint);
+}
+
+.superadmin__deleted-title {
+  margin: 0;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+}
+
+/* The same pill `trash-view.css`'s `.trash__count` draws, for the identical
+   shape: a section heading with a count next to it. */
+.superadmin__count {
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-subtle);
+  background: var(--color-panel);
+  padding: 1px var(--space-4);
+  border-radius: var(--radius-pill);
+}
+
+.superadmin__deleted-empty {
+  margin: 0;
+  padding: var(--space-6);
+  font-size: var(--font-size-body);
+  color: var(--color-text-faint);
+}
+
+.superadmin__deleted-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6);
+  border-top: 1px solid var(--color-hairline-faint);
+}
+
+.superadmin__deleted-identity {
+  flex: 1 1 200px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.superadmin__deleted-name {
+  margin: 0;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.superadmin__deleted-meta {
+  margin: 2px 0 0;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-subtle);
+}
+
+.superadmin__deleted-restore {
+  flex: none;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.superadmin__deleted-restore:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.superadmin__deleted-error {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-danger-strong);
+}
+
+/* --- „KI-Kontingent je Organisation" (Konzept no. 7 and no. 86) -------
+   The same measurements as „Gelöschte Organisationen" below it: the two are siblings
+   under the same table, and two frames that differ by two pixels
+   are more expensive than one shared line of comment. */
+
+.superadmin__quota-section {
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card-lg);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.superadmin__quota-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-6);
+  background: var(--color-panel-raised);
+  border-bottom: 1px solid var(--color-hairline-faint);
+}
+
+.superadmin__quota-title {
+  margin: 0;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+}
+
+/* The sentence that reads the „0" before somebody reads it wrong. */
+.superadmin__quota-note {
+  margin: 0;
+  padding: var(--space-5) var(--space-6);
+  font-size: var(--font-size-caption);
+  line-height: 1.5;
+  color: var(--color-text-subtle);
+  border-bottom: 1px solid var(--color-hairline-faint);
+}
+
+.superadmin__quota-note strong {
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+}
+
+.superadmin__quota-empty {
+  margin: 0;
+  padding: var(--space-6);
+  font-size: var(--font-size-body);
+  color: var(--color-text-faint);
+}
+
+.superadmin__quota-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6);
+  border-top: 1px solid var(--color-hairline-faint);
+}
+
+.superadmin__quota-row:first-of-type {
+  border-top: none;
+}
+
+.superadmin__quota-identity {
+  flex: 1 1 200px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.superadmin__quota-name {
+  margin: 0;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.superadmin__quota-meta {
+  margin: 2px 0 0;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-subtle);
+}
+
+.superadmin__quota-control {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.superadmin__quota-input {
+  width: 6.5rem;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-size-body);
+  text-align: right;
+}
+
+/* The error state has a border **and** a sentence underneath — the colour
+   alone would not carry it. */
+.superadmin__quota-input[aria-invalid='true'] {
+  border-color: var(--color-danger-strong);
+}
+
+.superadmin__quota-unit {
+  font-size: var(--font-size-caption);
+  color: var(--color-text-subtle);
+  white-space: nowrap;
+}
+
+.superadmin__quota-save {
+  flex: none;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.superadmin__quota-save:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.superadmin__quota-error {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-danger-strong);
+}

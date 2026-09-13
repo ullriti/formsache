@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Mitgeliefertes Beispiel-Signet: ein neutrales Platzhalter-Logo, damit die
+  Auswahl mitgelieferter Logos ohne eigene Datei ausprobiert werden kann.
+  Bewusst inhaltsleer und geometrisch — es steht für keine reale Organisation.
+  Farben kommen aus der Datei selbst, nicht aus den Design-Tokens: das Signet
+  wird auch außerhalb der Anwendung ausgeliefert (Mail, Export).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" width="240" height="60" role="img" aria-label="Beispiel-Signet">
+  <rect x="4" y="10" width="40" height="40" rx="8" fill="#3f4c6b" />
+  <path d="M16 24h16M16 30h16M16 36h10" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+  <text x="58" y="30" font-family="Georgia, 'PT Serif', serif" font-size="20" fill="#3f4c6b">Beispiel</text>
+  <text x="58" y="47" font-family="Georgia, 'PT Serif', serif" font-size="13" fill="#7a839b">Signet</text>
+</svg>

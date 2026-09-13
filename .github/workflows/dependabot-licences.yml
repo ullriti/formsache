@@ -1,0 +1,150 @@
+name: Dependabot licence fixup
+
+# **Why this workflow exists at all.** `quality`'s "Drittkomponenten-Liste
+# gegen die Sperrdatei" step (`ci.yml`, `node tools/licences.ts --check`)
+# compares the checked-in `apps/web/public/drittanbieter-lizenzen.json`
+# against what the current `pnpm-lock.yaml` would generate. Dependabot bumps
+# the lock file every week (ADR-0018) but has no way to run a repository
+# script and commit its output — so almost every Dependabot PR arrives red on
+# that one step, for a file nobody touched on purpose. This workflow
+# regenerates the list on the PR's own branch and pushes it back, so the
+# check is green again without a maintainer running the tool by hand first.
+#
+# **Why `pull_request_target` and not `pull_request`.** GitHub gives
+# `GITHUB_TOKEN` **read-only** access on `pull_request` runs whose actor is
+# `dependabot[bot]` — a restriction that exists precisely to stop a workflow
+# like this one from writing back with the default token
+# (https://docs.github.com/en/code-security/reference/supply-chain-security/troubleshoot-dependabot/dependabot-on-actions,
+# "Restrictions when Dependabot triggers events" — verified 2026-09-13).
+# `pull_request_target` is documented as exempt from that restriction, which
+# is the only reason this workflow can push at all.
+#
+# **The "pwn request" trade-off, named rather than hidden**
+# (https://docs.github.com/en/actions/security-for-github-actions/security-guides/keeping-your-github-actions-and-workflows-secure-preventing-pwn-requests).
+# `pull_request_target` runs with the base repository's context — checking out
+# and executing a pull request's own code inside it is the textbook attack
+# that lets a PR author steal secrets or write access. Three mitigations
+# below, deliberately layered — none of them is trusted alone:
+#
+#   1. **Actor *and* origin gate on the job** (`github.actor == 'dependabot[bot]'`
+#      **and** `head.repo.full_name == github.repository`). `github.actor`
+#      cannot be spoofed by an ordinary contributor, and the second half rules
+#      out a fork entirely — Dependabot's own branches live in this
+#      repository, never in a fork.
+#   2. **`--ignore-scripts` on the install.** A dependency Dependabot just
+#      bumped must not run its postinstall before a human has looked at the
+#      PR — the one thing `.github/actions/setup-workspace` does not offer,
+#      which is why this job does not reuse it.
+#   3. **Minimal, job-scoped token permissions.** `contents: write` sits on
+#      this one job, not on the workflow — every other permission
+#      (`pull-requests`, `issues`, …) stays withheld.
+#
+# Dependabot's branches being same-repository (not forked) also means
+# `actions/checkout`'s own pwn-request guard (which refuses to fetch a
+# **fork** pull request's head under `pull_request_target`) never applies
+# here in the first place — the three mitigations above are what actually
+# carries this workflow's safety, not that guard.
+#
+# **Why the push needs a PAT and not `GITHUB_TOKEN`.** A push authenticated
+# with `GITHUB_TOKEN` does not start new workflow runs
+# (https://docs.github.com/en/actions/using-workflows/triggering-a-workflow#triggering-a-workflow-from-a-workflow).
+# Without a different identity, `ci.yml`'s `test`/`e2e`/`stack`/`restore` jobs
+# would never run against the fixed-up commit, and a required check would
+# stay stuck on the old, red one forever. `DEPENDABOT_FIXUP_TOKEN` is a
+# fine-grained personal access token scoped to `contents: write` on this
+# repository only (manual setup: docs/architecture/0031-dependabot-lizenz-fixup.md).
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  # A `synchronize` event (Dependabot rarely pushes twice, but a manual
+  # rebase can) should not run this next to a still-running previous attempt
+  # against the same PR.
+  group: dependabot-licences-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  regenerate-licences:
+    name: Drittkomponenten-Liste nachziehen
+    # ⚠️ **Both conditions, not just one.** The actor check alone would trust
+    # `github.actor` in isolation; the repository check alone would trust any
+    # same-repo contributor's PR. Together: only a Dependabot PR against this
+    # very repository gets a token at all.
+    if: >-
+      github.actor == 'dependabot[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # The one elevated permission of this workflow, scoped to this job only —
+    # the same pattern `ci.yml`'s `publish` job uses for `packages: write`.
+    permissions:
+      contents: write
+    steps:
+      # The PR's own head commit, not the merge ref — what
+      # `node tools/licences.ts` reads is this branch's `pnpm-lock.yaml`.
+      # `token:` here is what later lets a plain `git push` in this checkout
+      # authenticate as the PAT instead of the (read-only, for this actor)
+      # default token.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          token: ${{ secrets.DEPENDABOT_FIXUP_TOKEN }}
+          # Explicit, not just relying on the action's own default: this is
+          # what lets the plain `git push` below authenticate as the PAT.
+          persist-credentials: true
+
+      # Node and Corepack only — no `./.github/actions/setup-workspace`. That
+      # composite action calls a bare `pnpm install --frozen-lockfile` with no
+      # way to add `--ignore-scripts`, and that flag is exactly the point
+      # here: a package Dependabot just raised must not run its postinstall
+      # before anyone has read the diff.
+      - uses: actions/setup-node@v5
+        with:
+          # Same version as `.github/actions/setup-workspace/action.yml`.
+          node-version: '22.22.2'
+          package-manager-cache: false
+
+      - name: Corepack aktivieren
+        run: |
+          corepack enable
+          pnpm --version
+
+      - name: pnpm install --frozen-lockfile --ignore-scripts
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      # Write mode, not `--check`: this is the step that produces the fresh
+      # file `quality`'s `--check` step will later compare against.
+      - name: node tools/licences.ts
+        run: node tools/licences.ts
+
+      - id: diff
+        name: Auf Änderung prüfen
+        run: |
+          if git status --porcelain -- apps/web/public/drittanbieter-lizenzen.json \
+              | grep -q .; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # No commit at all when nothing changed — an empty commit here would be
+      # noise on every single Dependabot PR that happens not to touch a
+      # licensed package's version.
+      - if: steps.diff.outputs.changed == 'true'
+        name: Commit und Push auf den PR-Branch
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email \
+            '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/web/public/drittanbieter-lizenzen.json
+          git commit -m 'chore(deps): regenerate third-party licence list'
+          # No --force, no retry: if the branch moved between checkout and
+          # push, this fails safely and the next `synchronize` event runs the
+          # whole job again — a rare, self-healing race, not a swallowed one.
+          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"

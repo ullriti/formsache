@@ -1,0 +1,51 @@
+name: Fehler melden
+description: Etwas verhält sich anders als beschrieben
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Für **Sicherheitslücken bitte kein Issue** — der Weg steht in
+        [SECURITY.md](../blob/main/SECURITY.md).
+  - type: textarea
+    id: was
+    attributes:
+      label: Was passiert?
+      description: Beobachtetes Verhalten, und was du stattdessen erwartet hast.
+    validations:
+      required: true
+  - type: textarea
+    id: schritte
+    attributes:
+      label: Wie lässt es sich nachstellen?
+      description: Die Schritte, die zum Fehler führen — so knapp wie möglich.
+      placeholder: |
+        1. Formular anlegen mit …
+        2. Veröffentlichen
+        3. Öffentlich ausfüllen → Fehler
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Aus `GET /api/health` oder dem Image-Tag.
+    validations:
+      required: true
+  - type: dropdown
+    id: betrieb
+    attributes:
+      label: Wie betrieben?
+      options:
+        - Container-Stack (docker compose)
+        - Produktionsstack (docker-compose.prod.yml)
+        - Entwicklungsumgebung (pnpm dev)
+        - Anders
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Meldungen aus dem Log
+      description: Falls vorhanden. **Vorher auf personenbezogene Daten durchsehen.**
+      render: text

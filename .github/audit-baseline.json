@@ -1,0 +1,13 @@
+{
+  "_kommentar": "Die Grundlinie für scripts/audit-report.sh. Sie sagt, wie viele Meldungen bekannt waren, als sie zuletzt gesetzt wurde — nicht, dass sie harmlos sind. Warum eine hier stehenbleibt, steht je Meldung in docs/architecture/0018-abhaengigkeitspflege.md §4. Neu Hinzugekommenes meldet die CI als Warnung. Auffrischen mit: scripts/audit-report.sh --update",
+  "_gesetzt_am": "2026-08-12",
+  "total": 1,
+  "counts": {
+    "info": 0,
+    "low": 0,
+    "moderate": 1,
+    "high": 0,
+    "critical": 0
+  },
+  "lines": ["moderate\tuuid\tapps__api>exceljs>uuid"]
+}

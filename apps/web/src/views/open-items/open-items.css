@@ -1,0 +1,72 @@
+/*
+ * The list of open items (ADR-0022, continuation 2026-08-18).
+ *
+ * A callout box and not a warning: what stands here is the normal state of an
+ * installation that is not yet fully set up. Hence the callout tone
+ * (`--color-callout-*`) and not the danger tone — red would be the colour
+ * for „something is broken", and nothing here is broken.
+ *
+ * Tokens only, as everywhere.
+ */
+
+.open-items {
+  margin: var(--space-5) 0 0;
+  padding: var(--space-5);
+  border: 1px solid var(--color-callout-border);
+  border-radius: var(--radius-card);
+  background: var(--color-callout-bg);
+}
+
+.open-items__heading {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-subheading);
+  color: var(--color-text);
+}
+
+.open-items__intro {
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-size-body-sm);
+  line-height: var(--line-height-body);
+  color: var(--color-text-muted);
+}
+
+.open-items__list {
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-3);
+}
+
+/* Wraps instead of pushing the button out of the box: the jump link carries a
+   long text and must not produce a horizontal scroll. */
+.open-items__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+}
+
+.open-items__text {
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+
+.open-items__title {
+  margin: 0;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+}
+
+.open-items__consequence {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-body-sm);
+  line-height: var(--line-height-body);
+  color: var(--color-text-muted);
+}

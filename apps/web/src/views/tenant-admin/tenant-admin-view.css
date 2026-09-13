@@ -1,0 +1,1102 @@
+/*
+ * tenant administration (handoff) — the three
+ * tabs' own frame and the pieces `settings-view.css` has no shape for: the
+ * segmented control between the three sibling addresses, the colour pickers
+ * and stripe editor of *Erscheinungsbild*, the member list and group cards of
+ * *Nutzerrechte*.
+ *
+ * Reuses `settings-view.css` wherever a shape already exists there
+ * (`.settings-card`, `.setting__field`, `.settings__save`, `.segmented`) —
+ * this file only adds what none of those three pages needed before.
+ *
+ * Every colour a group or an organisation owns (`--tenant-admin-group-tint`,
+ * `--tenant-admin-avatar`, `--tenant-admin-stripe`, `--tenant-admin-header-bg`,
+ * `--tenant-admin-accent`) arrives as an **inline custom property set from
+ * data**, never as a literal here — the same rule `tenant-theme.ts` follows
+ * for the live application theme, one scope narrower (`CONTRIBUTING.md`).
+ */
+
+.tenant-admin {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: var(--layout-settings-max);
+  margin: 0 auto;
+  padding: var(--space-9) var(--space-9) 70px;
+  min-width: 0;
+}
+
+.app-shell--compact .tenant-admin {
+  padding: var(--space-7) var(--space-6) 80px;
+}
+
+.tenant-admin__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+}
+
+.tenant-admin__tabs {
+  align-self: flex-start;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.tenant-admin__tab {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+.tenant-admin__readonly {
+  margin: 0;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-subtle);
+}
+
+/* --- Logo & Name -------------------------------------------------------- */
+
+.tenant-admin__logo-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.tenant-admin__logo-tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76px;
+  height: 76px;
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card);
+  background: var(--color-panel-raised);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.tenant-admin__logo-tile--on {
+  border-color: var(--color-accent-strong);
+  box-shadow: 0 0 0 1px var(--color-accent-strong);
+}
+
+.tenant-admin__logo-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.tenant-admin__logo-input:focus-visible ~ .tenant-admin__logo-image,
+.tenant-admin__logo-tile:has(.tenant-admin__logo-input:focus-visible) {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.tenant-admin__logo-image {
+  max-width: 84%;
+  max-height: 84%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.tenant-admin__logo-empty {
+  font-size: var(--font-size-caption);
+  color: var(--color-text-faint);
+  text-align: center;
+  pointer-events: none;
+}
+
+/* --- Colours --------------------------------------------------------------- */
+
+.tenant-admin__color-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-5);
+}
+
+/*
+ * A single colour grid (accent, header, background) — no dividing line needed,
+ * because there is nothing of a second one to divide it from. The division from
+ * the stripe below is carried by `.tenant-admin__stripe-editor` itself.
+ */
+
+.app-shell--compact .tenant-admin__color-grid {
+  grid-template-columns: 1fr;
+}
+
+.tenant-admin__color-input {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.tenant-admin__color-swatch {
+  width: 40px;
+  height: 38px;
+  padding: 2px;
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+.tenant-admin__color-swatch--stripe {
+  width: 100%;
+  height: var(--stripe-swatch-height);
+  margin-bottom: var(--space-2);
+}
+
+/*
+ * The message at the colour picker — see `ColorContrastNotes.tsx`.
+ *
+ * The same pairing `.settings-card__inherited` uses: `--color-warning` on
+ * `--color-warning-bg-soft` measures **4.80:1** at 11.5 px, and it is the one
+ * warning pairing of this application that clears AA at that size (`tokens.css`
+ * explains why `--color-warning` is darker than the handoff's value). A message
+ * about too little contrast that does not have enough contrast itself would be
+ * the punchline this project can do without.
+ */
+.tenant-admin__contrast {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-control);
+  background: var(--color-warning-bg-soft);
+}
+
+.tenant-admin__contrast-note {
+  margin: 0;
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-body);
+  color: var(--color-warning);
+}
+
+/* The lead word carries the case, so the box colour does not carry it alone. */
+.tenant-admin__contrast-label {
+  font-weight: var(--font-weight-bold);
+}
+
+/*
+ * The secondary detail (finding 13): measured ratio and „gespeichert wird
+ * trotzdem". As a block of its own, so that it stands below the sentence that
+ * guides the action instead of inside it — **no** weaker colour of its own: the
+ * box carries exactly one ink that reaches AA at 11.5 px on its ground, and a
+ * second, muted variant would be the place where the message about too little
+ * contrast would itself have too little.
+ */
+.tenant-admin__contrast-detail {
+  display: block;
+  margin-top: var(--space-1);
+}
+
+.tenant-admin__color-value {
+  font-size: var(--font-size-body-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+
+.tenant-admin__stripe-editor {
+  padding-top: var(--space-6);
+  border-top: 1px dashed var(--color-hairline-soft);
+}
+
+.tenant-admin__stripe-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.tenant-admin__stripe-bar {
+  height: 12px;
+  margin-bottom: var(--space-4);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-control-sm);
+  background: var(--tenant-admin-stripe, var(--gradient-stripe));
+}
+
+/*
+ * **The two cards are as big as the three buttons inside them need to be**.
+ *
+ * The stripe card used to be a flat 78 × 74 px, and its three action buttons
+ * were squeezed to 21 × 22 px to fit — under the 24 × 24 of WCAG 2.5.8, the AA
+ * level Konzept no. 78 decided on. So the geometry is *derived* from the buttons
+ * rather than written as numbers: three touch targets, their two gaps, the
+ * padding and the two hairlines (`box-sizing: border-box`, see `base.css`).
+ *
+ * It lives on the container because **two** cards have to agree on it — the
+ * colour card and the „+ Farbe" tile next to it. Spelling „98px" into both is
+ * exactly how they would drift apart the next time `--touch-target-min` moves.
+ *
+ * `.tenant-admin__stripe-add` is in the selector list as well, and that is not
+ * belt and braces: the groups editor reuses that class for „+ Gruppe
+ * hinzufügen", which stands **outside** this container. Without its own
+ * declaration the `var()` there is invalid at computed-value time, the height
+ * falls back to `auto`, and a 74-px tile becomes a 17-px line — measured, in
+ * the first run of `mobile-targets` after this change.
+ *
+ * ⚠️ **Custom properties only in this rule.** The layout of the row lives one
+ * rule further down, on its own, because `.tenant-admin__stripe-add` is a
+ * `<button>`: giving it `display: flex` + `align-items: flex-start` as a side
+ * effect of sharing this selector list pushed „+ Farbe" into the tile's top
+ * left corner. Declaring a variable for someone else must not restyle them.
+ */
+.tenant-admin__stripe-items,
+.tenant-admin__stripe-add {
+  --stripe-card-border: 1px;
+  --stripe-swatch-height: 26px;
+  --stripe-card-width: calc(
+    3 * var(--touch-target-min) + 2 * var(--space-1) + 2 * var(--space-3) + 2 *
+      var(--stripe-card-border)
+  );
+  --stripe-card-height: calc(
+    var(--stripe-swatch-height) + var(--space-2) + var(--touch-target-min) + 2 *
+      var(--space-3) + 2 * var(--stripe-card-border)
+  );
+}
+
+.tenant-admin__stripe-items {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.tenant-admin__stripe-item {
+  width: var(--stripe-card-width);
+  padding: var(--space-3);
+  border: var(--stripe-card-border) solid var(--color-hairline-soft);
+  border-radius: var(--radius-control-lg);
+  background: var(--color-surface);
+  text-align: center;
+}
+
+.tenant-admin__stripe-actions {
+  display: flex;
+  gap: var(--space-1);
+  justify-content: center;
+}
+
+.tenant-admin__stripe-move,
+.tenant-admin__stripe-remove {
+  width: var(--touch-target-min);
+  height: var(--touch-target-min);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control-sm);
+  background: var(--color-panel-raised);
+  font-size: var(--font-size-caption);
+  cursor: pointer;
+}
+
+.tenant-admin__stripe-remove {
+  border-color: var(--color-danger-border);
+  color: var(--color-danger-strong);
+  background: var(--color-surface);
+}
+
+.tenant-admin__stripe-move:disabled,
+.tenant-admin__stripe-remove:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.tenant-admin__stripe-add {
+  width: var(--stripe-card-width);
+  height: var(--stripe-card-height);
+  border: var(--stripe-card-border) dashed var(--color-hairline);
+  border-radius: var(--radius-control-lg);
+  background: transparent;
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-subtle);
+  cursor: pointer;
+}
+
+.tenant-admin__stripe-add:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* --- Live preview ----------------------------------------------------------- */
+
+.tenant-admin__preview {
+  padding-top: var(--space-6);
+  border-top: 1px dashed var(--color-hairline-soft);
+}
+
+.tenant-admin__preview-frame {
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-surface);
+  /* Keeps the rounded corner. **Nothing may overflow horizontally here** — at
+     360 px it did (22 px, cut off without a bar), and the first reach against
+     that was `overflow-x: auto`. That one was wrong: it turned the preview into
+     a scrollable region without keyboard access (axe
+     `scrollable-region-focusable`), that is, a display defect into an
+     accessibility defect. It is fixed where it arises — the organisation name
+     now shrinks instead of pushing the row. */
+  overflow: hidden;
+}
+
+.tenant-admin__preview-stripe {
+  height: 8px;
+  background: var(--tenant-admin-stripe, var(--gradient-stripe));
+}
+
+.tenant-admin__preview-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  background: var(--tenant-admin-header-bg, var(--color-header-bg));
+  /* Without this line a flex item has its content as its smallest width, and
+     a long name pushes the row out beyond the frame. */
+  min-width: 0;
+}
+
+.tenant-admin__preview-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-control-sm);
+  background: var(--color-panel-raised);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-faint);
+}
+
+.tenant-admin__preview-logo {
+  max-height: 100%;
+  max-width: 90px;
+  object-fit: contain;
+}
+
+.tenant-admin__preview-name {
+  font-family: var(--font-display);
+  font-size: var(--font-size-subheading);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-on-ink);
+  /* The name gives way, not the frame — as in the real header. A preview that
+     cuts off a long name shows exactly what the application does later on as
+     well. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tenant-admin__preview-body {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  background: var(--color-surface);
+}
+
+.tenant-admin__preview-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--tenant-admin-accent, var(--color-accent));
+}
+
+.tenant-admin__preview-button {
+  padding: var(--space-3) var(--space-5);
+  border: none;
+  border-radius: var(--radius-control);
+  background: var(--tenant-admin-accent, var(--color-accent));
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-on-accent);
+  cursor: default;
+}
+
+/* --- OIDC-Grid --------------------------------------------------------------- */
+
+.tenant-admin__oidc-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.app-shell--compact .tenant-admin__oidc-grid {
+  grid-template-columns: 1fr;
+}
+
+.tenant-admin__checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-muted);
+}
+
+/* --- Member list ------------------------------------------------------------- */
+
+.tenant-admin__member-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tenant-admin__member-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-5) var(--space-7);
+  border-top: 1px solid var(--color-hairline-faint);
+}
+
+.tenant-admin__avatar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-circle);
+  background: var(--tenant-admin-avatar, var(--color-role-viewer));
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  /* Set next to the background it has to be read on (`readable-ink.ts`); the
+     fallback is the old fixed ink, which fits the fallback background. */
+  color: var(--tenant-admin-group-ink, var(--color-on-accent));
+}
+
+.tenant-admin__member-text {
+  flex: 1;
+  min-width: 160px;
+}
+
+.tenant-admin__member-name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+}
+
+.tenant-admin__member-meta {
+  margin-top: var(--space-1);
+  overflow: hidden;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-subtle);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tenant-admin__role-select {
+  flex: none;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font: inherit;
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+}
+
+.tenant-admin__remove {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font-size: var(--font-size-subheading);
+  color: var(--color-danger-strong);
+  cursor: pointer;
+}
+
+/* Forcing a sign-out — the same geometry as „Entfernen" next to it, but
+   in the neutral ink: the action is reversible, in that the person signs in
+   again. `--touch-target-min` is the shared number. */
+/*
+ * The two quiet row buttons: „bearbeiten" (finding 12) and „überall
+ * abmelden". One rule for both, because they have the same shape and are meant
+ * to — square, within the area of the row, without colour. The removal next to
+ * them has its own, because it is the only action that takes something
+ * away.
+ */
+.tenant-admin__edit,
+.tenant-admin__revoke {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font-size: var(--font-size-body);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+/*
+ * The expanded form of a row — full width below the buttons, like the
+ * confirmation prompts and the notes next to them.
+ */
+.tenant-admin__row-edit {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-field-border);
+}
+
+.tenant-admin__row-alert {
+  flex-basis: 100%;
+}
+
+.tenant-admin__row-note {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-muted);
+}
+
+/* --- Confirmation before an irreversible step --------------------------------- */
+
+.tenant-admin__row-confirm,
+.tenant-admin__group-confirm {
+  flex-basis: 100%;
+}
+
+.tenant-admin__group-confirm {
+  padding: 0 var(--space-5) var(--space-4);
+}
+
+/* `.tenant-admin__confirm*` itself now lives in `confirm-prompt.css`, next to
+   the `ConfirmPrompt` component it styles — shared by three callers since
+   the trash and the Superadmin-Übersicht started using it too. */
+
+.tenant-admin__badge {
+  flex: none;
+  padding: 1px var(--space-3);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-muted);
+  background: var(--color-surface-sunken);
+}
+
+.tenant-admin__badge--local {
+  color: var(--color-success-alt);
+  background: var(--color-success-bg);
+}
+
+.tenant-admin__badge--oidc {
+  color: var(--color-info);
+  background: var(--color-info-bg);
+}
+
+/* An unclaimed SSO invitation — deliberately its own look, not the OIDC
+   badge's: "wartet auf die erste Anmeldung" is not "hat sich schon
+   angemeldet". */
+.tenant-admin__badge--invited {
+  color: var(--color-warning);
+  background: var(--color-warning-bg);
+}
+
+.tenant-admin__badge--system {
+  color: var(--color-role-admin);
+  background: var(--color-danger-bg);
+}
+
+/* --- Add a person ------------------------------------------------------------- */
+
+.tenant-admin__invite {
+  padding: var(--space-6) var(--space-7);
+  border-radius: var(--radius-card-lg);
+  background: var(--color-ink);
+}
+
+.tenant-admin__invite-title {
+  margin: 0 0 var(--space-4);
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-accent);
+}
+
+.tenant-admin__invite-kind {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+}
+
+.tenant-admin__invite-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.tenant-admin__invite .setting__label {
+  color: var(--color-on-ink-subtle);
+}
+
+.tenant-admin__invite .setting__control {
+  background: var(--color-on-ink-surface);
+  border-color: var(--color-on-ink-border);
+  color: var(--color-on-ink);
+  /*
+   * ⚠️ **The field is dark, its expanded menu is drawn by the browser.**
+   *
+   * `--color-on-ink-surface` is 6 % white — on the dark box a fine grey, in a
+   * popup that the browser paints onto **its own** ground, practically white.
+   * The light type on it therefore stood light on light: the role selection
+   * could not be read while expanded. A `select` does not inherit its field
+   * colours into the menu, that one belongs to the browser; what steers it
+   * is `color-scheme` — and, for the cases where that is not enough, the
+   * rule for `option` below.
+   */
+  color-scheme: dark;
+}
+
+/*
+ * The entries of the expanded list, stated explicitly instead of inherited.
+ *
+ * `color-scheme: dark` alone would be a request to the browser; this rule is
+ * a statement, and it also covers the browsers that draw the menu light
+ * anyway. **Opaque colours**, no white percentages: the menu does not lie on
+ * the dark box but above the page, and a translucent surface would there again
+ * have the browser's ground beneath it.
+ *
+ * `--color-ink-raised` is the same ground the header's popovers use — closed
+ * field and open menu thus read as the same dark surface. Some browsers
+ * (Chromium among them) draw the label of the **closed** field in the colour
+ * of the selected `option` as well; that route therefore also ends at light
+ * type on dark and not at dark type on the dark box.
+ *
+ * The row selection of the member list (`.tenant-admin__role-select`) stands
+ * outside this box on `--color-surface` and remains untouched from here:
+ * there the browser's default ground is already the right one.
+ */
+.tenant-admin__invite .setting__control option,
+.tenant-admin__invite .setting__control optgroup {
+  background-color: var(--color-ink-raised);
+  color: var(--color-on-ink);
+}
+
+.tenant-admin__invite .tenant-admin__readonly {
+  color: var(--color-on-ink-faint);
+}
+
+/*
+ * The note below „Hinzufügen" was stuck to the button (finding 15).
+ *
+ * `.tenant-admin__readonly` sits right with `margin: 0` as long as it hangs
+ * below an input field — the field box brings its spacing with it. The
+ * instance directly below the button has none, and the success message in the
+ * same place (`.tenant-admin__flash`) very much did have one: the same spot,
+ * two spacings, depending on which of the two sentences was up at the time.
+ * The child selector hits exactly this one instance and leaves the notes in
+ * the fields untouched.
+ */
+.tenant-admin__invite > .tenant-admin__readonly {
+  margin-top: var(--space-3);
+}
+
+.tenant-admin__flash {
+  margin: var(--space-3) 0 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-accent);
+}
+
+/* --- Pills (add-a-person choice and group rights) --------------------------- */
+
+.tenant-admin__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-subtle);
+  cursor: pointer;
+}
+
+.tenant-admin__invite-kind .tenant-admin__pill {
+  border: none;
+  background: var(--color-on-ink-surface);
+  color: var(--color-on-ink-subtle);
+}
+
+.tenant-admin__pill--on {
+  background: var(--gradient-accent);
+  color: var(--color-on-accent);
+}
+
+.tenant-admin__pill:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Information rather than a control: the rights of the system group (handoff). */
+.tenant-admin__pill--static {
+  cursor: default;
+}
+
+.tenant-admin__pill--group-on {
+  border-color: var(--tenant-admin-group-tint, var(--color-accent));
+  background: var(--tenant-admin-group-tint, var(--color-accent));
+  /* Same as the avatar above: the fill is the organisation's group colour, so the ink
+     is picked per colour rather than fixed (`readable-ink.ts`). */
+  color: var(--tenant-admin-group-ink, var(--color-on-accent));
+}
+
+/* --- Mail sending  ----------------------------------------- */
+
+.tenant-admin__mail-source {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.tenant-admin__mail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.app-shell--compact .tenant-admin__mail-grid {
+  grid-template-columns: 1fr;
+}
+
+/* --- Groups editor ------------------------------------------------------------ */
+
+.tenant-admin__group-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-5) var(--space-6);
+}
+
+.tenant-admin__group-card {
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+
+.tenant-admin__group-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-hairline-faint);
+  background: color-mix(
+    in srgb,
+    var(--tenant-admin-group-tint, var(--color-accent)) 10%,
+    var(--color-surface)
+  );
+}
+
+.tenant-admin__group-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-circle);
+  background: var(--tenant-admin-group-tint, var(--color-accent));
+}
+
+.tenant-admin__group-color {
+  display: flex;
+  flex: none;
+}
+
+.tenant-admin__group-color input {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control-sm);
+  background: var(--tenant-admin-group-tint, var(--color-accent));
+  cursor: pointer;
+}
+
+.tenant-admin__group-name {
+  flex: 1 1 150px;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font: inherit;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+}
+
+/* The name of the system group – text, not a switched-off input field. */
+.tenant-admin__group-name-static {
+  flex: 1 1 150px;
+  min-width: 0;
+  padding: var(--space-2) 0;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+}
+
+.tenant-admin__group-rank input {
+  width: 60px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font: inherit;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text);
+}
+
+.tenant-admin__group-count {
+  flex: none;
+  font-size: var(--font-size-label);
+  color: var(--color-text-subtle);
+}
+
+.tenant-admin__group-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+}
+
+.tenant-admin__group-card .settings__actions {
+  padding: 0 var(--space-5) var(--space-4);
+}
+
+.tenant-admin__group-card .settings__alert {
+  margin: 0 var(--space-5) var(--space-4);
+}
+
+.tenant-admin__group-add {
+  padding: var(--space-2) var(--space-6) var(--space-6);
+}
+
+.tenant-admin__group-add-button {
+  width: 100%;
+}
+
+/* ------------------------------------------------------------------ *
+ * Ausschnitt wählen — the logo crop dialog
+ * ------------------------------------------------------------------ */
+
+/*
+ * The same two tokens the app's other overlays use (`--color-scrim` and the
+ * raised panel), deliberately: this is the fourth modal in the application and
+ * it must not read as a fourth *kind* of modal.
+ */
+.logo-crop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* The gutter that keeps the panel off the window edge at 360 px — with
+     `width: min(…)` below it is why this dialog cannot widen the page. */
+  padding: var(--space-4);
+}
+
+.logo-crop__scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--color-scrim);
+}
+
+.logo-crop__panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: min(560px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: var(--space-5);
+  border-radius: var(--radius-surface);
+  background: var(--color-panel-raised);
+  box-shadow: var(--shadow-popover);
+}
+
+.logo-crop__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-heading);
+  color: var(--color-text-strong);
+}
+
+.logo-crop__hint {
+  margin: 0;
+  font-size: var(--font-size-body-sm);
+  line-height: var(--line-height-body);
+  color: var(--color-text-muted);
+}
+
+.logo-crop__stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 140px;
+  padding: var(--space-3);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-sunken);
+}
+
+/*
+ * The frame is positioned in **per cent of this box**, so this box has to be
+ * exactly the picture — hence `fit-content` rather than a container the image
+ * sits inside. That is also what keeps the geometry free of measurement: no
+ * `ResizeObserver`, no stored scale, nothing to go stale on a rotation.
+ */
+.logo-crop__canvas {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  line-height: 0;
+}
+
+.logo-crop__image {
+  display: block;
+  max-width: 100%;
+  /* A tall portrait crest must not push the buttons off a phone screen. */
+  max-height: 44vh;
+  width: auto;
+  height: auto;
+  /* The picture is a backdrop for the frame; dragging the browser's own image
+     ghost across it would fight the pointer gesture. */
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.logo-crop__frame {
+  position: absolute;
+  box-sizing: border-box;
+  border: var(--focus-ring-width) solid var(--color-accent);
+  /* Two-tone outline: the accent alone disappears on a logo in the organisation's own
+     colours, which is precisely the picture this dialog is used on. */
+  outline: 1px solid var(--color-surface);
+  outline-offset: calc(var(--focus-ring-width) * -1 - 1px);
+  cursor: move;
+  /* Without this the browser scrolls the page instead of giving us the move —
+     the single most common reason a hand-written touch drag „does not work on
+     mobile" (`use-pointer-drag.ts`). */
+  touch-action: none;
+}
+
+.logo-crop__frame:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/*
+ * 22 px handles that hang half outside the frame, so a corner of a small frame
+ * still offers a 44 px-ish target on the diagonal — the touch floor the
+ * geometry enforces on the frame itself (`MIN_CROP_DISPLAY_PX`).
+ */
+.logo-crop__handle {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--color-surface);
+  border-radius: var(--radius-control-sm);
+  background: var(--color-accent);
+  touch-action: none;
+}
+
+.logo-crop__handle--nw {
+  top: -11px;
+  left: -11px;
+  cursor: nwse-resize;
+}
+
+.logo-crop__handle--ne {
+  top: -11px;
+  right: -11px;
+  cursor: nesw-resize;
+}
+
+.logo-crop__handle--sw {
+  bottom: -11px;
+  left: -11px;
+  cursor: nesw-resize;
+}
+
+.logo-crop__handle--se {
+  bottom: -11px;
+  right: -11px;
+  cursor: nwse-resize;
+}
+
+.logo-crop__readout {
+  margin: 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-muted);
+}
+
+.logo-crop__problem {
+  margin: 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-danger);
+}
+
+.logo-crop__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.logo-crop__spacer {
+  flex: 1 1 auto;
+}
+
+.logo-crop__reset,
+.logo-crop__cancel,
+.logo-crop__confirm {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-control);
+  font-size: var(--font-size-body-sm);
+  cursor: pointer;
+}
+
+.logo-crop__reset,
+.logo-crop__cancel {
+  border: 1px solid var(--color-field-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.logo-crop__confirm {
+  border: 1px solid var(--color-accent-strong);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-weight: var(--font-weight-bold);
+}
+
+.logo-crop__reset:disabled,
+.logo-crop__confirm:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

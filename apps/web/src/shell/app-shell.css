@@ -1,0 +1,183 @@
+/*
+ * Application frame. The header is fixed height, the main area scrolls — the
+ * handoff's shell, minus the subheader, which belongs to the form context and
+ * therefore to a later milestone.
+ */
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--color-shell);
+  color: var(--color-text);
+}
+
+.app-shell__main {
+  flex: 1;
+  min-height: 0;
+  /* A backstop, and it clips — it does not scroll. Said plainly because the
+     earlier wording here ("scrolls its own region") was wrong in a way that
+     mattered: `hidden` cuts overflowing content off, so a too-wide child
+     disappears at the edge instead of announcing itself with a scrollbar.
+     what is required is no horizontal scrollbar at 360 px, and clipping
+     would satisfy the letter of that while hiding the defect.
+
+     So the layout is expected to fit on its own, and the E2E suite measures
+     <main>'s own content width in addition to the document's — a 700 px block
+     dropped into the dashboard leaves the document measurement green and this
+     one red (`e2e/app-flows.ts`). This rule stays as the last line of defence
+     against a single stray element tilting the whole page. */
+  overflow-x: hidden;
+}
+
+.app-shell__alert {
+  margin: 0;
+  padding: var(--space-3) var(--space-7);
+  background: var(--color-danger-bg);
+  border-bottom: 1px solid var(--color-danger-border);
+  color: var(--color-danger);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+}
+
+/* --- 404 ---------------------------------------------------------------- */
+
+/*
+ * Centred in the content area, not glued to the top-left corner: this page is
+ * a dead end, and the one thing on it that matters is the way out.
+ */
+.not-found {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: 560px;
+  margin: 0 auto;
+  padding: var(--space-7) var(--space-4);
+  text-align: center;
+}
+
+.not-found__code {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: calc(var(--font-size-title) * 2);
+  line-height: 1;
+  /* 52 px, so WCAG 1.4.3's large-text bar of 3:1 applies — and the Dachorganisation's
+     accent colour misses even that on the canvas it sits on (1.77:1). The brand ink
+     keeps the hue and clears it for any Organisation (`tokens.css`). */
+  color: var(--color-accent-ink);
+}
+
+.not-found__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-title);
+  color: var(--color-text-strong);
+}
+
+.not-found__text {
+  margin: 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-muted);
+}
+
+.not-found__path {
+  /* Breaks inside the path rather than pushing the page wider — a long URL is
+     exactly the case that lands here. */
+  overflow-wrap: anywhere;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-sunken);
+  font-family: monospace;
+  color: var(--color-text);
+}
+
+.not-found__action {
+  padding: var(--space-2) var(--space-5);
+  border: none;
+  border-radius: var(--radius-control);
+  background: var(--gradient-accent);
+  font: inherit;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-on-accent);
+  cursor: pointer;
+}
+
+/* --- skip link and route announcement (a review finding) ----------------- */
+
+/*
+  **Visible only on focus.** A permanently visible skip link would be a change
+  to the handoff's appearance; invisible *without* focus and clearly visible
+  *with* it is the form WCAG 2.4.1 means. Not `display: none`: what is not
+  rendered is not focusable — and focusing is precisely the purpose.
+
+  ⚠️ **Without focus it takes up no area, and that is not cosmetics.** The
+  first version hid it with `clip-path` at full size. A skip link is an
+  `<a href>`, so a control in the sense of `mobile/operable.ts` — and the
+  mobile guards promptly measured a 106 × 33 px button at the spot where the
+  organisation logo lies: „der Punkt in der Mitte gehört etwas
+  anderem". They were right. A clipped element is invisible, but it lies
+  there. `width: 0` says the same as the display does: as long as nobody
+  focuses it, there is nothing here to hit.
+*/
+.app-shell__skip {
+  position: absolute;
+  left: var(--space-3);
+  top: var(--space-3);
+  z-index: 100;
+  width: 0;
+  height: 0;
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: var(--font-weight-bold);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.app-shell__skip:focus-visible {
+  width: auto;
+  height: auto;
+  padding: var(--space-2) var(--space-4);
+  overflow: visible;
+  box-shadow: var(--shadow-popover);
+}
+
+/*
+  The announcement carries text that only a screen reader is meant to hear —
+  visible, it would be a second heading above every view. Not `display: none`:
+  what is not rendered is not read out either.
+*/
+.app-shell__route-announcement {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The focus on `<main>` is a landing, not a control — it therefore gets no
+   outline of its own. The announcement says that something happened. */
+.app-shell__main:focus {
+  outline: none;
+}
+
+/*
+ * Die Fußzeile der angemeldeten Oberfläche (Review-Runde 3 Nr. 9).
+ *
+ * Sie trägt einen Satz und keine Navigation. Deshalb dieselbe Zurückhaltung
+ * wie die öffentliche Rechtsfußzeile: eine Haarlinie darüber, Kleindruck,
+ * gedämpfte Farbe — sichtbar, wenn man hinsieht, und nie im Weg.
+ */
+.app-shell__footer {
+  padding: var(--space-5) var(--space-6) var(--space-7);
+  border-top: 1px solid var(--color-hairline);
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-body);
+}

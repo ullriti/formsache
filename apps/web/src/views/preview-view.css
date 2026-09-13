@@ -1,0 +1,196 @@
+/*
+ * The test mode (handoff).
+ *
+ * The card, the organisation header and the fields inside it are **the same** as in the
+ * public fill view — `public-form-view.css`, loaded along by `PreviewView` —,
+ * because that is the whole purpose of this view: it shows what a participant
+ * sees. What stands here is exclusively the frame around it: the test-mode
+ * bar, the toolbar, the findings and the test run.
+ *
+ * No colour value and no spacing without a token (`CONTRIBUTING.md`): the
+ * branding of an organisation is switched over at runtime through exactly these
+ * variables, and a literal here would be a colour that does not switch along.
+ */
+
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-4) var(--space-8);
+}
+
+.preview__state {
+  padding: var(--space-6);
+  text-align: center;
+  font-size: var(--font-size-body);
+  color: var(--color-text-muted);
+}
+
+/*
+ * The prototype's bar: dark ground, the mark in the accent colour of the
+ * organisation, the sentence beside it held back. The prototype sets a fixed
+ * gold here; `--tenant-accent` is the same role as a variable — with the Dachorganisation the same
+ * tone, with an organisation that has an accent colour of its own, its own.
+ */
+.preview__banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto;
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid var(--color-on-ink-border);
+  border-radius: var(--radius-surface);
+  background: var(--color-ink-muted);
+  font-size: var(--font-size-body-sm);
+}
+
+.preview__banner-mark {
+  font-weight: var(--font-weight-bold);
+  color: var(--tenant-accent);
+}
+
+.preview__banner-text {
+  flex: 1;
+  color: var(--color-on-ink-subtle);
+}
+
+.preview__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.preview__action {
+  padding: var(--space-3) var(--space-6);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control-lg);
+  background: var(--color-surface);
+  font-size: var(--font-size-body);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.preview__action--primary {
+  border-color: transparent;
+  background: var(--tenant-accent);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-on-accent);
+}
+
+.preview__action:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.preview__note,
+.preview__findings {
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto;
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid var(--color-callout-border);
+  border-radius: var(--radius-surface);
+  background: var(--color-callout-bg);
+  font-size: var(--font-size-body-sm);
+  line-height: var(--line-height-body);
+  color: var(--color-text-muted);
+}
+
+/* A finding is not a marginal note — it gets the warning colour, not that of
+   the trimmings (Konzept no. 28: „das ist ein Befund, kein Generatorproblem"). */
+.preview__findings {
+  border-color: var(--color-warning);
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.preview__findings-title {
+  font-weight: var(--font-weight-bold);
+}
+
+.preview__findings-list {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-7);
+  list-style: disc;
+}
+
+.preview__intro {
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-subtle);
+}
+
+/*
+ * The stage carries the class `.public`, so that card, header and fields look
+ * identical — and it lifts exactly the two rules that only apply to a whole
+ * page: the full window height and the page ground of its own. Inside the
+ * shell both would be a break in the layout.
+ */
+.preview__stage {
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.preview__run {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto;
+  padding: var(--space-5) var(--space-4);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-card);
+  background: var(--color-panel);
+}
+
+.preview__run-title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-heading);
+  color: var(--color-text-strong);
+}
+
+.preview__run-note,
+.preview__run-empty,
+.preview__run-footnote {
+  font-size: var(--font-size-body-sm);
+  line-height: var(--line-height-body);
+  color: var(--color-text-muted);
+}
+
+.preview__run-footnote {
+  color: var(--color-text-subtle);
+}
+
+.preview__run-mail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.preview__run-mail-name {
+  font-size: var(--font-size-subheading);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+}
+
+/*
+ * Mobile (the 1180 px breakpoint applies to the navigation; what counts here is
+ * the text width): the toolbar wraps anyway, the buttons get the full width, so
+ * that they do not stand squeezed next to each other at 360 px.
+ */
+@media (max-width: 520px) {
+  .preview {
+    padding: var(--space-4) var(--space-3) var(--space-7);
+  }
+
+  .preview__action {
+    flex: 1 1 100%;
+  }
+}

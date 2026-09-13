@@ -1,0 +1,232 @@
+/*
+ * The legal-text editor (ADR-0028) — the additions to the settings card that
+ * `settings-view.css` already provides.
+ *
+ * Tokens only. What stands here is exclusively what the existing building
+ * blocks cannot already do: the state badge, the condition list and the
+ * preview.
+ */
+
+.legal-editor {
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.legal-editor__note {
+  margin: 0;
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-body);
+}
+
+.legal-editor__note a {
+  color: var(--color-info);
+}
+
+/*
+ * The state badge. Three states, three colour families — and in every case a
+ * **word**, because a colour alone is not information.
+ */
+.legal-editor__status {
+  align-self: center;
+  /* Wort und Zahl stehen in einer Zeile, mit einem Zwischenraum, den kein
+     Textknoten liefern muss — so bleibt der Text des Wortes für sich
+     (Review-Runde 3 Nr. 16). */
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-hairline);
+  padding: var(--space-1) var(--space-4);
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.legal-editor__status[data-status='empty'] {
+  background: var(--color-danger-bg);
+  border-color: var(--color-danger-border);
+  color: var(--color-danger);
+}
+
+.legal-editor__status[data-status='incomplete'] {
+  background: var(--color-warning-bg);
+  border-color: var(--color-warning-alt);
+  color: var(--color-warning);
+}
+
+.legal-editor__status[data-status='ready'] {
+  background: var(--color-success-bg);
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+
+.legal-editor__conditions {
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-surface);
+  background: var(--color-surface-sunken);
+  padding: var(--space-4) var(--space-5);
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.legal-editor__conditions legend {
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+  padding: 0 var(--space-2);
+}
+
+.legal-editor__condition {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: var(--space-1) var(--space-3);
+}
+
+.legal-editor__condition input {
+  /* Target size for a checkbox in a list, too. */
+  min-width: var(--touch-target-min);
+  min-height: var(--touch-target-min);
+}
+
+.legal-editor__condition label {
+  align-self: center;
+  color: var(--color-text);
+  font-size: var(--font-size-body);
+}
+
+.legal-editor__condition .legal-editor__note {
+  grid-column: 2;
+}
+
+.legal-editor__fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.legal-editor__preview > summary {
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-body-sm);
+  min-height: var(--touch-target-min);
+}
+
+.legal-editor__preview-body {
+  margin-top: var(--space-4);
+  border: 1px solid var(--color-hairline-soft);
+  border-radius: var(--radius-surface);
+  background: var(--color-surface);
+  padding: var(--space-5);
+  /* A preview is never as tall as the page; it is meant to stay readable. */
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+/*
+ * **Wie viele Felder noch offen sind** (Review-Runde 3 Nr. 16).
+ *
+ * Steht in derselben Marke wie das Wort und nicht daneben: „Unvollständig —
+ * noch 3 Felder" ist eine Aussage, zwei Marken nebeneinander wären zwei.
+ * Die Sperrung des Versalsatzes nimmt die Zahl zurück, damit sie nicht wie
+ * eine zweite Beschriftung liest.
+ */
+.legal-editor__status-count {
+  font-weight: var(--font-weight-regular);
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+/*
+ * „Lieber einen eigenen Text oder einen Verweis hinterlegen?" — der zugeklappte
+ * Weg zu den beiden anderen Fassungen (Review-Runde 3 Nr. 16, dritter Weg seit
+ * Review-Runde 5).
+ *
+ * Zugeklappt, weil die Wahl der Bauform nicht die erste Frage sein soll, die
+ * ein Rechtstext stellt; sichtbar, weil sie für den, der eine geprüfte
+ * Fassung oder eine eigene Seite hat, die einzige ist, die zählt. Eine Stelle
+ * für alle drei Modi — die Begründung dafür steht in `LegalPageEditor.tsx`.
+ */
+.legal-editor__own-text {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-hairline-soft);
+}
+
+.legal-editor__own-text > summary {
+  cursor: pointer;
+  /* Antippbar auf dem Telefon — eine Zusammenfassung ist ein Bedienelement. */
+  min-height: var(--touch-target-min);
+  line-height: var(--touch-target-min);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-info);
+}
+
+.legal-editor__own-text > summary:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.legal-editor__own-text .segmented {
+  margin-top: var(--space-3);
+}
+
+/* **Ein fachlicher Abschnitt der Feldliste** (Review-Runde 4 Nr. 7).
+
+   Bewusst schlichter gezeichnet als `legal-editor__conditions`: die
+   Bedingungen sind eine Entscheidung, ein Abschnitt ist eine Sortierung. Ein
+   zweiter gefüllter Kasten daneben ließe beide gleich wichtig aussehen. */
+.legal-editor__group {
+  border: 0;
+  border-top: 1px solid var(--color-hairline-soft);
+  padding: var(--space-4) 0 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.legal-editor__group > legend {
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+  padding: 0 var(--space-2) 0 0;
+}
+
+.legal-editor__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: flex-start;
+}
+
+/* Der Knopf, der den Standardtext ins Feld schreibt. Er steht unter dem Feld
+   und nicht daneben: neben einem mehrzeiligen Feld hinge er in der Luft, und
+   die Vorschläge sind überwiegend mehrzeilig. */
+.legal-editor__suggestion {
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-sunken);
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--font-size-body-sm);
+  padding: var(--space-2) var(--space-3);
+  min-height: var(--touch-target-min);
+  cursor: pointer;
+}
+
+.legal-editor__suggestion:hover {
+  color: var(--color-text);
+  border-color: var(--color-hairline);
+}

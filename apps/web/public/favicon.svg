@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Das Produktzeichen von Formsache (ADR-0019, Entwurf B): die Arme des F
+  setzen sich rechts als Formularzeilen fort, eine dritte kommt unten hinzu.
+
+  Die Farben stehen hier als Werte, nicht als Verweis auf ein Marken-Token.
+  Ein Favicon wird ohne die Kaskade der Anwendung geladen; es gibt kein
+  Dokument, aus dem es ein Token lesen könnte. `ProductLockup.test.tsx` hält
+  diese Datei und die Tokens aneinander.
+
+  ACHTUNG: Diese Datei wird als `image/svg+xml` geladen und deshalb streng als
+  XML geparst. Ein doppelter Bindestrich ist in einem XML-Kommentar verboten;
+  er hat das Zeichen im Reiter schon einmal ganz verschwinden lassen. Token-
+  und Optionsnamen deshalb hier nie ausschreiben. `ProductLockup.test.tsx`
+  parst die Datei als XML und wird rot, falls es doch passiert.
+-->
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 64 64"
+  width="64"
+  height="64"
+  role="img"
+  aria-label="Formsache"
+>
+  <rect x="2" y="2" width="60" height="60" rx="15" fill="#212226" />
+  <g fill="#f3efe6">
+    <rect x="16" y="15" width="6" height="34" rx="3" />
+    <rect x="16" y="15" width="19" height="6" rx="3" />
+    <rect x="16" y="28" width="15" height="6" rx="3" />
+  </g>
+  <g fill="#cea967">
+    <rect x="38.5" y="15" width="10.5" height="6" rx="3" />
+    <rect x="34.5" y="28" width="13" height="6" rx="3" />
+    <rect x="22" y="41" width="17" height="6" rx="3" />
+  </g>
+</svg>

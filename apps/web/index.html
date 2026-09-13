@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Zwei Adressen dieser Anwendung tragen ihre Berechtigung im Pfad — der
+         Bearbeiten-Link und die Entwurfs-Adresse. Ohne diese
+         Zeile stellt der Browser sie in `Referer` jedem zu, den ein Teilnehmer
+         von dieser Seite aus anklickt. Sie steht **hier** und nicht nur in der
+         nginx-Vorlage, weil dieses Dokument auch hinter `vite dev`, `vite
+         preview` und jedem anderen Webserver ausgeliefert wird; Begründung für
+         `no-referrer` und die dritte Stelle: apps/api/src/common/no-store.ts -->
+    <meta name="referrer" content="no-referrer" />
+    <!-- Die Richtlinie der **Seite**. Sie steht
+         hier und nicht nur in der nginx-Vorlage, aus demselben Grund wie die
+         Zeile darüber: dieses Dokument wird auch hinter `vite dev`, `vite
+         preview` und jedem anderen Webserver ausgeliefert — und weil sie hier
+         steht, **messen die 314 E2E-Fälle sie mit**. Eine Richtlinie, die nur
+         im Container gilt, fällt erst der Betreiberin auf.
+
+         `'unsafe-inline'` **nur für Stile**, und die zwei Stellen sind
+         benannt: `fill/PageProgressBar.tsx` setzt die Breite des Balkens und
+         `views/form-members/RoleLegend.tsx` die Gruppenfarbe — beide als
+         `style`-Attribut, das ohne dieses Schlüsselwort blockiert würde.
+         `style-src-attr` wäre enger, fällt aber in Browsern ohne Unterstützung
+         auf `style-src` zurück und nähme dann genau diese zwei Werte weg.
+         Für **Skripte** gilt es nicht: das gebaute Dokument trägt genau ein
+         externes Modul und keine einzige Inline-Zeile (gemessen).
+
+         `blob:` bei `img-src` ist **gemessen, nicht vorsorglich**: der
+         Wappen-Zuschnitt zeigt die gewählte Datei über
+         `URL.createObjectURL` an (`views/tenant-admin/LogoCropDialog.tsx`).
+         Ohne das Schlüsselwort blieb der Rahmen leer — zwei E2E-Fälle wurden
+         rot, und genau dafür steht die Richtlinie im Dokument statt nur im
+         Container.
+
+         `frame-ancestors 'none'` gibt es zusätzlich an der API
+         (`apps/api/src/common/security-headers.ts`); `Strict-Transport-Security`
+         gehört an den TLS-Frontdoor und damit zum Go-Live (Issue #22). -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'"
+    />
+    <title>Formsache</title>
+    <!-- Das Produktzeichen (ADR-0019). Nur SVG, kein `.ico`: der Reiter ist
+         der eine Ort, an dem das Zeichen in jeder Größe zwischen 16 und 64 px
+         auftauchen kann, und eine Vektorfassung bedient sie alle. Browser ohne
+         SVG-Favicon zeigen keins — sie zeigten vorher auch keins. -->
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <!-- Bold cut of PT Serif: every view's titles need it, so start the fetch
+         with the HTML parse rather than after the CSS. Reasoning, and why
+         `crossorigin` is required even same-origin: src/styles/fonts.css -->
+
+    <link
+      rel="preload"
+      href="/src/assets/fonts/pt-serif-bold.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

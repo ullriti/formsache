@@ -1,0 +1,158 @@
+# The local development stack: database, migrations, API, nginx front door.
+#
+#   ./scripts/dev-setup.sh                   # create .env, generate keys
+#   docker compose up -d --build
+#   docker compose run --rm migrate db seed  # development accounts
+#   http://127.0.0.1:8080
+#
+# Production runs `docker-compose.prod.yml`, a file of its own.
+# Compose interpolates the whole file before startup: a missing
+# `SECRET_BOX_KEY` fails on `up -d db` as well.
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: formsache-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-formsache}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD fehlt - siehe .env.example}
+      POSTGRES_DB: ${POSTGRES_DB:-formsache}
+      # Deterministic sorting, independent of the machine's locale.
+      POSTGRES_INITDB_ARGS: '--encoding=UTF8 --locale=C'
+    ports:
+      # Only on 127.0.0.1: for `pnpm dev` and tools on the machine.
+      - '127.0.0.1:${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # One-off run: applies the migrations and ends. Its own image, because the
+  # runtime image of the API carries no Prisma CLI.
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: migrate
+    image: formsache-migrate:${APP_VERSION:-0.0.0-dev}
+    restart: 'no'
+    environment:
+      # In the compose network the database is called `db`, never the host port from `.env`.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-formsache}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-formsache}
+      # Here too, not only on `api`: the seed creates a superadministrator
+      # and rejects the default password as soon as `NODE_ENV` is not
+      # `development` or `test`.
+      NODE_ENV: ${NODE_ENV:-development}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@example.org}
+      SEED_ADMIN_NAME: ${SEED_ADMIN_NAME:-Administrator Beispiel}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-change-me-locally}
+      SEED_TENANT_ADMIN_EMAIL: ${SEED_TENANT_ADMIN_EMAIL:-orgadmin@musterstadt.example}
+      SEED_TENANT_ADMIN_NAME: ${SEED_TENANT_ADMIN_NAME:-Musterstadt Organisationsadmin}
+      SEED_TENANT_ADMIN_PASSWORD: ${SEED_TENANT_ADMIN_PASSWORD:-change-me-locally}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: runtime
+      args:
+        # Baked into the image and reported by `GET /api/health`.
+        APP_VERSION: ${APP_VERSION:-0.0.0-dev}
+    image: formsache-api:${APP_VERSION:-0.0.0-dev}
+    restart: unless-stopped
+    # A PID 1 that reaps children and passes SIGTERM on — otherwise
+    # `docker compose down` is ten seconds of waiting and then SIGKILL.
+    init: true
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      API_PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-formsache}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-formsache}
+      SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-12}
+      # Empty means „follow `NODE_ENV`" — with `development` above that is no
+      # `Secure`, which is what makes the login work over plain http on this
+      # machine *and* from another device in the network (see `APP_BIND` at the
+      # `web` service). Passed through rather than omitted so that trying out
+      # `NODE_ENV=production` locally does not need a second edit here.
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-}
+      # Mandatory without a default: a key in the repository would be none.
+      SECRET_BOX_KEY: ${SECRET_BOX_KEY:?SECRET_BOX_KEY fehlt - "openssl rand -base64 32", oder ./scripts/dev-setup.sh}
+      # One hop: the `web` service in front replaces `X-Forwarded-For`
+      # instead of appending.
+      TRUST_PROXY_HOPS: 1
+      # Mail server and base address are not here: system settings.
+      MAIL_WORKER_INTERVAL_MS: ${MAIL_WORKER_INTERVAL_MS:-15000}
+      MAIL_PURGE_INTERVAL_MS: ${MAIL_PURGE_INTERVAL_MS:-86400000}
+      FILE_PURGE_INTERVAL_MS: ${FILE_PURGE_INTERVAL_MS:-86400000}
+      TRASH_PURGE_INTERVAL_MS: ${TRASH_PURGE_INTERVAL_MS:-86400000}
+      SESSION_PURGE_INTERVAL_MS: ${SESSION_PURGE_INTERVAL_MS:-86400000}
+      AI_USAGE_PURGE_INTERVAL_MS: ${AI_USAGE_PURGE_INTERVAL_MS:-86400000}
+      AI_REQUEST_TIMEOUT_MS: ${AI_REQUEST_TIMEOUT_MS:-60000}
+      OPS_ALERT_INTERVAL_MS: ${OPS_ALERT_INTERVAL_MS:-300000}
+      OIDC_ISSUER_ALLOWLIST: ${OIDC_ISSUER_ALLOWLIST:-}
+      # A path **inside the container**, therefore fixed here and not from `.env`.
+      FILE_STORAGE_DIR: /var/lib/formsache/files
+    volumes:
+      # The uploads do not live in the database; a backup needs both.
+      - api-files:/var/lib/formsache/files
+    expose:
+      - '3000'
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      # `/ready`, not `/health`: for `depends_on` what counts is "may traffic
+      # go here?", and that includes the database. `node -e`, because the
+      # runtime image has neither curl nor wget.
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/api/health/ready').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    image: formsache-web:${APP_VERSION:-0.0.0-dev}
+    restart: unless-stopped
+    environment:
+      API_UPSTREAM: http://api:3000
+      # Whom the front door believes an `X-Forwarded-For` from — here nobody:
+      # it stands at the front itself, everything from outside is a claim.
+      TRUSTED_PROXY_CIDR: ${TRUSTED_PROXY_CIDR:-127.0.0.1/32}
+    ports:
+      # **Loopback by default, and that stays the default.** A development stack
+      # is reachable from the whole network the moment this says `0.0.0.0`, and
+      # it carries seeded accounts with `change-me-locally` as their password.
+      #
+      # `APP_BIND` exists so that „von einem anderen Gerät im Netz ausprobieren"
+      # — a phone on the same WLAN, a colleague's laptop — does not require
+      # editing this file, which is the edit that gets committed by accident.
+      # Set it to the machine's own address (`APP_BIND=192.168.1.10`) or, if
+      # that must not be pinned, to `0.0.0.0`. Over such an address the session
+      # cookie must not be `Secure`, which with `NODE_ENV=development` it is not
+      # — `docs/kb/04-build-run.md` carries the whole recipe.
+      - '${APP_BIND:-127.0.0.1}:${APP_PORT:-8080}:8080'
+    depends_on:
+      api:
+        # nginx resolves the upstream name at startup and will not start otherwise.
+        condition: service_healthy
+
+volumes:
+  db-data:
+  api-files:

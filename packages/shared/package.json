@@ -1,0 +1,35 @@
+{
+  "name": "@formsache/shared",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Geteilte Zod-Schemas, Typen und Kernlogik für Client und Server",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/cjs/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/esm/index.d.ts",
+      "development": "./src/index.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js",
+      "default": "./dist/esm/index.js"
+    }
+  },
+  "scripts": {
+    "build": "pnpm run build:esm && pnpm run build:cjs",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json && node scripts/mark-cjs-output.mjs",
+    "clean": "rm -rf dist",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "exceljs": "4.4.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "jsdom": "30.0.1",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

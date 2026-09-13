@@ -1,0 +1,1089 @@
+/*
+ * The public fill-in view (Handoff): a centred card under the organisation's mark
+ * and colour stripe.
+ *
+ * Standalone — this page is rendered outside the application shell, so it
+ * carries its own page background. The tenant axes come from the same
+ * `tenantThemeStyle()` the shell uses, set as inline custom properties on the
+ * root element here.
+ */
+
+.public {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: 100vh;
+  padding: var(--space-4) var(--space-3) var(--space-6);
+  background: var(--color-canvas);
+}
+
+.public__header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 700px;
+}
+
+.public__logo {
+  display: block;
+  width: var(--layout-logo-width-fill);
+  height: var(--layout-logo-height-fill);
+  object-fit: contain;
+}
+
+/*
+ * A uniform `gap` on `.public__header` used to space the logo, the name and
+ * the stripe apart identically, so nothing told the eye which pair belongs
+ * together. The name is the logo's caption, not a third independent block —
+ * it sits close under the mark (tight margin) while the stripe gets the
+ * larger gap, reading as the header's closing rule rather than a fourth
+ * equally-spaced sibling.
+ */
+.public__tenant {
+  margin-top: var(--space-2);
+  font-family: var(--font-display);
+  font-size: var(--font-size-heading);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+}
+
+.public__stripe {
+  width: 100%;
+  height: 4px;
+  margin-top: var(--space-5);
+  border-radius: var(--radius-pill);
+  background: var(--gradient-stripe);
+}
+
+.public__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+  /* 480–700 px, as the handoff specifies — a form column wider than that is
+     harder to read, not easier. */
+  max-width: 700px;
+  padding: var(--space-5) var(--space-4);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+.public__card--done {
+  align-items: center;
+  text-align: center;
+}
+
+.public__check {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin: 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent-tint);
+  color: var(--color-accent-strong);
+  font-size: var(--font-size-title);
+}
+
+.public__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-title);
+  color: var(--color-text-strong);
+}
+
+.public__message {
+  margin: 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-muted);
+}
+
+/*
+ * The active page's own heading — one step down from
+ * `.public__title` (the form's name), which is what separates the two in a
+ * form with several pages. Unconditional, unlike `.public__page-info`
+ * (`showPageNumbers`): a form that turns page numbers off still names the
+ * page it is showing.
+ */
+.public__page-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-heading);
+  color: var(--color-text-strong);
+}
+
+.public__page-description {
+  margin: 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-subtle);
+}
+
+/* --- the deadline above the form (`fill/FormDeadline.tsx`) -------------- */
+
+/*
+ * Finding 32 — „what am I working against here".
+ *
+ * **As long as the deadline is running it is a line and not a box**: the same
+ * muted dress as `.public__page-info` and `.public__page-description`, so the
+ * same voice in which this card gives its side information. A framed notice
+ * above every form with a time window would be a warning that warns weeks in
+ * advance — and whoever sees it often enough stops reading it.
+ *
+ * The handoff does not know this line (its participant view has no time
+ * window), so it is invented — and out of the pieces that are already there
+ * rather than out of new ideas: the running line wears the dress of the page
+ * line, the expired state that of the warning box of `.public__edit-hint`.
+ */
+.public__deadline {
+  margin: 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-muted);
+}
+
+/*
+ * **Expired — now it may stand out.** Only in this moment is the information
+ * urgent, and only now does a box cost nothing: it no longer stands there for
+ * weeks, but since one minute ago.
+ *
+ * Colour is the addition, not the information (WCAG 1.4.1): the sentence
+ * itself says „abgelaufen" and „die Eingaben bleiben erhalten", the tone only
+ * that it is new. `--color-warning` and not `--color-danger`, because nothing
+ * has failed here that the participant would have done — it is the clock.
+ */
+.public__deadline--expired {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-hairline);
+  border-left: 3px solid var(--color-warning);
+  border-radius: var(--radius-control);
+  background: var(--color-warning-bg-soft);
+  line-height: var(--line-height-body);
+}
+
+/* --- „Bearbeiten nach Absenden"  ----------------------- */
+
+/*
+ * The handoff shows **neither** of the two surfaces below: its confirmation
+ * screen has no edit address, and there is no participant-facing edit view in
+ * the prototype at all. Both are therefore invented — and invented out of the
+ * pieces that already exist rather than out of new ideas: the strip mirrors the
+ * builder's public-address strip (`builder-view.css`), the note reuses the
+ * muted body text of `.public__message`, and every value is a token.
+ */
+
+/*
+ * The link block on the confirmation. Left-aligned inside a card that is
+ * centred: a URL is read character by character, and centred text makes each
+ * line start somewhere else.
+ *
+ * **It is the last page a person filling in sees, and this address is their
+ * only way back to their own response** — the hint text says so, the
+ * appearance did not: a pale box with a body-text paragraph, a bare URL and a
+ * text button, so a footnote under the thanks. Hence now a plaque to keep:
+ *
+ * - **The top edge carries the organisation's colour** (`--color-accent`,
+ *   3 px). It is the only means here that says without a word „this belongs
+ *   together and this is important", and it switches with the tenant.
+ * - **Three tones instead of one.** The plaque stands warm
+ *   (`--color-panel-raised`) on the white card, the warning notice keeps its
+ *   sand tone, the address itself sits in a white field — the same layering
+ *   the settings cards use (head/body). A hand reaches for a field that looks
+ *   like a field.
+ *
+ * No colour is fixed here: each one comes from a token, so that the plaque
+ * carries the organisation's colour and not that of a template.
+ */
+.public__edit-link {
+  display: flex;
+  flex-direction: column;
+  /* `stretch`, not `flex-start`: address field and hint are meant to fill the
+     plaque — a field only as wide as its content ends up somewhere else with
+     every address. */
+  align-items: stretch;
+  gap: var(--space-4);
+  width: 100%;
+  padding: var(--space-5) var(--space-4);
+  border: 1px solid var(--color-hairline);
+  border-top: 3px solid var(--color-accent);
+  border-radius: var(--radius-card);
+  background: var(--color-panel-raised);
+  box-shadow: var(--shadow-raised);
+  text-align: left;
+}
+
+/*
+ * The plaque's heading — the same build `.confirm-preview__eyebrow` uses in
+ * the settings (uppercase, `--font-size-label`, letter-spaced): it names the
+ * box without competing with the thank-you heading above it.
+ */
+.public__edit-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+}
+
+.public__edit-mark {
+  flex: none;
+  font-size: var(--font-size-subheading);
+  line-height: var(--line-height-tight);
+}
+
+/*
+ * The handoff has no confirmation-page notice box to match against — its
+ * prototype has neither this address strip nor a participant-facing edit
+ * view at all (see the module comment above). What it does have, twice
+ * elsewhere in this codebase, is the sitewide „Hinweis-/Warnkasten": a
+ * hairline border, a 3 px warning-coloured left edge and a tinted background
+ * (`.login__notice` in `login-view.css`, `.dashboard__notice` in
+ * `dashboard-view.css`). This hint carries the same warning as those two —
+ * losing it means losing the only way back to the answer — so it takes the
+ * same treatment rather than staying plain muted text that reads as
+ * decoration.
+ */
+.public__edit-hint {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-hairline);
+  border-left: 3px solid var(--color-warning);
+  border-radius: var(--radius-control);
+  background: var(--color-warning-bg-soft);
+  font-size: var(--font-size-body-sm);
+  line-height: var(--line-height-body);
+  color: var(--color-text-muted);
+}
+
+/*
+ * Address and button in one row. `wrap` and no second breakpoint in this
+ * file's media query: the button slips under the field exactly when it no
+ * longer fits beside it — that hangs on the width of the card, not on that of
+ * the window, and is therefore right even if this plaque one day stands
+ * somewhere else.
+ */
+.public__edit-address {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+/*
+ * `break-all` and not `break-word`: a base64url token has no spaces and no
+ * hyphens to break at, so a long address would otherwise widen the card and
+ * push the page into a horizontal scroll on a phone.
+ *
+ * The address sits in a field rather than free in the paragraph: it is the
+ * piece that gets selected, copied out by hand or photographed. `--font-mono`,
+ * because zero and O, one and l can be told apart in it — both occur in a
+ * base64url token, and whoever types the address out has to be able to *read*
+ * it. The underline stays: the field must not become so much of a form field
+ * that nobody sees any more that it can be clicked.
+ */
+/*
+ * ⚠️ `--color-accent-ink` on both, for the reason written out at
+ * `.responses__export-format` (a review finding): a surface colour used as
+ * text colour makes legibility depend on the organisation's colour. Here it
+ * weighs heaviest — for most of the people who ever use this application the
+ * confirmation page is the **last** page, and the address on it the only way
+ * to get back to their own response.
+ */
+.public__edit-url {
+  /* `1 1 240px`: beside the button as wide as possible, alone in the row across
+     the whole plaque — and narrower than the 240 px before anything overflows. */
+  flex: 1 1 240px;
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-body-sm);
+  line-height: var(--line-height-body);
+  color: var(--color-accent-ink);
+  text-underline-offset: 2px;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+
+/*
+ * The button is now this plaque's button and no longer a word in link colour:
+ * filled, with the same `--gradient-accent` surface that everywhere else
+ * carries the one main action of a view. That is what it is here too — getting
+ * the address into the clipboard is the only thing left to do on this page.
+ */
+.public__edit-copy {
+  flex: none;
+  /*
+   * `flex-start` and not `stretch`: a long address wraps onto three lines, and
+   * a button that grows with it would be a palm-sized area with the word
+   * „Kopieren" in the middle. It stands instead at the top beside the first
+   * line. The transparent border and the same line height as in the field are
+   * what make the two exactly equally tall with a single-line address —
+   * without them the button would fall short by the field's two border pixels.
+   */
+  align-self: flex-start;
+  min-height: var(--touch-target-min);
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: var(--gradient-accent);
+  box-shadow: var(--shadow-accent-button);
+  color: var(--color-on-accent);
+  /* `font` is a shorthand and resets `line-height` along with it — the line
+     height therefore has to stand *after* it, otherwise it is `normal` again. */
+  font: inherit;
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-body);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.public__edit-copy:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/*
+ * The feedback is always there, even when empty (`min-height`) — otherwise the
+ * plaque jumps under the finger that has just pressed. The base tone is that
+ * of the success message; the only other message is an error and recolours
+ * itself.
+ */
+.public__edit-feedback {
+  min-height: 1.2em;
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-success);
+}
+
+.public__edit-feedback--error {
+  font-weight: var(--font-weight-regular);
+  color: var(--color-danger);
+}
+
+/* The note above the fields of the edit view. */
+.public__edit-note {
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-surface);
+  background: var(--color-canvas);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-muted);
+}
+
+/* --- password gate (`fill/PasswordGate.tsx`) ----------- */
+
+/*
+ * The gate reuses `.public__card` unchanged and adds only what a single field
+ * needs. The handoff shows no participant-facing gate (its spec is the editor's
+ * switch), so nothing is invented beyond a label, an input and a row for the
+ * button — all of them out of the tokens the rest of this file uses.
+ *
+ * `max-width` on the input rather than a full-width box: an access word is a
+ * short string, and a field the width of the card promises a paragraph.
+ */
+.public__card--gate {
+  max-width: 480px;
+}
+
+.public__gate-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.public__gate-label {
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+}
+
+/*
+ * **Only the one declaration that differs.** The rest — box, border, radius,
+ * surface, type and the focus ring — comes from `.field__control` further down,
+ * which the gate's input now carries as well
+ * (`className="field__control public__gate-input"`).
+ *
+ * The two used to be declaration-for-declaration identical, focus block
+ * included, in this very file. That is not a duplication with a theoretical
+ * cost: `.field--invalid .field__control` already existed on one side and not
+ * the other, so the two boxes had begun to drift within a single commit.
+ */
+.public__gate-input {
+  max-width: 320px;
+}
+
+/* The narrow-screen rule for this input lives in the **one** media query of
+   this file, further down, rather than in a second one next to it: the
+   stylesheet has a single breakpoint, and a second `@media` block for the same
+   width is how the two drift apart — and how a test that reads „the first
+   media query" starts reading the wrong one. */
+
+/* --- page progress (`fill/PageCounter.tsx`, `fill/PageProgressBar.tsx`) - */
+
+.public__page-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.public__page-info {
+  margin: 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-muted);
+}
+
+.public__page-progress-track {
+  height: var(--space-2);
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent-tint);
+}
+
+.public__page-progress-fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  transition: width var(--motion-pop);
+}
+
+/* --- required hint (`fill/RequiredHint.tsx`) ----------- */
+
+.public__required-hint {
+  margin: 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-muted);
+}
+
+.public__required-mark {
+  /* The same red the star next to every required label uses — the hint is a
+     legend for those stars, so a second colour would read as a second thing. */
+  color: var(--color-danger);
+}
+
+/* --- redirect countdown (`fill/RedirectCountdown.tsx`) ----------- */
+
+.public__redirect {
+  margin: 0;
+  font-size: var(--font-size-label);
+  color: var(--color-text-muted);
+}
+
+.public__state {
+  max-width: 700px;
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.public__error {
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--color-danger-border);
+  border-radius: var(--radius-surface);
+  background: var(--color-danger-bg-soft);
+  color: var(--color-danger);
+  font-size: var(--font-size-body-sm);
+}
+
+.public__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.public__primary,
+.public__secondary {
+  padding: var(--space-2) var(--space-5);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font: inherit;
+  color: var(--color-text-strong);
+  cursor: pointer;
+}
+
+.public__primary {
+  border-color: transparent;
+  background: var(--gradient-accent);
+  color: var(--color-on-accent);
+  font-weight: var(--font-weight-bold);
+}
+
+.public__primary:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* --- one row of fields --------------------------------------------------- */
+
+/*
+ * A row (Handoff): two half-width questions side by side, everything else
+ * alone across the card. The grouping is done in `rowsOf` (`@formsache/shared`) —
+ * out of the same module the builder's width invariant lives in — so this only
+ * has to distribute the space.
+ *
+ * `flex: 1 1 0` on the children rather than a percentage: two equal columns
+ * whatever the labels are, and `min-width: 0` (on `.field`) lets a long option
+ * caption wrap instead of pushing the row wider than the card. It is also why
+ * `rowsOf` need not repair a stray `half`: alone in a row, it fills the row.
+ *
+ * An error message under one of the two fields makes that column taller, not
+ * narrower — the row grows downwards and stays intact, which is why the
+ * message needs no rule of its own here.
+ */
+.public__row {
+  display: flex;
+  gap: var(--space-4);
+  /* Top-aligned, so an error message under one field makes that column taller
+     instead of centring its neighbour against it. */
+  align-items: flex-start;
+}
+
+.public__row > * {
+  flex: 1 1 0;
+}
+
+/*
+ * Below the breakpoint everything stacks — two inputs side by side on a phone
+ * are unusable, and the card would be the one thing forcing a horizontal
+ * scrollbar.
+ *
+ * The number is the application's one breakpoint (1180 px,
+ * `styles/breakpoints.ts`; CSS media queries cannot read a custom property, so
+ * `builder-view.css` spells out the same 1179 px). Using it here means builder
+ * canvas and fill-in view stack at the *same* window width: what the editor
+ * sees at a given size is what the participant sees. Like the builder's rule
+ * this is **presentation only** — `width: 'half'` stays in the document.
+ */
+@media (max-width: 1179px) {
+  .public__row {
+    flex-direction: column;
+    /* `align-items` follows the *cross* axis, which the line above just turned
+       horizontal: leaving it at `flex-start` would shrink every field to the
+       width of its own label — an input box a third of the card wide, on the
+       screen that can least afford it. */
+    align-items: stretch;
+  }
+
+  /* Below the breakpoint the card is as wide as the screen; a 320 px ceiling
+     on the access-word input would leave it stranded next to a full-width
+     button. */
+  .public__gate-input {
+    max-width: none;
+  }
+}
+
+/*
+ * The decoy field of the requirement — hidden, and hidden in a particular way.
+ *
+ * **Not `display: none` and not `visibility: hidden`.** Those two are what an
+ * automated form filler checks for when it bothers to check at all, and a
+ * honeypot that announces itself catches nothing. What is used instead is a box
+ * with no extent: still laid out, still in the DOM, still fillable by a script,
+ * and nothing a human eye or a pointer can reach.
+ *
+ * `position: absolute` takes it out of flow, so the card's `gap` does not
+ * reserve a row for it — without that line, an invisible field would still push
+ * the button away from the questions by `--space-4`. No `left`/`top`: it stays
+ * at its static position with zero size, which keeps it from extending the
+ * scroll area in either direction. That was the alternative — the classic
+ * `left: -9999px` — and it is worse twice over: it can widen the document on a
+ * phone, and a 1×1 box off-screen still counts as *visible* to Playwright, so
+ * the one test that proves this rule could not have been written.
+ *
+ * The size is what makes „unsichtbar" a measurement rather than a claim
+ * (`e2e/public-form-honeypot.spec.ts`): an element with an empty bounding box
+ * is hidden by every definition the browser offers. `opacity` and the removed
+ * border are belt and braces for the case where a stylesheet elsewhere gives
+ * inputs a minimum size.
+ *
+ * `aria-hidden` and `tabindex="-1"` are on the element itself
+ * (`fill/HoneypotField.tsx`) rather than here — hiding from assistive
+ * technology is not a presentation decision, and a stylesheet that fails to
+ * load must not turn a trap into a field somebody is asked to fill in.
+ */
+.public__honeypot {
+  position: absolute;
+  width: 0;
+  height: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* --- one field ---------------------------------------------------------- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+/*
+ * The Infotext callout (the requirement, handoff `participantView()`) — a
+ * sibling of `.field`, not a variant of it: an `info` has no label element,
+ * no control and no error, so it does not join the `.field` layout at all.
+ * `min-width: 0` matches `.field` so it still shrinks inside a half-width row
+ * instead of forcing the row wider than its column.
+ */
+.field__info {
+  min-width: 0;
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-callout-bg);
+  border: 1px solid var(--color-callout-border);
+  border-left: 3px solid var(--color-accent);
+  border-radius: var(--radius-control);
+  font-size: var(--font-size-body);
+  color: var(--color-text-muted);
+}
+
+.field__label {
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+}
+
+.field__required {
+  color: var(--color-danger);
+}
+
+.field__hint {
+  font-size: var(--font-size-label);
+  color: var(--color-text-subtle);
+}
+
+.field__control {
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font: inherit;
+  color: var(--color-text);
+}
+
+.field__control:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+/*
+ * The invalid state is a border **and** a message, never colour alone: a
+ * red outline says nothing to someone who cannot distinguish it, and the
+ * message is what tells anybody what to change.
+ */
+.field--invalid .field__control {
+  border-color: var(--color-danger);
+}
+
+.field__error {
+  font-size: var(--font-size-label);
+  color: var(--color-danger);
+}
+
+.field__choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.field__choice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text);
+}
+
+/*
+ * Bewertung — a row of native radios wearing star glyphs. The radio
+ * itself is visually hidden (the classic „sr-only" clip, not `display: none`,
+ * which would drop it from the tab order) rather than removed: focus and the
+ * keyboard's arrow-key selection are exactly what a real `<input
+ * type="radio">` already gives for free, and the visible star is decoration
+ * on top of it, not a replacement control.
+ */
+.field__rating {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.field__rating-star {
+  cursor: pointer;
+}
+
+.field__rating-star input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.field__rating-star input:focus-visible + .field__rating-glyph {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.field__rating-glyph {
+  font-size: var(--font-size-title);
+  line-height: 1;
+  color: var(--color-control-off);
+}
+
+.field__rating-glyph--filled {
+  color: var(--color-accent);
+}
+
+/*
+ * Adresse (handoff `renderField`'s address branch): Straße full
+ * width, PLZ and Ort side by side, Land full width. `.field__control`
+ * still gives every input its border, padding and focus ring — only the
+ * placement is added here, the same split `.q-preview__address` makes on the
+ * builder side (`builder-view.css`) so the two cannot silently disagree.
+ */
+.field__address {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.field__address-wide {
+  grid-column: 1 / -1;
+}
+
+/*
+ * The Veranstaltungen while filling in — the handoff's Kachel: a
+ * bordered tile per entry, name and Termin on the left, the badge and the number
+ * box on the right. The box is a number because the answer is a Personenzahl
+ *  and not a tick; everything else is the prototype's geometry.
+ *
+ * It wraps on a narrow screen instead of scrolling: unlike the Matrix grid
+ * there is nothing here that has to stay a table, and the badge dropping under
+ * the name at 360 px costs nothing a participant needs.
+ */
+.field__events {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.field__event {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+/*
+ * Ausgebucht — muted, so the tile reads as unavailable before the badge is
+ * read at all. Only the colours change: a tile that also shrank or moved would
+ * make the list jump about while somebody is filling it in.
+ */
+.field__event--full {
+  background: var(--color-surface-sunken);
+  border-color: var(--color-hairline);
+}
+
+/* The position the server refused (`event_full`) — the field's own error mark. */
+.field__event--refused {
+  border-color: var(--color-danger-border);
+  background: var(--color-danger-bg-soft);
+}
+
+.field__event-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  font-weight: var(--font-weight-bold);
+}
+
+.field__event-when {
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-muted);
+}
+
+/* „n frei" — the figure the editor released (`publicEventSeats`). */
+.field__event-badge {
+  flex: none;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-success-bg);
+  color: var(--color-success-alt);
+  font-size: var(--font-size-caption);
+  font-weight: var(--font-weight-bold);
+}
+
+/* „Ausgebucht" — always visible, whatever the switch says (`publicEventSeats`). */
+.field__event-badge--full {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.field__event-count {
+  flex: none;
+  width: 5rem;
+}
+
+/*
+ * A locked box has to *look* locked — the same `opacity: 0.7` the upload zone
+ * uses for the same state. Without it the tile said „Ausgebucht" beside a box
+ * that looked ready to take a number, and the only way to find out was to click
+ * into it.
+ */
+.field__event-count:disabled {
+  background: var(--color-surface-sunken);
+  opacity: 0.7;
+  cursor: default;
+}
+
+.field__other {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font: inherit;
+}
+
+/*
+ * Matrix und Tabelle — the fillable counterparts of
+ * `.q-preview__grid` (`builder-view.css`), same geometry so an editor
+ * previewing a Matrix sees the grid a participant gets.
+ *
+ * The wrapper is what scrolls, never the page: on a 360-px screen a scale of
+ * four steps is already wider than the card, and a form that shifts sideways
+ * as a whole is unusable with one thumb.
+ */
+.field__scroll {
+  overflow-x: auto;
+}
+
+.field__grid {
+  width: 100%;
+  min-width: 360px;
+  border-collapse: collapse;
+}
+
+.field__grid th,
+.field__grid td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-hairline-faint);
+  text-align: left;
+}
+
+.field__grid thead th {
+  font-size: var(--font-size-caption);
+  font-weight: 700;
+  color: var(--color-text-muted);
+  border-bottom: 2px solid var(--color-table-border);
+}
+
+.field__grid tbody th {
+  font-size: var(--font-size-body);
+  font-weight: 400;
+  color: var(--color-text);
+}
+
+/* A Matrix cell holds one radio or checkbox and nothing else. */
+.field__grid tbody td {
+  text-align: center;
+}
+
+/* A table cell holds a real field, which fills its column. */
+.field__grid td .field__control {
+  width: 100%;
+  min-width: 96px;
+}
+
+/*
+ * „+ Zeile" and „Entfernen" — only on a table question
+ * with „Zeilen ergänzbar"; without the switch the column never comes about.
+ *
+ * The action column carries no width: it is meant to be as narrow as its
+ * button, so that the data columns beside it keep the space that is fought
+ * over at 360 px anyway (`.field__scroll` pushes the rest aside).
+ */
+.field__grid-action {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* The same dress as „Entfernen" on an attachment — same grip, same role. */
+.field__row-remove {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control-sm);
+  background: var(--color-surface-sunken);
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--font-size-caption);
+  cursor: pointer;
+}
+
+/*
+ * „+ Zeile" stands under the grid and **outside** `.field__scroll`: on a
+ * narrow screen the table travels sideways, the button is meant to stay
+ * where the thumb looks for it.
+ */
+.field__row-add {
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px dashed var(--color-field-border);
+  border-radius: var(--radius-control-sm);
+  background: transparent;
+  color: var(--color-accent-strong);
+  font: inherit;
+  font-size: var(--font-size-caption);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/*
+ * Datei-Upload (handoff `renderPreview`'s file branch): a dashed drop
+ * area with the arrow above the caption, and the files already attached listed
+ * above it.
+ *
+ * The `<label>` **is** the drop area and the `<input type="file">` inside it is
+ * visually hidden — a native file input cannot be styled into this shape, and a
+ * button driving a hidden input by `.click()` would be a control with no
+ * accessible relationship to the field. `:focus-within` is therefore what draws
+ * the focus ring: the focus is on the input, the ring belongs on what is seen.
+ */
+.field__files {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.field__file-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.field__file {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+}
+
+/*
+ * An attachment that no longer exists (a review finding).
+ *
+ * The state is **said**, not merely coloured: the colour is the addition for
+ * whoever sees it, the sentence beside it carries the information on its own
+ * (WCAG 1.4.1). That is also why the border stays discreet — the goal is
+ * „bitte neu anhängen", not an error the participant caused.
+ */
+.field__file--gone {
+  flex-wrap: wrap;
+  border-color: var(--color-danger-border);
+  background: var(--color-danger-bg-soft);
+}
+
+.field__file-gone {
+  flex: 1 1 100%;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+}
+
+/* A long name wraps rather than pushing „Entfernen" off the card. */
+.field__file-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--font-size-body);
+}
+
+.field__file-remove {
+  flex: 0 0 auto;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-control-sm);
+  background: var(--color-surface-sunken);
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: var(--font-size-caption);
+  cursor: pointer;
+}
+
+.field__dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-5);
+  border: 2px dashed var(--color-field-border);
+  border-radius: var(--radius-surface);
+  background: var(--color-panel-raised);
+  text-align: center;
+  cursor: pointer;
+}
+
+.field__dropzone:focus-within {
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* The picker is disabled while an upload runs, and the zone has to say so. */
+.field__dropzone:has(input:disabled) {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.field__dropzone--invalid {
+  border-color: var(--color-danger);
+}
+
+.field__dropzone-glyph {
+  font-size: var(--font-size-heading);
+  line-height: 1;
+  color: var(--color-text-faint);
+}
+
+.field__dropzone-label {
+  font-size: var(--font-size-body);
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.field__dropzone-hint {
+  font-size: var(--font-size-caption);
+  color: var(--color-text-subtle);
+}

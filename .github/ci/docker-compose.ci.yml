@@ -1,0 +1,31 @@
+# For CI only: a TLS front proxy in front of the production stack.
+#
+#   docker compose -f docker-compose.prod.yml -f .github/ci/docker-compose.ci.yml up -d
+#
+# The `stack` job measures promises that do not exist without TLS — the `__Host-`
+# session cookie and the counting of `X-Forwarded-For` across two hops.
+# For that it needs a proxy; a production server brings its own along, which is
+# why this one lives here and not in the production stack.
+services:
+  tls-proxy:
+    image: caddy:2-alpine
+    container_name: formsache-tls-proxy
+    restart: unless-stopped
+    environment:
+      TLS_DOMAIN: ${TLS_DOMAIN:-localhost}
+      # `internal` = Caddy's own CA. ACME would have no DNS in CI.
+      TLS_MODE: ${TLS_MODE:-internal}
+    ports:
+      - '${TLS_HTTP_PORT:-80}:80'
+      - '${TLS_HTTPS_PORT:-443}:443'
+    volumes:
+      - ./.github/ci/tls-proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      web:
+        condition: service_started
+
+volumes:
+  caddy-data:
+  caddy-config:

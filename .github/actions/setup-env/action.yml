@@ -1,0 +1,30 @@
+name: Set up .env
+description: >-
+  The documented environment setup (`scripts/dev-setup.sh`) plus the masking of
+  the key it generates — what every job that starts the real application needs.
+
+runs:
+  using: composite
+  steps:
+    # `--no-install`, always: `setup-workspace` already installed the exact,
+    # committed dependency graph with `--frozen-lockfile` ("CI installs the
+    # committed graph or fails"), and a plain `pnpm install -r`
+    # here would run right next to that with no `--frozen-lockfile` of its own
+    # and quietly soften that guarantee. The `stack` job never calls
+    # `setup-workspace` at all — it only needs `.env` for `docker compose` and
+    # installs nothing — so the flag is correct there for a different reason:
+    # there is no workspace to install into in the first place.
+    - shell: bash
+      run: scripts/dev-setup.sh --no-install
+
+    # `dev-setup.sh` never prints the key — but the runner masks only what has
+    # been *registered*, and nothing else in this repository knows the value.
+    # Without this line any later step that dumps the environment or a
+    # container log (`docker compose logs` in the `stack` job) could put the
+    # key into a build log that outlives the run.
+    #
+    # The command itself is consumed by the runner and never rendered, and the
+    # substitution happens in the shell — so this reads the value without
+    # printing it anywhere.
+    - shell: bash
+      run: echo "::add-mask::$(sed -n 's/^SECRET_BOX_KEY=//p' .env | tail -n 1)"

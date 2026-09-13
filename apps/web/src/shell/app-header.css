@@ -1,0 +1,367 @@
+/*
+ * Global top header (handoff, "Informationsarchitektur / Navigation").
+ *
+ * The bar carries the tenant's header colour and the colour stripe sits
+ * directly underneath it — both are tenant axes, so a tenant switch repaints
+ * the header without touching this file.
+ */
+
+.app-header {
+  position: relative;
+  z-index: 30;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-6);
+  height: var(--layout-header-height);
+  padding: 0 var(--space-7);
+  background: var(--color-header-bg);
+  color: var(--color-on-ink);
+}
+
+.app-header__stripe {
+  flex: none;
+  height: var(--space-2);
+  background: var(--gradient-stripe);
+}
+
+/*
+ * The mark is a link to the dashboard (finding 19), so it needs the two things
+ * an anchor brings along and this header does not want: the browser's link
+ * colour and its underline. Both are taken back here; the ink of kicker and
+ * name is set by the rules below, exactly as when this was a `<div>`.
+ */
+.app-header__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.app-header__brand:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-on-ink);
+  outline-offset: var(--focus-ring-offset);
+  border-radius: var(--radius-control);
+}
+
+/*
+ * The identity column keeps a floor, and that floor is the point of it.
+ *
+ * `min-width: 0` alone let the whole brand collapse: the plate is `flex: none`,
+ * so every pixel the bar was short came out of this column, and at 1280 px with
+ * a superadmin's four nav entries it was short by more than this column is
+ * wide. The organisation's name then measured 0 px — present in the DOM, invisible on
+ * screen — which is the one thing the header of a multi-tenant application may
+ * not lose. Found by `shell-desktop.spec.ts`, which asserts
+ * the name is *visible* rather than merely present.
+ */
+.app-header__identity {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 7rem;
+}
+
+.app-header__kicker {
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-wide);
+  line-height: var(--line-height-tight);
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+
+.app-header__tenant {
+  font-family: var(--font-display);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  color: var(--color-on-ink-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-header__spacer {
+  flex: 1;
+}
+
+/* --- tenant switcher (desktop) ------------------------------------------ */
+
+.app-header__switcher {
+  position: relative;
+  flex: none;
+}
+
+.app-header__switcher-button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-on-ink-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-on-ink-surface);
+  color: var(--color-on-ink-muted);
+  font-size: var(--font-size-body-sm);
+  cursor: pointer;
+}
+
+.app-header__switcher-button:hover {
+  background: var(--color-on-ink-surface-hover);
+}
+
+.app-header__dot {
+  width: var(--space-3);
+  height: var(--space-3);
+  border-radius: var(--radius-circle);
+  background: var(--color-accent);
+}
+
+.app-header__caret {
+  font-size: var(--font-size-label);
+  opacity: 0.7;
+}
+
+.app-header__popover {
+  position: absolute;
+  top: calc(var(--layout-header-height) - var(--space-6));
+  left: 0;
+  z-index: 40;
+  width: 300px;
+  max-width: 90vw;
+  padding: var(--space-2);
+  border: 1px solid var(--color-on-ink-border);
+  border-radius: var(--radius-card);
+  background: var(--color-ink-raised);
+  box-shadow: var(--shadow-popover);
+  animation: fs-pop var(--motion-pop);
+}
+
+/* --- actions (desktop) -------------------------------------------------- */
+
+/*
+ * The action group is what gives way now, not the tenant identity beside it.
+ *
+ * It used to be `flex: none`, which was true while the bar carried two nav
+ * entries; since the tenant administration, the Superadmin-Übersicht and the
+ * Systemeinstellungen joined it, a superadmin's four entries plus the switcher
+ * are wider than 1280 px on their own. An unshrinkable group there does not
+ * make the bar wider — it pushes the cost onto the neighbour that *can* shrink,
+ * and that neighbour was the organisation's name and logo.
+ */
+.app-header__actions {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+/*
+ * A flex row rather than the inline flow the `<nav>` had by default: inline
+ * items *wrap* when they run out of room, and the bar has a fixed height, so a
+ * second row would be clipped rather than shown.
+ *
+ * `min-width: 0` **without** `overflow: hidden`, and that pairing is the point
+ * (finding 12): the row may be squeezed, but it may not swallow what no longer
+ * fits. A hidden overflow here would make `scrollWidth === clientWidth` for
+ * ever, and the measurement `e2e/shell-desktop.spec.ts` takes at five widths —
+ * „nothing sticks out of the nav" — would be green by construction rather than
+ * by fit.
+ */
+.app-header__nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.app-header__nav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  /*
+   * `flex: none`, and no `text-overflow` any more.
+   *
+   * The entries used to shrink and truncate — which is how a wide desktop came
+   * to offer „Tenant-Verwal…" and „Systemverwal…". A cut-off destination is
+   * not a smaller destination; it is a name the reader has to guess, and the
+   * layout says nothing about having dropped anything. The header now decides
+   * *before* it draws whether the labels fit at this width, and shows symbols
+   * only when they do not (`app-header__nav--icons`), so there is nothing left
+   * for an ellipsis to do.
+   */
+  flex: none;
+  white-space: nowrap;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-on-ink-border);
+  border-radius: var(--radius-control);
+  background: var(--color-accent-tint);
+  color: var(--color-on-ink-muted);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+}
+
+.app-header__nav-item[aria-current='page'] {
+  cursor: default;
+}
+
+/*
+ * The narrow desktop step: symbol only.
+ *
+ * The label stays in the markup as a `.visually-hidden` span, so the entry
+ * keeps its accessible name and every existing query — unit tests and E2E
+ * alike — still finds „Systemverwaltung" by name. `title` on the button adds
+ * the pointer's tooltip; the mouse is the one input for which a bare glyph
+ * would otherwise be a riddle.
+ *
+ * The glyph is set one step larger here: at `--font-size-body-sm` a lone „⊗"
+ * next to nothing reads as a speck rather than as a control.
+ */
+.app-header__nav--icons .app-header__nav-item {
+  justify-content: center;
+}
+
+.app-header__nav--icons .app-header__nav-icon {
+  font-size: var(--font-size-subheading);
+  line-height: 1;
+}
+
+/*
+  „Angemeldet als …" has been the way into the profile since finding 17 — before
+  that a `<span>` next to a button „Andere Sitzungen beenden", now the anchor
+  under which name, password and one's own sessions stand together.
+
+  ⚠️ **`--color-on-ink-…`, not `--color-text`.** The header stands on
+  `--color-header-bg`, that is on a dark ground; the text colour of running text
+  would be a contrast violation here. On hover the ink becomes lighter instead
+  of coloured — a blue link on this surface would be the one place in the
+  application with a system colour.
+*/
+.app-header__user {
+  font-size: var(--font-size-caption);
+  color: var(--color-on-ink-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  /*
+   * This is the one thing in the action group that may still be cut short, and
+   * it is the right one: the nav entries stopped shrinking (finding 12), so
+   * somebody has to give when the bar is tight. A shortened address is still
+   * the same door into the profile; a shortened destination name is not.
+   */
+  flex: 0 1 auto;
+  min-width: 4rem;
+  max-width: 220px;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+/*
+ * Only `:hover`, **not** `:focus-visible` — and that is not an omission.
+ * The focus is drawn by the global focus ring in its own token; a rule that
+ * additionally re-drew it here in a header colour would be exactly the second
+ * focus shape that `styles/tokens.test.ts` forbids.
+ */
+.app-header__user:hover {
+  color: var(--color-on-ink);
+  border-bottom-color: var(--color-on-ink-border);
+}
+
+.app-header__logout {
+  flex: none;
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid var(--color-on-ink-border);
+  border-radius: var(--radius-control);
+  background: var(--color-on-ink-surface);
+  color: var(--color-on-ink-muted);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+}
+
+.app-header__logout:hover:not(:disabled) {
+  background: var(--color-on-ink-surface-hover);
+}
+
+.app-header__logout:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+/* --- hamburger (mobile) ------------------------------------------------- */
+
+.app-header__hamburger {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--color-on-ink-border);
+  border-radius: var(--radius-control-lg);
+  background: var(--color-on-ink-surface);
+  color: var(--color-on-ink-muted);
+  font-size: var(--font-size-heading);
+  cursor: pointer;
+}
+
+/*
+ * Compact layout below the breakpoint. Keyed off the class the shell sets from
+ * `useIsDesktop()`, **not** a media query: the breakpoint would otherwise be
+ * spelled out a third time (it lives in `--layout-breakpoint-desktop` and in
+ * `breakpoints.ts`, kept in sync by a test), and structure and styling could
+ * drift apart at exactly the width where it matters.
+ *
+ * Everything in the bar either shrinks (logo plate, tenant name) or is not
+ * rendered at all, so a 360 px viewport produces no horizontal scrollbar —
+ * the requirement.
+ */
+.app-shell--compact .app-header {
+  gap: var(--space-4);
+  padding: 0 var(--space-4);
+}
+
+.app-shell--compact .app-header__brand {
+  flex: 1;
+  gap: var(--space-3);
+}
+
+/* The spacer pushes the desktop actions to the right edge; in the compact bar
+   it would compete with the brand for the same free space and win half of it,
+   which is what starved the tenant name. */
+.app-shell--compact .app-header__spacer {
+  display: none;
+}
+
+/*
+ * Measured, not guessed: at 360 px the plate would otherwise claim 40 vw and
+ * squeeze the identity column to zero width — the tenant name disappeared
+ * behind `text-overflow: ellipsis` while the kicker still spilled out. The
+ * name is the one thing the compact header must keep, because the tenant
+ * switcher is not on screen here.
+ */
+.app-shell--compact .tenant-mark {
+  max-width: 30vw;
+}
+
+/*
+ * Focus on the dark chrome.
+ *
+ * Without this rule the header inherited the focus colour of `base.css`, which
+ * is tuned for light surfaces: `--color-focus` reaches ~1.9:1 against
+ * `--color-header-bg` and would be the weakest indicator in the application
+ * exactly where the tenant switcher, the navigation and „Abmelden" live. The
+ * ink foreground is the ring here — same rule as the tenant list inside the
+ * popover, opposite direction of the same argument (Konzept no. 19).
+ */
+.app-header__switcher-button:focus-visible,
+.app-header__nav-item:focus-visible,
+.app-header__logout:focus-visible,
+.app-header__hamburger:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-focus-on-ink);
+  outline-offset: var(--focus-ring-offset);
+}
