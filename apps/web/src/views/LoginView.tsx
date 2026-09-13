@@ -253,7 +253,52 @@ export function LoginView({
                   href={oidcStartUrl(provider.tenantId)}
                   rel="nofollow"
                 >
-                  {provider.buttonLabel}
+                  {/*
+                    **Der Organisationsname, und er ist der wichtigere der
+                    beiden Texte** — deshalb steht er oben und trägt das
+                    Gewicht.
+
+                    Er reist seit jeher im `OidcProvider` mit und wurde hier
+                    nicht gerendert; das ging gut, solange eine Installation
+                    eine Organisation mit SSO hatte. Es geht nicht mehr gut,
+                    sobald sie mehrere hat: `oidcButtonLabel` ist optional und
+                    fällt auf {@link DEFAULT_OIDC_BUTTON_LABEL} zurück — auf
+                    *denselben Satz* für jede Organisation, die keine eigene
+                    Beschriftung gepflegt hat. Zwanzig Organisationen ergaben
+                    damit zwanzig Schaltflächen, die „Mit Organisationskonto
+                    anmelden" heißen und sich nur in ihrer Adresse
+                    unterscheiden.
+
+                    Der Name statt `shortName`: der Kurzname ist ein Handle für
+                    Adressen und Tabellen, der Name ist, wie die Organisation
+                    sich nennt. Wer hier sucht, sucht den Namen.
+                  */}
+                  <span className="login__sso-tenant">{provider.name}</span>
+                  {/*
+                    **Ein echtes Leerzeichen, kein Layout-Abstand.** Der
+                    zugängliche Name eines Ankers wird aus seinen Textknoten
+                    aneinandergehängt, ohne Rücksicht darauf, dass die beiden
+                    Spans optisch in zwei Zeilen stehen: ohne dieses Zeichen
+                    liest eine Vorlesehilfe „Ortsgruppe MusterstadtMit
+                    Organisationskonto anmelden" am Stück. Es ist im
+                    Flex-Container folgenlos — reiner Leerraum zwischen
+                    Flex-Kindern erzeugt kein anonymes Element —, also kostet
+                    die Korrektur nichts an der Darstellung.
+                  */}{' '}
+                  {/*
+                    Die Beschriftung ist die *Handlung*, nicht die Kennung —
+                    und bleibt deshalb unverändert die des Servers. Der
+                    Rückfall auf die Vorgabe wird weiterhin **einmal**
+                    angewendet, dort (`oidc-login.service.ts`); hier eine
+                    zweite Formulierung zu erfinden wäre genau die Dopplung,
+                    die `DEFAULT_OIDC_BUTTON_LABEL` vermeidet. Dieselbe Vorgabe
+                    steht auch in der Einladungsmail, wo sie richtig ist: dort
+                    ist die Organisation der Absender und muss nicht benannt
+                    werden.
+                  */}
+                  <span className="login__sso-action">
+                    {provider.buttonLabel}
+                  </span>
                 </a>
               ))}
               <p className="login__sso-divider">oder mit E-Mail und Passwort</p>

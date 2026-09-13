@@ -1,5 +1,6 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { DEFAULT_OIDC_BUTTON_LABEL } from '@formsache/shared';
 
 import { emptyResponse, jsonResponse, stubFetch } from '../test/fetch-mock';
 import type { FetchMock } from '../test/fetch-mock';
@@ -226,8 +227,11 @@ describe('LoginView', () => {
 
       renderWithQuery(<LoginView />);
 
+      // Beide Texte im zugänglichen Namen, in dieser Reihenfolge: der
+      // Organisationsname trägt die Unterscheidung, die Beschriftung die
+      // Handlung.
       const link = await screen.findByRole('link', {
-        name: 'Mit Musterstadt-Konto anmelden',
+        name: 'Ortsgruppe Musterstadt Mit Musterstadt-Konto anmelden',
       });
       // A **navigation** to the API, not a `fetch`: the server answers with a
       // redirect to the provider and sets the transaction cookie on the way.
@@ -237,6 +241,55 @@ describe('LoginView', () => {
       // The offer carries the organisation and the caption and nothing else — no
       // issuer, no client id — so there is nothing here to render by accident.
       expect(document.body.textContent).not.toMatch(/https?:\/\//);
+    });
+
+    /**
+     * **Der Fall, für den der Organisationsname im Knopf steht.**
+     *
+     * `oidcButtonLabel` ist optional, und der Server setzt dafür
+     * {@link DEFAULT_OIDC_BUTTON_LABEL} ein — *denselben Satz* für jede
+     * Organisation, die keine eigene Beschriftung gepflegt hat. Ohne den Namen
+     * war eine Installation mit mehreren solchen Organisationen eine Reihe
+     * wortgleicher Schaltflächen, die sich nur in ihrer Adresse unterschieden:
+     * nichts, wonach jemand auswählen kann.
+     *
+     * Der Test prüft deshalb die *Unterscheidbarkeit*, nicht das Markup —
+     * `getByRole('link', { name })` findet nur, was auch eine Vorlesehilfe
+     * auseinanderhält, und wäre mehrdeutig, wenn beide Namen gleich lauteten.
+     */
+    it('keeps two organisations apart when both fall back to the shipped caption', async () => {
+      stubRoutes(
+        [
+          {
+            tenantId: '01919c3f-0000-7000-8000-00000000abcd',
+            name: 'Ortsgruppe Musterstadt',
+            shortName: 'Musterstadt',
+            buttonLabel: DEFAULT_OIDC_BUTTON_LABEL,
+          },
+          {
+            tenantId: '01919c3f-0000-7000-8000-0000000012ef',
+            name: 'Ortsgruppe Beispieldorf',
+            shortName: 'Beispieldorf',
+            buttonLabel: DEFAULT_OIDC_BUTTON_LABEL,
+          },
+        ],
+        emptyResponse(401),
+      );
+
+      renderWithQuery(<LoginView />);
+
+      const first = await screen.findByRole('link', {
+        name: `Ortsgruppe Musterstadt ${DEFAULT_OIDC_BUTTON_LABEL}`,
+      });
+      const second = screen.getByRole('link', {
+        name: `Ortsgruppe Beispieldorf ${DEFAULT_OIDC_BUTTON_LABEL}`,
+      });
+      expect(first.getAttribute('href')).toBe(
+        '/api/auth/oidc/start/01919c3f-0000-7000-8000-00000000abcd',
+      );
+      expect(second.getAttribute('href')).toBe(
+        '/api/auth/oidc/start/01919c3f-0000-7000-8000-0000000012ef',
+      );
     });
 
     it('shows nothing when no organisation offers SSO', async () => {

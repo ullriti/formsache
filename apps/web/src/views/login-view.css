@@ -157,16 +157,41 @@
   margin-top: var(--space-6);
 }
 
+/*
+ * Zwei Zeilen: der Organisationsname, darunter die Handlung.
+ *
+ * Das Gewicht wanderte vom Knopf auf die erste Zeile — fett wäre auf beiden
+ * Zeilen kein Gewicht mehr, sondern nur noch Lautstärke. Die zweite Zeile ist
+ * gedämpft und kleiner, weil sie bei mehreren Organisationen oft dieselbe ist
+ * (die ausgelieferte Vorgabe) und dann nichts unterscheidet: was unterscheidet,
+ * steht oben.
+ *
+ * `align-items: center` statt `text-align` auf dem Anker: die Spans sind
+ * Flex-Kinder, und eine zentrierte Textzeile in einem linksbündigen Kasten wäre
+ * bei einem Namen, der umbricht, wieder linksbündig.
+ */
 .login__sso-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
   padding: var(--space-4) var(--space-6);
   border: 1px solid var(--color-field-border);
   border-radius: var(--radius-control-lg);
   background: var(--color-surface);
   color: var(--color-text);
   font-size: var(--font-size-body);
-  font-weight: var(--font-weight-bold);
   text-align: center;
   text-decoration: none;
+}
+
+.login__sso-tenant {
+  font-weight: var(--font-weight-bold);
+}
+
+.login__sso-action {
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-subtle);
 }
 
 .login__sso-button:hover {
