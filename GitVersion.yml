@@ -27,6 +27,30 @@ minor-version-bump-message: '(?i)^feat(\([\w\s\-\./]*\))?:'
 patch-version-bump-message: '(?i)^(fix|perf)(\([\w\s\-\./]*\))?:'
 
 branches:
+  # **`main` is the release.** Every push that gets through this pipeline green
+  # is published (`publish` hangs on `needs: [quality, test, e2e, stack,
+  # restore]`), and it is published as a **stable** version.
+  #
+  # GitHubFlow's default `ContinuousDelivery` does not do that: it labels every
+  # commit after the last tag as a pre-release. Measured on the first `main`
+  # run, with no tag in the repository: `1.0.0-2`, `PreReleaseTag: "2"` — and
+  # the `publish` job moves `latest`, `x` and `x.y` only onto a version whose
+  # `PreReleaseTag` is empty. The three rolling tags therefore never came into
+  # existence, while `docker-compose.prod.yml` falls back to
+  # `${APP_VERSION:-latest}` three times: whoever followed the documented path
+  # without setting `APP_VERSION` got a manifest error from the registry.
+  #
+  # ⚠️ **This line alone is not enough, and the other half is in the
+  # pipeline.** GitVersion counts from the last tag, not per commit. Without a
+  # tag being written back, every commit after `v1.0.0` stays `1.0.1` until a
+  # `feat:` raises it — measured: `fix:` → 1.0.1, `chore(deps):` → 1.0.1,
+  # `ci(deps):` → 1.0.1. Three different states under one tag, and the
+  # `x.y.z` that ADR-0009 calls immutable would be overwritten twice. The
+  # `publish` job therefore tags the commit it has just published, and the next
+  # commit counts from there.
+  main:
+    mode: ContinuousDeployment
+
   # The branch names this project actually uses. GitHubFlow/v1 only recognises
   # `feature/…`; `fix/…` is the other half of the convention documented in
   # CONTRIBUTING.md ("Commits und Branches"), and `claude/…` is what the agent

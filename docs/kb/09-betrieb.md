@@ -14,6 +14,7 @@
   - [Der äußere Beobachter](#der-äußere-beobachter)
   - [Sicherung](#sicherung)
   - [Wiederherstellung](#wiederherstellung)
+  - [Woher eine Fassung kommt](#woher-eine-fassung-kommt)
   - [Welche Marke ziehen?](#welche-marke-ziehen)
   - [Ein Release ausrollen](#ein-release-ausrollen)
   - [Der Rückweg](#der-rückweg)
@@ -482,6 +483,29 @@ Anwendungsfehler und ist ein Schlüsselverlust.
 **Danach von Hand prüfen:** eine Antwort mit Anlage öffnen und die Anlage
 **herunterladen**. Wiederherstellungen scheitern an den Dateien, nicht an der
 Datenbank.
+
+## Woher eine Fassung kommt
+
+Es gibt keinen Release-Knopf und keinen Tag von Hand. **Jeder Push auf `main`,
+der die Pipeline grün durchläuft, ist eine Fassung** — veröffentlicht wird erst,
+wenn `quality`, `test`, `e2e`, `stack` und `restore` im selben Lauf grün sind,
+ein roter Stand veröffentlicht also nichts. Die Nummer leitet GitVersion aus den
+Commit-Typen ab (`feat:` hebt die zweite Stelle, `fix:`/`perf:` die dritte, ein
+`!` die erste), und die Pipeline schreibt sie anschließend als Tag `vX.Y.Z`
+zurück (ADR-0009).
+
+Zwei Folgen für den Betrieb:
+
+- **Ein reiner Doku-Push veröffentlicht nichts.** Es bleibt beim Image des
+  letzten Laufs mit Code.
+- **Fassungen erscheinen häufig**, auch aus reinen Abhängigkeits-Aktualisierungen.
+  Das ist Absicht — so erreicht ein Sicherheitspatch eine Installation, die `x`
+  oder `x.y` folgt, ohne Zutun. Wer das nicht will, nagelt `x.y.z` fest und
+  aktualisiert bewusst.
+
+⚠️ **`CHANGELOG.md` ist deshalb keine Fassungsliste**, sondern eine kuratierte
+Sammlung dessen, was der Rede wert ist. Was eine bestimmte Fassung enthält,
+beantwortet die Commit-Historie zwischen zwei Tags.
 
 ## Welche Marke ziehen?
 
