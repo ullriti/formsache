@@ -133,6 +133,12 @@ const selectQuestion: Question = {
   otherLabel: null,
 };
 
+const selectQuestionWithOther: Question = {
+  ...selectQuestion,
+  allowOther: true,
+  otherLabel: 'Sonstiges',
+};
+
 describe('Eigenschaften-Schalter – „Zeilen ergänzbar" ', () => {
   it('sagt den Zustandswechsel an, in einer Region, die vorher schon da ist', () => {
     panel(tableQuestion);
@@ -231,6 +237,17 @@ describe('Eigenschaften-Schalter – die übrigen drei', () => {
     );
     expect(toggle('„Sonstiges“ mit Freitext anbieten')).toBe(
       '„Sonstiges“ mit Freitext anbieten: aus. Die Auswahl zeigt nur die eingetragenen Optionen.',
+    );
+  });
+
+  it('sagt „Sonstiges" unten anzeigen an — die Wirkung ist die Position in der Vorschau-Liste (Issue #37)', () => {
+    panel(selectQuestionWithOther);
+
+    expect(toggle('„Sonstiges“ unten anzeigen')).toBe(
+      '„Sonstiges“ unten anzeigen: ein. Der Eintrag „Sonstiges“ steht am Ende der Liste.',
+    );
+    expect(toggle('„Sonstiges“ unten anzeigen')).toBe(
+      '„Sonstiges“ unten anzeigen: aus. Der Eintrag „Sonstiges“ steht am Anfang der Liste.',
     );
   });
 });
