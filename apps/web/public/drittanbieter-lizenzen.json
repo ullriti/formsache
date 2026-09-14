@@ -380,10 +380,18 @@
     },
     {
       "name": "@prisma/config",
-      "version": "7.9.1",
+      "version": "7.10.0",
       "spdx": "Apache-2.0",
       "author": "Alberto Schiabel",
       "homepage": "https://github.com/prisma/prisma#readme",
+      "text": "283ea6cc2997a1a7"
+    },
+    {
+      "name": "@prisma/debug",
+      "version": "7.10.0",
+      "spdx": "Apache-2.0",
+      "author": "Tim Suchanek",
+      "homepage": "https://www.prisma.io",
       "text": "283ea6cc2997a1a7"
     },
     {
@@ -420,7 +428,7 @@
     },
     {
       "name": "@prisma/engines",
-      "version": "7.9.1",
+      "version": "7.10.0",
       "spdx": "Apache-2.0",
       "author": "Tim Suchanek",
       "homepage": "https://github.com/prisma/prisma#readme",
@@ -428,7 +436,7 @@
     },
     {
       "name": "@prisma/engines-version",
-      "version": "7.9.0-1.e922089b7d7502aff4249d5da3420f6fa55fc6ad",
+      "version": "7.10.0-4.0edf323efd1d98336f3f0a68684b56f689b900d3",
       "spdx": "Apache-2.0",
       "author": "Tim Suchanek",
       "homepage": "https://github.com/prisma/engines-wrapper#readme",
@@ -436,7 +444,15 @@
     },
     {
       "name": "@prisma/fetch-engine",
-      "version": "7.9.1",
+      "version": "7.10.0",
+      "spdx": "Apache-2.0",
+      "author": "Tim Suchanek",
+      "homepage": "https://www.prisma.io",
+      "text": "283ea6cc2997a1a7"
+    },
+    {
+      "name": "@prisma/get-platform",
+      "version": "7.10.0",
       "spdx": "Apache-2.0",
       "author": "Tim Suchanek",
       "homepage": "https://www.prisma.io",
@@ -445,14 +461,6 @@
     {
       "name": "@prisma/get-platform",
       "version": "7.2.0",
-      "spdx": "Apache-2.0",
-      "author": "Tim Suchanek",
-      "homepage": "https://www.prisma.io",
-      "text": "283ea6cc2997a1a7"
-    },
-    {
-      "name": "@prisma/get-platform",
-      "version": "7.9.1",
       "spdx": "Apache-2.0",
       "author": "Tim Suchanek",
       "homepage": "https://www.prisma.io",
@@ -692,7 +700,7 @@
     },
     {
       "name": "@types/lodash",
-      "version": "4.17.24",
+      "version": "4.17.25",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/lodash",
@@ -716,7 +724,7 @@
     },
     {
       "name": "@types/pg",
-      "version": "8.20.0",
+      "version": "8.23.1",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/pg",
@@ -724,7 +732,7 @@
     },
     {
       "name": "@types/react",
-      "version": "19.2.17",
+      "version": "19.2.18",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react",
@@ -732,7 +740,7 @@
     },
     {
       "name": "@types/react",
-      "version": "19.2.18",
+      "version": "19.3.0",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react",
@@ -1093,6 +1101,14 @@
     {
       "name": "confbox",
       "version": "0.2.4",
+      "spdx": "MIT",
+      "author": null,
+      "homepage": "https://github.com/unjs/confbox#readme",
+      "text": "1dac0eee3a06e964"
+    },
+    {
+      "name": "confbox",
+      "version": "0.3.1",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/unjs/confbox#readme",
@@ -1484,7 +1500,7 @@
     },
     {
       "name": "exsolve",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/unjs/exsolve#readme",
@@ -1548,7 +1564,7 @@
     },
     {
       "name": "fast-uri",
-      "version": "3.1.5",
+      "version": "3.1.7",
       "spdx": "BSD-3-Clause",
       "author": "Vincent Le Goff",
       "homepage": "https://github.com/fastify/fast-uri",
@@ -2028,7 +2044,7 @@
     },
     {
       "name": "lru.min",
-      "version": "1.1.4",
+      "version": "1.1.5",
       "spdx": "MIT",
       "author": "https://github.com/wellwelwel",
       "homepage": "https://github.com/wellwelwel/lru.min#readme",
@@ -2212,7 +2228,7 @@
     },
     {
       "name": "ohash",
-      "version": "2.0.11",
+      "version": "2.0.12",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/unjs/ohash#readme",
@@ -2300,7 +2316,7 @@
     },
     {
       "name": "pg",
-      "version": "8.22.0",
+      "version": "8.23.0",
       "spdx": "MIT",
       "author": "Brian Carlson",
       "homepage": "https://github.com/brianc/node-postgres",
@@ -2340,7 +2356,7 @@
     },
     {
       "name": "pg-protocol",
-      "version": "1.15.0",
+      "version": "1.16.0",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/brianc/node-postgres#readme",
@@ -2364,7 +2380,7 @@
     },
     {
       "name": "pkg-types",
-      "version": "2.3.1",
+      "version": "2.3.3",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/unjs/pkg-types#readme",
@@ -2420,7 +2436,7 @@
     },
     {
       "name": "prisma",
-      "version": "7.9.1",
+      "version": "7.10.0",
       "spdx": "Apache-2.0",
       "author": "Tim Suchanek",
       "homepage": "https://www.prisma.io",
@@ -2484,7 +2500,7 @@
     },
     {
       "name": "rc9",
-      "version": "3.0.1",
+      "version": "3.1.0",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/unjs/rc9#readme",
@@ -2532,7 +2548,7 @@
     },
     {
       "name": "readdirp",
-      "version": "5.0.0",
+      "version": "5.1.1",
       "spdx": "MIT",
       "author": "Thorsten Lorenz",
       "homepage": "https://github.com/paulmillr/readdirp",

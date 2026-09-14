@@ -19,13 +19,13 @@
   },
   "devDependencies": {
     "@formsache/test-idp": "workspace:*",
-    "@axe-core/playwright": "^4.12.1",
+    "@axe-core/playwright": "^4.13.0",
     "@eslint/js": "catalog:",
-    "@playwright/test": "1.56.1",
+    "@playwright/test": "1.63.0",
     "@types/node": "catalog:",
     "eslint": "catalog:",
     "eslint-plugin-react-hooks": "7.1.1",
-    "globals": "17.8.0",
+    "globals": "17.12.0",
     "prettier": "catalog:",
     "typescript": "catalog:",
     "typescript-eslint": "catalog:"
