@@ -103,7 +103,7 @@ jobs:
       # way to add `--ignore-scripts`, and that flag is exactly the point
       # here: a package Dependabot just raised must not run its postinstall
       # before anyone has read the diff.
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           # Same version as `.github/actions/setup-workspace/action.yml`.
           node-version: '22.22.2'
