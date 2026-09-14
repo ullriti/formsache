@@ -7,6 +7,7 @@ import {
   loginRequestSchema,
   oidcOutcomeSchema,
   type OidcOutcome,
+  type OidcProvider,
 } from '@formsache/shared';
 
 import { fetchOidcProviders, oidcStartUrl } from '../api/auth';
@@ -228,36 +229,8 @@ export function LoginView({
             </p>
           )}
 
-          {/*
-            The SSO buttons, above the password form: whoever has an Organisationskonto
-            uses it, and the local form is the fallback for people without one
-            („Lokaler Nutzer … für Personen ohne Organisationskonto").
-
-            Plain links, not buttons with an `onClick`. The target is a server
-            route that answers with a redirect to the identity provider and sets
-            the transaction cookie on the way — both need a real navigation, and
-            an anchor is what a middle-click, a keyboard and a screen reader all
-            already understand.
-
-            `rel="nofollow"`: the address starts a login, so it is not something
-            a crawler should walk into. No `target`, no `noopener` question —
-            this stays in the same tab, on our own origin.
-          */}
-          {providers.data === undefined ||
-          providers.data.length === 0 ? null : (
-            <div className="login__sso">
-              {providers.data.map((provider) => (
-                <a
-                  key={provider.tenantId}
-                  className="login__sso-button"
-                  href={oidcStartUrl(provider.tenantId)}
-                  rel="nofollow"
-                >
-                  {provider.buttonLabel}
-                </a>
-              ))}
-              <p className="login__sso-divider">oder mit E-Mail und Passwort</p>
-            </div>
+          {providers.data === undefined ? null : (
+            <OidcOffer offers={providers.data} />
           )}
 
           {/* `noValidate`: the browser's own bubble would pre-empt the check
@@ -329,6 +302,99 @@ export function LoginView({
         </div>
       </div>
     </main>
+  );
+}
+
+/** Above one organisation, the chooser replaces the button list. */
+const SSO_BUTTON_LIMIT = 1;
+
+/**
+ * The SSO offer, above the password form. One organisation shows as a
+ * button; more than one shows a chooser plus a single link — either way,
+ * only the `:tenantId` of the start route is chosen. That's a display
+ * decision, not an authentication one: the server still decides whether an
+ * organisation offers SSO at all (`oidc-login.controller.ts`), and the
+ * password sign-in knows nothing of this selection.
+ *
+ * Anchors rather than buttons with `onClick`, because the target is a
+ * server route that redirects and sets a cookie — a real navigation.
+ */
+function OidcOffer({
+  offers,
+}: {
+  readonly offers: readonly OidcProvider[];
+}): ReactElement | null {
+  const chooserId = useId();
+  const [chosen, setChosen] = useState('');
+
+  // Derived during render, not a `useEffect`: the list arrives async and can
+  // shrink between queries, so there's nothing to keep in sync.
+  const selected =
+    offers.find((offer) => offer.tenantId === chosen) ??
+    // Pre-selects the organisation this address belongs to
+    // (`OidcProvider.atThisAddress`), set server-side only when unambiguous.
+    offers.find((offer) => offer.atThisAddress) ??
+    offers[0];
+
+  // Also covers "no organisation offers SSO" — `offers` may be empty.
+  if (selected === undefined) {
+    return null;
+  }
+
+  return (
+    <div className="login__sso">
+      {offers.length <= SSO_BUTTON_LIMIT ? (
+        offers.map((offer) => (
+          <a
+            key={offer.tenantId}
+            className="login__sso-button"
+            href={oidcStartUrl(offer.tenantId)}
+            rel="nofollow"
+          >
+            <span className="login__sso-tenant">{offer.name}</span>
+            {/* Real space, not a layout gap — keeps the two lines from
+                merging into one word in the accessible name. */}{' '}
+            <span className="login__sso-action">{offer.buttonLabel}</span>
+          </a>
+        ))
+      ) : (
+        <>
+          <div className="login__field">
+            <label className="login__label" htmlFor={chooserId}>
+              Organisation
+            </label>
+            {/* Native select: system picker on a phone, works with a
+                keyboard and screen readers out of the box. */}
+            <select
+              className="login__input"
+              id={chooserId}
+              value={selected.tenantId}
+              onChange={(event) => {
+                setChosen(event.target.value);
+              }}
+            >
+              {offers.map((offer) => (
+                <option key={offer.tenantId} value={offer.tenantId}>
+                  {offer.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          {/* Pre-filled with the first match so the link stays valid and
+              focusable at every moment. `aria-describedby` names the
+              organisation, since the caption alone doesn't. */}
+          <a
+            className="login__sso-button"
+            href={oidcStartUrl(selected.tenantId)}
+            rel="nofollow"
+            aria-describedby={chooserId}
+          >
+            {selected.buttonLabel}
+          </a>
+        </>
+      )}
+      <p className="login__sso-divider">oder mit E-Mail und Passwort</p>
+    </div>
   );
 }
 

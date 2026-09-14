@@ -157,16 +157,33 @@
   margin-top: var(--space-6);
 }
 
+/*
+ * Two lines: organisation name, then the caption underneath, muted and
+ * smaller — often the same shipped default across organisations, so it's
+ * the name that has to carry the distinction.
+ */
 .login__sso-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
   padding: var(--space-4) var(--space-6);
   border: 1px solid var(--color-field-border);
   border-radius: var(--radius-control-lg);
   background: var(--color-surface);
   color: var(--color-text);
   font-size: var(--font-size-body);
-  font-weight: var(--font-weight-bold);
   text-align: center;
   text-decoration: none;
+}
+
+.login__sso-tenant {
+  font-weight: var(--font-weight-bold);
+}
+
+.login__sso-action {
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-subtle);
 }
 
 .login__sso-button:hover {

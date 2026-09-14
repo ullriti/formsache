@@ -1,5 +1,9 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  DEFAULT_OIDC_BUTTON_LABEL,
+  type OidcProvider,
+} from '@formsache/shared';
 
 import { emptyResponse, jsonResponse, stubFetch } from '../test/fetch-mock';
 import type { FetchMock } from '../test/fetch-mock';
@@ -35,14 +39,7 @@ function loginCalls(fetchMock: FetchMock): unknown[] {
 }
 
 /** The SSO offer, as `GET /api/auth/oidc/providers` answers it. */
-function providers(
-  entries: readonly {
-    tenantId: string;
-    name: string;
-    shortName: string;
-    buttonLabel: string;
-  }[] = [],
-): Response {
+function providers(entries: readonly OidcProvider[] = []): Response {
   return jsonResponse(200, entries);
 }
 
@@ -52,12 +49,7 @@ function providers(
  * `mockResolvedValue` would hand the offer list a login body.
  */
 function stubRoutes(
-  offer: readonly {
-    tenantId: string;
-    name: string;
-    shortName: string;
-    buttonLabel: string;
-  }[],
+  offer: readonly OidcProvider[],
   otherwise: Response,
 ): FetchMock {
   const fetchMock = stubFetch();
@@ -218,6 +210,7 @@ describe('LoginView', () => {
         name: 'Ortsgruppe Musterstadt',
         shortName: 'Musterstadt',
         buttonLabel: 'Mit Musterstadt-Konto anmelden',
+        atThisAddress: false,
       },
     ];
 
@@ -226,8 +219,11 @@ describe('LoginView', () => {
 
       renderWithQuery(<LoginView />);
 
+      // Beide Texte im zugänglichen Namen, in dieser Reihenfolge: der
+      // Organisationsname trägt die Unterscheidung, die Beschriftung die
+      // Handlung.
       const link = await screen.findByRole('link', {
-        name: 'Mit Musterstadt-Konto anmelden',
+        name: 'Ortsgruppe Musterstadt Mit Musterstadt-Konto anmelden',
       });
       // A **navigation** to the API, not a `fetch`: the server answers with a
       // redirect to the provider and sets the transaction cookie on the way.
@@ -237,6 +233,116 @@ describe('LoginView', () => {
       // The offer carries the organisation and the caption and nothing else — no
       // issuer, no client id — so there is nothing here to render by accident.
       expect(document.body.textContent).not.toMatch(/https?:\/\//);
+    });
+
+    /** Stably named and sorted, `n` offers. */
+    function manyOffers(count: number): OidcProvider[] {
+      return Array.from({ length: count }, (_, index) => ({
+        tenantId: `01919c3f-0000-7000-8000-0000000000${String(index).padStart(2, '0')}`,
+        name: `Ortsgruppe ${String.fromCharCode(65 + index)}dorf`,
+        shortName: `${String.fromCharCode(65 + index)}dorf`,
+        buttonLabel: DEFAULT_OIDC_BUTTON_LABEL,
+        atThisAddress: false,
+      }));
+    }
+
+    it('shows a single button for one organisation', async () => {
+      stubRoutes(manyOffers(1), emptyResponse(401));
+
+      renderWithQuery(<LoginView />);
+
+      await waitFor(() => {
+        expect(screen.getAllByRole('link')).toHaveLength(1);
+      });
+      expect(screen.queryByLabelText('Organisation')).toBeNull();
+    });
+
+    /**
+     * The boundary itself: one organisation stays a button, a second one
+     * switches to the chooser. Its options carry the organisation names, so
+     * two organisations sharing the shipped caption stay distinguishable.
+     */
+    it('switches to a chooser from the second organisation on', async () => {
+      stubRoutes(manyOffers(2), emptyResponse(401));
+
+      renderWithQuery(<LoginView />);
+
+      const chooser = await screen.findByLabelText('Organisation');
+      const options = screen.getAllByRole('option');
+      expect(options.map((option) => option.textContent)).toEqual([
+        'Ortsgruppe Adorf',
+        'Ortsgruppe Bdorf',
+      ]);
+      expect(screen.getAllByRole('link')).toHaveLength(1);
+      // Pre-filled with the first: the link is valid at every moment.
+      expect((chooser as HTMLSelectElement).value).toBe(
+        '01919c3f-0000-7000-8000-000000000000',
+      );
+      expect(screen.getByRole('link').getAttribute('href')).toBe(
+        '/api/auth/oidc/start/01919c3f-0000-7000-8000-000000000000',
+      );
+      expect(screen.getByRole('link').getAttribute('aria-describedby')).toBe(
+        chooser.getAttribute('id'),
+      );
+    });
+
+    it('pre-selects the organisation the current address belongs to', async () => {
+      const offers = manyOffers(5);
+      stubRoutes(
+        offers.map((offer, index) =>
+          index === 3 ? { ...offer, atThisAddress: true } : offer,
+        ),
+        emptyResponse(401),
+      );
+
+      renderWithQuery(<LoginView />);
+
+      const chooser = await screen.findByLabelText('Organisation');
+      expect((chooser as HTMLSelectElement).value).toBe(
+        '01919c3f-0000-7000-8000-000000000003',
+      );
+      expect(screen.getByRole('link').getAttribute('href')).toBe(
+        '/api/auth/oidc/start/01919c3f-0000-7000-8000-000000000003',
+      );
+    });
+
+    it('lets an explicit choice win over the pre-selection', async () => {
+      const offers = manyOffers(5);
+      stubRoutes(
+        offers.map((offer, index) =>
+          index === 3 ? { ...offer, atThisAddress: true } : offer,
+        ),
+        emptyResponse(401),
+      );
+
+      renderWithQuery(<LoginView />);
+
+      const chooser = await screen.findByLabelText('Organisation');
+      fireEvent.change(chooser, {
+        target: { value: '01919c3f-0000-7000-8000-000000000001' },
+      });
+
+      expect(screen.getByRole('link').getAttribute('href')).toBe(
+        '/api/auth/oidc/start/01919c3f-0000-7000-8000-000000000001',
+      );
+    });
+
+    it('points the chooser at whatever was selected', async () => {
+      stubRoutes(manyOffers(5), emptyResponse(401));
+
+      renderWithQuery(<LoginView />);
+
+      const chooser = await screen.findByLabelText('Organisation');
+      fireEvent.change(chooser, {
+        target: { value: '01919c3f-0000-7000-8000-000000000003' },
+      });
+
+      expect(screen.getByRole('link').getAttribute('href')).toBe(
+        '/api/auth/oidc/start/01919c3f-0000-7000-8000-000000000003',
+      );
+      expect(screen.getByRole('link').textContent).toBe(
+        DEFAULT_OIDC_BUTTON_LABEL,
+      );
     });
 
     it('shows nothing when no organisation offers SSO', async () => {

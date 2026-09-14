@@ -195,6 +195,36 @@ describe('OIDC login', () => {
       expect(response.text).not.toContain(CLIENT_SECRET);
     });
 
+    /**
+     * The chain over the wire — header, Express' `trust proxy`, controller,
+     * service — which the unit tests skip past. `TRUST_PROXY_HOPS: 1` is set
+     * above, so `X-Forwarded-Host` is believed here.
+     */
+    it('marks the organisation reachable under the address the request came in on', async () => {
+      const address = 'formulare.alpha.invalid';
+      await app().prisma.tenant.update({
+        where: { id: alpha.id },
+        data: { publicBaseUrl: `https://${address}` },
+      });
+
+      const response = await request(app().server)
+        .get(apiPath('/auth/oidc/providers'))
+        .set('X-Forwarded-Host', address);
+      expect(response.status).toBe(200);
+
+      const offers = parseOidcProviders(response.body);
+      expect(
+        offers.find((offer) => offer.tenantId === alpha.id)?.atThisAddress,
+      ).toBe(true);
+      // Compared server-side, but the address itself never travels.
+      expect(response.text).not.toContain(address);
+
+      await app().prisma.tenant.update({
+        where: { id: alpha.id },
+        data: { publicBaseUrl: null },
+      });
+    });
+
     it('leaves out an organisation whose SSO is switched off', async () => {
       const response = await request(app().server).get(
         apiPath('/auth/oidc/providers'),

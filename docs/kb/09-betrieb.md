@@ -241,6 +241,11 @@ Pflichtzeile, startet die API nicht und nennt sie. `NODE_ENV`, `API_PORT`,
 
 <!-- /env-contract:app -->
 
+`TRUST_PROXY_HOPS` entscheidet seit der Adress-Vorauswahl auf der Anmeldeseite
+auch, welchen Host `GET /api/auth/oidc/providers` glaubt (siehe
+`OidcLoginController.providers`). Steht der Wert auf `0`, während ein Proxy
+davorsitzt, greift die Vorauswahl nie — die Anmeldung funktioniert unverändert.
+
 SMTP, Basis-Adresse und KI-Konfiguration sind **keine** Umgebungsvariablen: sie
 stehen als Systemeinstellung in der Datenbank und werden in der Oberfläche
 gepflegt.

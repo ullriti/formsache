@@ -632,6 +632,50 @@ describe('Nutzerrechte (Tenant-Ebene)', () => {
     });
 
     /**
+     * An SSO account has no password — "signs in with the existing password"
+     * would simply be wrong here (review round 3 no. 13). This branch stood
+     * untested; this test is its regression test.
+     */
+    it('names the sign-in provider instead of a password for an existing SSO account', async () => {
+      routeFetch({
+        onMemberPost: () =>
+          jsonResponse(200, {
+            userId: '00000000-0000-4000-8000-0000000000cb',
+            email: 'sso-schon-da@musterstadt-stuttgart.de',
+            name: 'SSO Schon Da',
+            accountKind: 'oidc',
+            invited: false,
+            group: editorGroup(),
+          }),
+      });
+      renderWithQuery(
+        <TenantMembersTab tenantId={TENANT_ID} currentUserId={YOU_ID} />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Name')).toBeDefined();
+      });
+      fireEvent.change(screen.getByLabelText('Name'), {
+        target: { value: 'SSO Schon Da' },
+      });
+      fireEvent.change(screen.getByLabelText('E-Mail-Adresse'), {
+        target: { value: 'sso-schon-da@musterstadt-stuttgart.de' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Hinzufügen' }));
+
+      await waitFor(() => {
+        expect(screen.getByText(/wurde hinzugefügt/u)).toBeDefined();
+      });
+      expect(
+        screen.getByText(
+          /meldet sich weiterhin über den Anmeldedienst an, bei dem es entstanden ist/u,
+        ),
+      ).toBeDefined();
+      expect(screen.queryByText(/vorhandenen Passwort/u)).toBeNull();
+      expect(screen.queryByText(/Einladung per Mail bekommen/u)).toBeNull();
+    });
+
+    /**
      * **The expanded role select could not be read** (finding 14).
      *
      * The „Person hinzufügen" box stands on `--color-ink`, and its fields set

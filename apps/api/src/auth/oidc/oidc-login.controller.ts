@@ -37,7 +37,8 @@ import {
  *
  * **All three are reachable without a session** — that is what a login is — so
  * all three carry their own rate limit and none of them answers a question about
- * an organisation that a stranger has no business asking. `GET` throughout, which is not
+ * an organisation that a stranger has no business asking, with one exception
+ * named at {@link providers}. `GET` throughout, which is not
  * a style choice: the provider sends the browser back with a top-level
  * navigation, and a top-level navigation is a `GET`. The global `CsrfGuard`
  * therefore lets them pass on the safe-method rule and **no `@CsrfExempt` is
@@ -83,11 +84,21 @@ export class OidcLoginController {
    * `ThrottlerModule.forRoot`: there is exactly **one** `forRoot` in this
    * application (`common/rate-limit.module.ts`), and a second one replaces it
    * silently — the regression that removed the login's rate limit.
+   *
+   * **Reads `request.host`** to set `OidcProvider.atThisAddress`, so a chooser
+   * can pre-select the organisation the browser's address belongs to — the one
+   * exception to "answers no question a stranger has no business asking"
+   * above. Safe because the value only moves a pre-selection the person
+   * signing in sees and may change: forging it reaches nothing more than
+   * opening the chooser and picking that entry would. It is `request.host`,
+   * not a raw header, so `TRUST_PROXY_HOPS` still governs how far a forwarded
+   * value counts (see {@link HostRequest}). Nothing derived from it may decide
+   * a redirect, a session or access — that stays {@link callback}'s rule.
    */
   @Get('providers')
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
-  providers(): Promise<OidcProvider[]> {
-    return this.login.offers();
+  providers(@Req() request: HostRequest): Promise<OidcProvider[]> {
+    return this.login.offers(request.host ?? null);
   }
 
   /**
@@ -263,6 +274,17 @@ export class OidcLoginController {
 interface RedirectingResponse extends CookieResponse {
   setHeader: (name: string, value: string | readonly string[]) => unknown;
   status: (code: number) => unknown;
+}
+
+/**
+ * `host`, not a raw header: Express builds it applying `trust proxy`
+ * (`app-setup.ts`, from `TRUST_PROXY_HOPS`), so a caller-written
+ * `X-Forwarded-Host` counts only as far as the operator declared a proxy
+ * chain — the same question `client-address.ts` already settles, not a
+ * second one asked here.
+ */
+interface HostRequest {
+  readonly host?: string | undefined;
 }
 
 /**

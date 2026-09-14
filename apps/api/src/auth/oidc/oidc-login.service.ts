@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
   DEFAULT_OIDC_BUTTON_LABEL,
+  normaliseBaseUrl,
   type ApiEnv,
   type OidcOutcome,
   type OidcProvider,
@@ -25,7 +26,10 @@ import { SessionService } from '../session.service';
 import { describeFailure, issuerScheme } from './oidc-diagnostics';
 import { OidcIdentityService } from './oidc-identity.service';
 import { OidcProviderService } from './oidc-provider.service';
-import { OidcTenantsService } from './oidc-tenants.service';
+import {
+  OidcTenantsService,
+  type OfferableTenant,
+} from './oidc-tenants.service';
 import {
   newOidcTransaction,
   stateMatches,
@@ -125,9 +129,10 @@ export class OidcLoginService {
    * itself, which is the fail-closed answer, and the log line is what tells an
    * operator that an organisation believes it has SSO on while nobody can use it.
    */
-  async offers(): Promise<OidcProvider[]> {
+  async offers(requestHost: string | null): Promise<OidcProvider[]> {
     const rows = await this.tenants.findOfferable();
     const offers: OidcProvider[] = [];
+    const usable: OfferableTenant[] = [];
     for (const row of rows) {
       // **Asked once, for both.** The reason *is* the answer to „does this
       // organisation offer SSO?" — a second call for the log line would mean
@@ -145,11 +150,19 @@ export class OidcLoginService {
         this.reportRefusalOnce(row, refusal, 'offer list');
         continue;
       }
+      usable.push(row);
+    }
+
+    // After the usability check, not before: an organisation that isn't
+    // offered doesn't make the address ambiguous for one that is.
+    const atAddress = soleTenantAtHost(usable, requestHost);
+    for (const row of usable) {
       offers.push({
         tenantId: row.id,
         name: row.name,
         shortName: row.shortName,
         buttonLabel: row.oidcButtonLabel ?? DEFAULT_OIDC_BUTTON_LABEL,
+        atThisAddress: row.id === atAddress,
       });
     }
     return offers;
@@ -622,4 +635,42 @@ function activeTenantOf(
     return signedInAt;
   }
   return deriveActiveTenant(user.memberships);
+}
+
+/**
+ * Which of the offered organisations is reachable under **this** address, or
+ * `null` when that's none of them or more than one — `public_base_url` has no
+ * unique index, and a guessed pre-selection would be worse than none.
+ * Compares hostname only (port and path ignored), case-insensitively; a
+ * stored address that isn't a valid base address counts as no match.
+ */
+function soleTenantAtHost(
+  rows: readonly OfferableTenant[],
+  requestHost: string | null,
+): string | null {
+  if (requestHost === null || requestHost === '') {
+    return null;
+  }
+  const wanted = requestHost.toLowerCase().replace(/:\d+$/, '');
+  let found: string | null = null;
+  for (const row of rows) {
+    if (row.publicBaseUrl === null || hostOf(row.publicBaseUrl) !== wanted) {
+      continue;
+    }
+    if (found !== null) {
+      return null;
+    }
+    found = row.id;
+  }
+  return found;
+}
+
+/**
+ * The hostname of a stored base address, or `null`. Through
+ * `normaliseBaseUrl`, not a bare `new URL`, so it agrees with
+ * `PublicUrlService.resolveBaseUrl` on what counts as a base address at all.
+ */
+function hostOf(baseUrl: string): string | null {
+  const normalised = normaliseBaseUrl(baseUrl);
+  return normalised === null ? null : new URL(normalised).hostname;
 }

@@ -274,6 +274,15 @@ export const oidcProviderSchema = z.strictObject({
   shortName: z.string().min(1),
   /** Caption of the button, already resolved to the shipped default if unset. */
   buttonLabel: z.string().min(1),
+  /**
+   * Whether this organisation's base address matches the host the request
+   * arrived under — resolved server-side, at most one `true` per list (two
+   * organisations sharing an address counts as none, not two). A boolean
+   * only, the address itself never travels; it merely pre-selects an entry
+   * in the client's chooser, which whoever signs in may still change (see
+   * `OidcLoginController.providers`).
+   */
+  atThisAddress: z.boolean(),
 });
 export type OidcProvider = z.infer<typeof oidcProviderSchema>;
 

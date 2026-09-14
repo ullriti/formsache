@@ -85,6 +85,41 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+/**
+ * Only the handover to `offers()` is checked here — where the host comes
+ * from is Express' own `req.host`, and re-testing that would just be
+ * testing the framework. `TRUST_PROXY_HOPS` actually biting is covered by
+ * the integration suite.
+ */
+describe('der Host, den die Angebotsliste liest', () => {
+  function offering() {
+    const offers = vi.fn().mockResolvedValue([]);
+    const subject = new OidcLoginController(
+      { offers } as unknown as OidcLoginService,
+      { ttlSeconds: 3600 } as unknown as SessionService,
+      {} as unknown as PublicUrlService,
+      { NODE_ENV: 'production' } as ApiEnv,
+    );
+    return { subject, offers };
+  }
+
+  it('reicht den Host der Anfrage an die Angebotsliste weiter', async () => {
+    const { subject, offers } = offering();
+
+    await subject.providers({ host: 'formulare.alpha.example' });
+
+    expect(offers).toHaveBeenCalledWith('formulare.alpha.example');
+  });
+
+  it('antwortet ohne Host mit null — keine Vorbelegung', async () => {
+    const { subject, offers } = offering();
+
+    await subject.providers({});
+
+    expect(offers).toHaveBeenCalledWith(null);
+  });
+});
+
 describe('der Rückruf ohne Transaktions-Cookie', () => {
   it('nennt den erwarteten Cookie-Namen — hinter TLS den mit __Host-', async () => {
     const secure = controller(true);

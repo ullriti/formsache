@@ -16,10 +16,11 @@ import type { TenantOidcRow } from '../../tenant-admin/oidc-config.service';
  *
  * **What keeps it honest is what it selects.** Nine columns, named one by one:
  * the id plus the eight the OIDC configuration lives in — two of them the claim
- * names of Konzept no. 70 — plus the names the offer list shows.
- * No `form_defaults`, no branding, no members — a widening of this `select` is
- * the only way an unauthenticated route here could start reading an organisation's data,
- * and it is a visible line in a diff.
+ * names of Konzept no. 70 — plus, on the offer list, the two names it shows and
+ * `public_base_url` (only compared, never answered with, see
+ * {@link findOfferable}). No `form_defaults`, no branding, no members — a
+ * widening of this `select` is the only way an unauthenticated route here could
+ * start reading an organisation's data, and it is a visible line in a diff.
  */
 @Injectable()
 export class OidcTenantsService {
@@ -88,6 +89,9 @@ export class OidcTenantsService {
         ...OidcTenantsService.OIDC_COLUMNS,
         name: true,
         shortName: true,
+        // Compared against the request's host for `OidcProvider.atThisAddress`;
+        // only the boolean result travels, never this column.
+        publicBaseUrl: true,
       },
       // Stable order, so the login page does not reshuffle its buttons between
       // reloads — the same reason `membershipInclude` orders the switcher.
@@ -100,6 +104,8 @@ export class OidcTenantsService {
 export interface OfferableTenant extends TenantOidcRow {
   readonly name: string;
   readonly shortName: string;
+  /** This organisation's own base address, or `null`. Compared, never returned. */
+  readonly publicBaseUrl: string | null;
 }
 
 /** Canonical uuid form, as Postgres accepts it for a `uuid` column. */
