@@ -235,58 +235,7 @@ describe('LoginView', () => {
       expect(document.body.textContent).not.toMatch(/https?:\/\//);
     });
 
-    /**
-     * **Der Fall, für den der Organisationsname im Knopf steht.**
-     *
-     * `oidcButtonLabel` ist optional, und der Server setzt dafür
-     * {@link DEFAULT_OIDC_BUTTON_LABEL} ein — *denselben Satz* für jede
-     * Organisation, die keine eigene Beschriftung gepflegt hat. Ohne den Namen
-     * war eine Installation mit mehreren solchen Organisationen eine Reihe
-     * wortgleicher Schaltflächen, die sich nur in ihrer Adresse unterschieden:
-     * nichts, wonach jemand auswählen kann.
-     *
-     * Der Test prüft deshalb die *Unterscheidbarkeit*, nicht das Markup —
-     * `getByRole('link', { name })` findet nur, was auch eine Vorlesehilfe
-     * auseinanderhält, und wäre mehrdeutig, wenn beide Namen gleich lauteten.
-     */
-    it('keeps two organisations apart when both fall back to the shipped caption', async () => {
-      stubRoutes(
-        [
-          {
-            tenantId: '01919c3f-0000-7000-8000-00000000abcd',
-            name: 'Ortsgruppe Musterstadt',
-            shortName: 'Musterstadt',
-            buttonLabel: DEFAULT_OIDC_BUTTON_LABEL,
-            atThisAddress: false,
-          },
-          {
-            tenantId: '01919c3f-0000-7000-8000-0000000012ef',
-            name: 'Ortsgruppe Beispieldorf',
-            shortName: 'Beispieldorf',
-            buttonLabel: DEFAULT_OIDC_BUTTON_LABEL,
-            atThisAddress: false,
-          },
-        ],
-        emptyResponse(401),
-      );
-
-      renderWithQuery(<LoginView />);
-
-      const first = await screen.findByRole('link', {
-        name: `Ortsgruppe Musterstadt ${DEFAULT_OIDC_BUTTON_LABEL}`,
-      });
-      const second = screen.getByRole('link', {
-        name: `Ortsgruppe Beispieldorf ${DEFAULT_OIDC_BUTTON_LABEL}`,
-      });
-      expect(first.getAttribute('href')).toBe(
-        '/api/auth/oidc/start/01919c3f-0000-7000-8000-00000000abcd',
-      );
-      expect(second.getAttribute('href')).toBe(
-        '/api/auth/oidc/start/01919c3f-0000-7000-8000-0000000012ef',
-      );
-    });
-
-    /** Wie viele Angebote es sind, `n` Stück, stabil benannt und sortiert. */
+    /** Stably named and sorted, `n` offers. */
     function manyOffers(count: number): OidcProvider[] {
       return Array.from({ length: count }, (_, index) => ({
         tenantId: `01919c3f-0000-7000-8000-0000000000${String(index).padStart(2, '0')}`,
@@ -297,57 +246,46 @@ describe('LoginView', () => {
       }));
     }
 
-    /**
-     * **Die Grenze selbst**, von beiden Seiten — der Teil, den ein Test über
-     * „viele Organisationen" allein nicht belegt. Vier Angebote bleiben
-     * Schaltflächen, fünf werden zur Auswahl; wer `SSO_BUTTON_LIMIT`
-     * verschiebt, sieht hier, dass er es getan hat.
-     */
-    it('keeps buttons up to the limit', async () => {
-      stubRoutes(manyOffers(4), emptyResponse(401));
+    it('shows a single button for one organisation', async () => {
+      stubRoutes(manyOffers(1), emptyResponse(401));
 
       renderWithQuery(<LoginView />);
 
       await waitFor(() => {
-        expect(screen.getAllByRole('link')).toHaveLength(4);
+        expect(screen.getAllByRole('link')).toHaveLength(1);
       });
       expect(screen.queryByLabelText('Organisation')).toBeNull();
     });
 
-    it('switches to one chooser above the limit', async () => {
-      stubRoutes(manyOffers(5), emptyResponse(401));
+    /**
+     * The boundary itself: one organisation stays a button, a second one
+     * switches to the chooser. Its options carry the organisation names, so
+     * two organisations sharing the shipped caption stay distinguishable.
+     */
+    it('switches to a chooser from the second organisation on', async () => {
+      stubRoutes(manyOffers(2), emptyResponse(401));
 
       renderWithQuery(<LoginView />);
 
-      // Eine Auswahl mit fünf Einträgen und **ein** Anker — nicht fünf.
       const chooser = await screen.findByLabelText('Organisation');
-      expect(screen.getAllByRole('option')).toHaveLength(5);
+      const options = screen.getAllByRole('option');
+      expect(options.map((option) => option.textContent)).toEqual([
+        'Ortsgruppe Adorf',
+        'Ortsgruppe Bdorf',
+      ]);
       expect(screen.getAllByRole('link')).toHaveLength(1);
-      // Vorbelegt mit der ersten: der Anker ist zu jedem Zeitpunkt gültig.
+      // Pre-filled with the first: the link is valid at every moment.
       expect((chooser as HTMLSelectElement).value).toBe(
         '01919c3f-0000-7000-8000-000000000000',
       );
       expect(screen.getByRole('link').getAttribute('href')).toBe(
         '/api/auth/oidc/start/01919c3f-0000-7000-8000-000000000000',
       );
-      // Der Anker trägt nur die Beschriftung, und die ist für jede Organisation
-      // ohne eigene dieselbe. Wer sich die Links dieser Seite vorlesen lässt,
-      // bekommt die Organisation über diese Verweisung dazu — sonst stünde dort
-      // „Mit Organisationskonto anmelden" ohne jede Zuordnung.
       expect(screen.getByRole('link').getAttribute('aria-describedby')).toBe(
         chooser.getAttribute('id'),
       );
     });
 
-    /**
-     * **Die Organisation dieser Adresse steht vorn.**
-     *
-     * Wer eine Installation unter mehreren Adressen betreibt, muss auf der
-     * Adresse einer Organisation nicht noch einmal gefragt werden, welche
-     * gemeint ist. Welche das ist, hat der Server entschieden
-     * (`OidcProvider.atThisAddress`) — hier wird nur geprüft, dass die
-     * Markierung die Vorbelegung bewegt und nicht bloß mitreist.
-     */
     it('pre-selects the organisation the current address belongs to', async () => {
       const offers = manyOffers(5);
       stubRoutes(
@@ -360,7 +298,6 @@ describe('LoginView', () => {
       renderWithQuery(<LoginView />);
 
       const chooser = await screen.findByLabelText('Organisation');
-      // Nicht die erste der Liste, sondern die markierte.
       expect((chooser as HTMLSelectElement).value).toBe(
         '01919c3f-0000-7000-8000-000000000003',
       );
@@ -369,10 +306,6 @@ describe('LoginView', () => {
       );
     });
 
-    /**
-     * Eine eigene Wahl schlägt die Vorbelegung — sonst wäre sie keine Wahl,
-     * sondern eine Feststellung.
-     */
     it('lets an explicit choice win over the pre-selection', async () => {
       const offers = manyOffers(5);
       stubRoutes(
@@ -394,12 +327,6 @@ describe('LoginView', () => {
       );
     });
 
-    /**
-     * Dass die Auswahl überhaupt etwas bewirkt — und **was** sie bewirkt: sie
-     * bewegt den `:tenantId` der Startadresse, also genau das, was die
-     * Schaltfläche auch trug. Nichts sonst: die Anmeldung mit E-Mail und
-     * Passwort weiß von dieser Auswahl nichts (siehe `OidcOffer`).
-     */
     it('points the chooser at whatever was selected', async () => {
       stubRoutes(manyOffers(5), emptyResponse(401));
 

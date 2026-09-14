@@ -13,16 +13,16 @@ Kategorien je Eintrag: **Added** · **Changed** · **Deprecated** · **Removed**
 
 ### Changed
 
-- **Die Anmeldeseite nennt die Organisation und wird ab fünf Angeboten zur
+- **Die Anmeldeseite nennt die Organisation und wird ab zwei Angeboten zur
   Auswahl.** `oidcButtonLabel` ist wahlfrei und fiel für jede Organisation ohne
   eigene Beschriftung auf denselben Satz zurück — eine Installation mit
   mehreren solchen Organisationen zeigte wortgleiche Schaltflächen, die sich
   nur in ihrer Adresse unterschieden. Der Organisationsname stand bereits in
-  der Antwort und führt die Schaltfläche jetzt an. Ab der fünften Organisation
-  treten eine Auswahlliste und eine einzelne Schaltfläche an die Stelle der
-  Liste, damit das Anmeldeformular für Personen ohne Organisationskonto
-  sichtbar bleibt. Beides ist Anzeige: gewählt wird der `tenantId` der Startadresse,
-  und ob eine Organisation SSO anbietet, entscheidet unverändert der Server.
+  der Antwort und führt die Schaltfläche jetzt an. Bei nur einer Organisation
+  bleibt es bei der Schaltfläche; ab der zweiten treten eine Auswahlliste und
+  eine einzelne Schaltfläche an ihre Stelle. Beides ist Anzeige: gewählt wird
+  der `tenantId` der Startadresse, und ob eine Organisation SSO anbietet,
+  entscheidet unverändert der Server.
 
 - **Die Auswahl ist auf die Organisation dieser Adresse vorbelegt.** Führt eine
   Organisation eine eigene Basis-Adresse und wird die Anmeldeseite unter genau

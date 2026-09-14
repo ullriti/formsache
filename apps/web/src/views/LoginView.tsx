@@ -305,51 +305,19 @@ export function LoginView({
   );
 }
 
-/**
- * From how many organisations on the chooser takes the buttons' place.
- *
- * Four is not a measured number but a trade between two real costs: a button
- * is **one** click and shows every offer at once, a chooser is open, look,
- * pick, confirm — three at least. While the list can be taken in at a glance
- * the button wins; once it pushes the sign-in form below the fold it loses.
- * The line lies between, and nearer to "a few" than to "many", because these
- * offers stand underneath each other rather than side by side.
- *
- * Whoever moves it moves a display decision and nothing else: both branches
- * lead to the same address, and neither decides anything about the sign-in.
- */
-const SSO_BUTTON_LIMIT = 4;
+/** Above one organisation, the chooser replaces the button list. */
+const SSO_BUTTON_LIMIT = 1;
 
 /**
- * The SSO offer — above the password form, because whoever has an
- * Organisationskonto uses it and the local form is the fallback for people
- * without one.
+ * The SSO offer, above the password form. One organisation shows as a
+ * button; more than one shows a chooser plus a single link — either way,
+ * only the `:tenantId` of the start route is chosen. That's a display
+ * decision, not an authentication one: the server still decides whether an
+ * organisation offers SSO at all (`oidc-login.controller.ts`), and the
+ * password sign-in knows nothing of this selection.
  *
- * ## Two presentations, one way through
- *
- * Up to {@link SSO_BUTTON_LIMIT} organisations one button each, above it a
- * chooser and a single link. That is **a display decision and nothing else**,
- * and this is the sentence that has to stay: what is chosen is the
- * `:tenantId` of the start route — exactly what the button carried. The server
- * still decides for itself whether that organisation offers SSO at all
- * (`oidc-login.controller.ts`), and the password sign-in knows nothing of this
- * selection: which organisation somebody belongs to follows from their
- * membership, never from an assertion made by the sign-in page.
- *
- * A chooser on a sign-in page invites being passed along later as "context".
- * It must not become that — it would be an assertion of the sender at a place
- * that tolerates none.
- *
- * ## Why anchors and not buttons with an `onClick`
- *
- * The target is a server route that answers with a redirect to the identity
- * provider and sets the transaction cookie on the way. Both need a real
- * navigation, and an anchor is what a middle-click, a keyboard and a screen
- * reader all already understand.
- *
- * `rel="nofollow"`: the address starts a login, so it is not something a
- * crawler should walk into. No `target`, no `noopener` question — this stays
- * in the same tab, on our own origin.
+ * Anchors rather than buttons with `onClick`, because the target is a
+ * server route that redirects and sets a cookie — a real navigation.
  */
 function OidcOffer({
   offers,
@@ -359,31 +327,16 @@ function OidcOffer({
   const chooserId = useId();
   const [chosen, setChosen] = useState('');
 
-  // **Derived during the render, not pulled along in a `useEffect`.** The list
-  // arrives asynchronously, so an initial value from `useState` could not know
-  // it; and an organisation can disappear between two queries (SSO switched
-  // off, organisation deleted). Both cases end on the same fallback rather than
-  // on a selection pointing at nothing — without a second render pass, and
-  // without a moment in which the anchor carries an address that is gone.
+  // Derived during render, not a `useEffect`: the list arrives async and can
+  // shrink between queries, so there's nothing to keep in sync.
   const selected =
     offers.find((offer) => offer.tenantId === chosen) ??
-    // **The organisation this address belongs to, before the plain first one.**
-    // The server resolved it (`OidcProvider.atThisAddress`) and marks at most
-    // one entry, only when the match is unambiguous; where it marks none, the
-    // fallback is the first of the stable, server-sorted list as before.
-    //
-    // It is a pre-selection and no more: it stands in a chooser that says which
-    // organisation it is and that anybody may change. Nothing here treats it as
-    // a statement about who the person signing in is.
+    // Pre-selects the organisation this address belongs to
+    // (`OidcProvider.atThisAddress`), set server-side only when unambiguous.
     offers.find((offer) => offer.atThisAddress) ??
     offers[0];
 
-  // **"No organisation offers SSO" is decided here and only here.** The caller
-  // used to ask the same question a second time, and two places for one
-  // question are one too many — the more so as `noUncheckedIndexedAccess` is
-  // right either way: that `offers` is non-empty was an assurance of the
-  // caller's that the type did not know about and a third caller would not
-  // have had to keep. The branch that needs the value now carries its check.
+  // Also covers "no organisation offers SSO" — `offers` may be empty.
   if (selected === undefined) {
     return null;
   }
@@ -398,37 +351,9 @@ function OidcOffer({
             href={oidcStartUrl(offer.tenantId)}
             rel="nofollow"
           >
-            {/*
-              **The organisation name, and it is the more important of the two
-              texts** — so it stands on top and carries the weight.
-
-              It has always travelled in `OidcProvider` and was simply not
-              rendered; that went well while an installation had one
-              organisation with SSO. It stops going well the moment it has
-              several: `oidcButtonLabel` is optional and falls back to
-              `DEFAULT_OIDC_BUTTON_LABEL` — to *the same sentence* for every
-              organisation that never set a caption of its own.
-
-              The name rather than `shortName`: the short name is a handle for
-              addresses and tables, the name is what the organisation calls
-              itself. Whoever searches here searches for the name.
-            */}
             <span className="login__sso-tenant">{offer.name}</span>
-            {/*
-              **A real space, not a layout gap.** An anchor's accessible name is
-              concatenated from its text nodes regardless of the two spans
-              standing on separate lines: without this character a screen reader
-              reads "Ortsgruppe MusterstadtMit Organisationskonto anmelden" in
-              one go. Inside the flex container it is inconsequential — white
-              space between flex children produces no anonymous item.
-            */}{' '}
-            {/*
-              The caption is the *action*, not the identity — and therefore
-              stays the server's, unchanged. The fallback to the shipped default
-              is still applied **once**, there (`oidc-login.service.ts`);
-              inventing a second wording here would be exactly the duplication
-              `DEFAULT_OIDC_BUTTON_LABEL` exists to avoid.
-            */}
+            {/* Real space, not a layout gap — keeps the two lines from
+                merging into one word in the accessible name. */}{' '}
             <span className="login__sso-action">{offer.buttonLabel}</span>
           </a>
         ))
@@ -438,14 +363,8 @@ function OidcOffer({
             <label className="login__label" htmlFor={chooserId}>
               Organisation
             </label>
-            {/*
-              A native `<select>` and not a hand-built combobox: it is the
-              system picker on a phone, keyboard-operable on a desktop and
-              proven with screen readers — everything a rebuild would have to
-              re-establish first. What it cannot do is filter as you type; that
-              becomes a question at some dozens of organisations and is then a
-              decision of its own, not a footnote here.
-            */}
+            {/* Native select: system picker on a phone, works with a
+                keyboard and screen readers out of the box. */}
             <select
               className="login__input"
               id={chooserId}
@@ -461,29 +380,9 @@ function OidcOffer({
               ))}
             </select>
           </div>
-          {/*
-            **Pre-filled with the first organisation**, so this anchor is a
-            valid anchor at every moment: focusable, middle-clickable, and a
-            link to a screen reader. The alternative — a "please choose" option
-            and an anchor without an `href` — would be precisely none of that:
-            an anchor without an `href` is not a link, does not sit in the tab
-            order, and whoever moves by keyboard would find nothing at this
-            spot.
-
-            The misoperation this permits is harmless: whoever clicks without
-            looking lands at a foreign organisation's identity provider, does
-            not sign in there and goes back. The list is sorted server-side by
-            `shortName` and stable, so the pre-fill does not jump between two
-            queries.
-
-            **`aria-describedby` on the chooser** and not a second copy of the
-            name in the link text: the caption alone („Mit Organisationskonto
-            anmelden", for every organisation that set none) says nothing about
-            *which* one, and a screen reader listing the links of this page
-            would read exactly that caption with no organisation attached. The
-            reference hands it the chosen value, which stands directly above
-            anyway — so the page says it once and reads it twice.
-          */}
+          {/* Pre-filled with the first match so the link stays valid and
+              focusable at every moment. `aria-describedby` names the
+              organisation, since the caption alone doesn't. */}
           <a
             className="login__sso-button"
             href={oidcStartUrl(selected.tenantId)}
