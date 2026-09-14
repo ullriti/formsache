@@ -1,8 +1,11 @@
 import type { WizardStepMeta, WizardStepStatus } from '../../wizard';
 
 /**
- * **The eight steps of the first commissioning** (ADR-0022, continuation
- * 2026-08-18; *Rechtliche Angaben* since ADR-0028) — in one place, because they are needed in three places:
+ * **The seven steps of the first commissioning** (ADR-0022, continuation
+ * 2026-08-18; *Rechtliche Angaben* since ADR-0028; the *Benachrichtigungs-Vorlagen*
+ * step ADR-0022 added is gone again since ADR-0032, which moved notification
+ * templates from the installation to every organisation — there is nothing
+ * installation-wide left here to set up) — in one place, because they are needed in three places:
  * for the step list of the frame, for the question „is this one skippable?"
  * and for the sentence that stands above every step.
  *
@@ -69,13 +72,6 @@ export const SETUP_STEPS: readonly SetupStepDefinition[] = [
     title: 'Antwortadresse und Betreiberadresse',
     consequence:
       'Ohne Betreiberadresse erreicht ein Betriebsalarm niemanden; ohne Antwortadresse geht eine Antwort an die Absenderadresse.',
-    skippable: true,
-  },
-  {
-    key: 'templates',
-    title: 'Benachrichtigungs-Vorlagen',
-    consequence:
-      'Ohne eigene Vorlagen bleibt es bei den ausgelieferten — ein brauchbarer Zustand, nur nicht der eigene Wortlaut dieser Installation.',
     skippable: true,
   },
   {

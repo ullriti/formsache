@@ -1106,6 +1106,47 @@ export class ScopedTenantDelegate {
     });
     return result.count === 1;
   }
+
+  /**
+   * The notification templates of this organisation and their counter
+   * (ADR-0032) — the same narrow projection {@link legal} takes, and for the
+   * same reason.
+   */
+  notificationTemplates(): Promise<{
+    readonly notificationTemplates: Prisma.JsonValue | null;
+    readonly notificationTemplatesRevision: number;
+  } | null> {
+    return this.delegate.findUnique({
+      where: { id: this.tenantId },
+      select: {
+        notificationTemplates: true,
+        notificationTemplatesRevision: true,
+      },
+    });
+  }
+
+  /**
+   * Replaces the notification templates of this organisation — **with** an
+   * optimistic lock, for the same reason {@link updateLegal} carries one: the
+   * document is a whole list a second saver would otherwise overwrite in one
+   * piece, not a single value where last-write-wins is the accepted cost.
+   */
+  async updateNotificationTemplates(
+    expectedRevision: number,
+    notificationTemplates: Prisma.InputJsonValue,
+  ): Promise<boolean> {
+    const result = await this.delegate.updateMany({
+      where: {
+        id: this.tenantId,
+        notificationTemplatesRevision: expectedRevision,
+      },
+      data: {
+        notificationTemplates,
+        notificationTemplatesRevision: { increment: 1 },
+      },
+    });
+    return result.count === 1;
+  }
 }
 
 /**

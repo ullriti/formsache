@@ -4,20 +4,18 @@ import { AuthModule } from '../auth/auth.module';
 import { RateLimitModule } from '../common/rate-limit.module';
 import { SecretBoxModule } from '../common/secret-box/secret-box.module';
 import { MailSecretsService } from '../mail/mail-secrets.service';
-import { NotificationTemplatesService } from './notification-templates.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { AiSettingsModule } from './ai-settings.module';
 import { SystemAiAdminService } from './system-ai-admin.service';
 import { SystemMailAdminService } from './system-mail-admin.service';
 import { SystemLegalService } from './system-legal.service';
 import { SystemMailSettingsService } from './system-mail-settings.service';
-import { SystemNotificationTemplatesAdminService } from './system-notification-templates-admin.service';
 import { SystemSettingsController } from './system-settings.controller';
 import { SystemSettingsRepository } from './system-settings.repository';
 
 /**
  * What the installation as a whole decides: its mail server, its own address,
- * its KI — and the notification templates a new form starts from.
+ * and its KI.
  *
  * **No settings layer any more** (ADR-0011, continuation 2026-08-14; review
  * finding 9). This module used to hold a third layer of form settings below
@@ -35,12 +33,7 @@ import { SystemSettingsRepository } from './system-settings.repository';
  * belongs to no organisation, and keeping it unexported means „nur ein Zugriffsweg"
  * is a fact about this module rather than a rule somebody has to keep.
  *
- * `NotificationTemplatesService` is one reader of the row, imported by
- * `NotificationsModule`; its own service rather than a method on a shared one,
- * because „welche Vorlagen liegen bereit?" and „wie verschickt diese
- * Installation Post?" are different questions about one table.
- *
- * `SystemMailSettingsService` is the second reader of the same
+ * `SystemMailSettingsService` is a reader of the same
  * row and the reason `PublicUrlModule` imports this module: `SMTP_*` and
  * `PUBLIC_BASE_URL` left the `.env`, so „wo antwortet diese Installation?"
  * is a query and no longer a constructor argument. It hands the mail block out
@@ -69,21 +62,12 @@ import { SystemSettingsRepository } from './system-settings.repository';
  * it later would be the moment „Systemeinstellungen" started depending on a
  * membership.
  *
- * **The write path for `notification_templates` is there** (ADR-0022,
- * continuation 2026-08-18), and with it the condition that stood here: the
- * counter `notification_templates_revision` came in the same change as the
- * route (`20260818100000_notification_templates_revision`). An optimistic
- * lock on a document nobody writes would have been surface passing itself off
- * as a promise; a route without a lock on a row three
- * pages maintain would be the silent overwriter.
- *
- * `SystemNotificationTemplatesAdminService` is therefore a service of its
- * **own** next to `NotificationTemplatesService` and not a third method on it:
- * that one answers „which templates are ready for this editor?" tolerantly
- * and without a lock, this one „what is stored, and replace it" — the same
- * separation `SystemMailSettingsService` and `SystemMailAdminService` already
- * have. It is **not** exported: the write path belongs to the route behind
- * the guard and to nobody else.
+ * **The notification templates left this module entirely** (ADR-0032,
+ * reversing ADR-0011 for this one facet). `system_setting.notification_templates`,
+ * its counter and the superadmin route
+ * `GET`/`PUT /admin/system-settings/notification-templates` that this module
+ * once carried are gone; every organisation now owns and edits its own row,
+ * behind `TenantNotificationTemplatesModule` in `tenant-admin/`.
  */
 @Module({
   imports: [
@@ -96,7 +80,6 @@ import { SystemSettingsRepository } from './system-settings.repository';
   controllers: [SystemSettingsController],
   providers: [
     SystemSettingsRepository,
-    NotificationTemplatesService,
     SystemMailSettingsService,
     // The write half of the superadmin mail-settings feature. `MailSecretsService` is provided here
     // rather than imported from `MailModule` — that module already imports
@@ -113,8 +96,7 @@ import { SystemSettingsRepository } from './system-settings.repository';
     MailSecretsService,
     SystemMailAdminService,
     SystemAiAdminService,
-    SystemNotificationTemplatesAdminService,
-    // The legal-text service **is** exported, unlike the three
+    // The legal-text service **is** exported, unlike the two
     // admin services next to it: the public path reads the installation's
     // legal texts and its operator name, and it may do that because both
     // are public by definition. The write path nevertheless stays at the
@@ -122,10 +104,6 @@ import { SystemSettingsRepository } from './system-settings.repository';
     // `PublicFormsModule` calls `read()` and `operatorName()` only.
     SystemLegalService,
   ],
-  exports: [
-    NotificationTemplatesService,
-    SystemMailSettingsService,
-    SystemLegalService,
-  ],
+  exports: [SystemMailSettingsService, SystemLegalService],
 })
 export class SystemSettingsModule {}

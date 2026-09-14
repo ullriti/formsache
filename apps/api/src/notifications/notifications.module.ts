@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { AuthModule } from '../auth/auth.module';
 import { SystemSettingsModule } from '../system-settings/system-settings.module';
+import { TenantNotificationTemplatesModule } from '../tenant-admin/tenant-notification-templates.module';
 import { TenancyModule } from '../tenancy/tenancy.module';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
@@ -24,10 +25,14 @@ import { NotificationsService } from './notifications.service';
  * No `PrismaModule` import, now or later: everything in here reaches *tenant*
  * rows through the `TenantScope` the guard chain hands in, and
  * `eslint.config.js` makes a shortcut a build failure rather than a review
- * finding. `SystemSettingsModule` is imported for the delivered templates
- *  and is not an exception to that: it hands out one service
- * with one no-argument read method over the installation-wide row, and the
- * repository behind it stays unexported.
+ * finding. `SystemSettingsModule` is imported for the two **remaining**
+ * installation-wide levels of the `Reply-To` chain (ADR-0011 no. 7) — it
+ * hands out `SystemMailSettingsService`, one service with read methods over
+ * the installation-wide row, and the repository behind it stays unexported.
+ * `TenantNotificationTemplatesModule` is imported for the notification
+ * templates themselves (ADR-0032): since that move they are the **calling**
+ * organisation's own row, reached through the `TenantScope` like everything
+ * else here — not an installation-wide read at all any more.
  *
  * `notification-questions.ts` carries no Nest at all and is therefore not a
  * provider: `FormsService` imports it directly for the publish lock of
@@ -37,7 +42,12 @@ import { NotificationsService } from './notifications.service';
  * `FormsModule`.
  */
 @Module({
-  imports: [AuthModule, TenancyModule, SystemSettingsModule],
+  imports: [
+    AuthModule,
+    TenancyModule,
+    SystemSettingsModule,
+    TenantNotificationTemplatesModule,
+  ],
   controllers: [NotificationsController],
   providers: [NotificationsService],
 })

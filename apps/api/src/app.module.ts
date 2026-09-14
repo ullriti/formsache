@@ -35,6 +35,7 @@ import { TenantReplyToModule } from './tenant-admin/tenant-reply-to.module';
 import { TenantBrandingModule } from './tenant-admin/tenant-branding.module';
 import { TenantGroupsModule } from './tenant-admin/tenant-groups.module';
 import { TenantLegalModule } from './tenant-admin/tenant-legal.module';
+import { TenantNotificationTemplatesModule } from './tenant-admin/tenant-notification-templates.module';
 import { TenantUsersModule } from './tenant-admin/tenant-users.module';
 import { FormPermissionModule } from './tenancy/form-permission.module';
 import { TenancyModule } from './tenancy/tenancy.module';
@@ -171,6 +172,13 @@ export const GLOBAL_API_PREFIX = 'api';
     // data protection notices, their own tab next to the five that already
     // exist.
     TenantLegalModule,
+    // The notification templates of an organisation (ADR-0032) — moved here
+    // from the system administration; every organisation now owns and edits
+    // its own row. Listed even though `NotificationsModule` already imports
+    // it, for the reason `SystemSettingsModule`'s own comment gives: a module
+    // that reaches the router only because another module happens to import
+    // it is a route with no visible registration.
+    TenantNotificationTemplatesModule,
     OidcAuthModule,
     TenantUsersModule,
     TenantGroupsModule,

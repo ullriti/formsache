@@ -8,8 +8,8 @@ import {
 
 /**
  * The notifications an organisation gets **without setting anything up** — the
- * **floor** of an installation-wide setting rather than the setting itself
- * ([ADR-0011](../../../docs/architecture/0011-systemweite-einstellungen.md)).
+ * **floor** every organisation's own templates start from
+ * ([ADR-0032](../../../docs/architecture/0032-benachrichtigungs-vorlagen-je-organisation.md)).
  *
  * Until this existed, „eine Benachrichtigung anlegen" meant an empty subject
  * line, an empty body and a chip row — and the three mails every organisation actually
@@ -42,12 +42,14 @@ import {
  *
  * ## The move happened — this is the floor, not a second copy
  *
- * The templates are stored in `system_setting.notification_templates` and the
- * editor is offered **that** document (`NotificationTemplatesService` in the
+ * The templates are stored **per organisation**, in `tenant.notification_templates`
+ * (ADR-0032 — until then a single installation-wide row, moved so that every
+ * organisation owns and edits its own set). The editor of an organisation is
+ * offered **its own** document (`TenantNotificationTemplatesService` in the
  * API, delivered on the notification list route). {@link
- * NOTIFICATION_TEMPLATES_FLOOR} is what „keine Zeile, nichts entschieden"
- * means, exactly as `SYSTEM_FORM_SETTINGS` is for the settings layers — read at
- * **one** place, the service above.
+ * NOTIFICATION_TEMPLATES_FLOOR} is what a freshly created organisation starts
+ * from and what „diese Zeile ist unlesbar" degrades to — read at the one place
+ * that seeds a new organisation and the one service that reads its row.
  *
  * That it stays *one* place is not left to discipline: `single-source.test.ts`
  * fails if this identifier is defined anywhere else, or if any of these texts
@@ -204,20 +206,20 @@ Object.freeze(NOTIFICATION_TEMPLATES_FLOOR);
 export const NOTIFICATION_TEMPLATE_LIMIT = 20;
 
 /**
- * The stored `system_setting.notification_templates` document.
+ * The stored `tenant.notification_templates` document of one organisation.
  *
  * Strict per entry (`notificationTemplateSchema`) and bounded as a whole. The
- * **empty list is allowed and means something**: „diese Installation bietet
+ * **empty list is allowed and means something**: „diese Organisation bietet
  * keine Vorlagen an". That is a different statement from „nichts entschieden",
- * which is the *absence* of the column value and is answered by
- * {@link NOTIFICATION_TEMPLATES_FLOOR} — the same distinction ADR-0011 draws
- * for the settings layer, one level down.
+ * which is the *absence* of the column value (a row this migration has not
+ * yet reached, or one a raw write cleared) and is answered by
+ * {@link NOTIFICATION_TEMPLATES_FLOOR}.
  *
  * Ids are unique because the picker uses them as its React key and because a
  * second entry under an existing id is two answers to „welche Vorlage ist
  * `confirmation`?".
  */
-export const systemNotificationTemplatesSchema = z
+export const notificationTemplatesDocumentSchema = z
   .array(notificationTemplateSchema)
   .max(NOTIFICATION_TEMPLATE_LIMIT)
   .refine(
@@ -234,13 +236,13 @@ export const systemNotificationTemplatesSchema = z
  * `null`/`undefined`:
  * telling „keine Zeile / nichts entschieden" apart from „da, aber unlesbar" is
  * the caller's job, because only the caller can see whether there is a row
- * (`NotificationTemplatesService` in the API). Softening it here would blur the
- * two states this design deliberately keeps separate.
+ * (`TenantNotificationTemplatesService` in the API). Softening it here would
+ * blur the two states this design deliberately keeps separate.
  */
-export function parseSystemNotificationTemplates(
+export function parseNotificationTemplatesDocument(
   source: unknown,
 ): NotificationTemplate[] {
-  return systemNotificationTemplatesSchema.parse(source);
+  return notificationTemplatesDocumentSchema.parse(source);
 }
 
 /**
@@ -259,85 +261,83 @@ export function acceptsTemplate(body: string): boolean {
 /**
  * ---------------------------------------------------------------------------
  * The **write path** of the templates — `GET`/`PUT
- * /admin/system-settings/notification-templates` (ADR-0022, continuation
- * 2026-08-18).
+ * /tenant/notification-templates` (ADR-0032).
  *
- * Up to here there was only one reader: `NotificationTemplatesService` passed
- * the document on to the notification editor, and the column was written by
- * nothing. `system-settings.module.ts` recorded that explicitly — „whoever adds
- * that route adds the column with it" —, and that is exactly what has happened
- * here: `system_setting.notification_templates_revision` comes with this route,
- * because an optimistic counter on a document nobody writes would be a promise
- * without a counterparty.
+ * Until then the same pair lived at
+ * `/admin/system-settings/notification-templates`, superadmin-only and
+ * installation-wide, with its own counter next to the mail and AI blocks of
+ * `system_setting`. That route, its service and its counter are gone; every
+ * organisation now owns a row of its own on `tenant`, with its own counter
+ * (`notification_templates_revision`).
  *
  * Two things these two schemas do **not** do:
  *
  * 1. **They invent no second limit.** What a template is, is said by
  *    `notificationTemplateSchema`; how many there may be and that the
  *    identifiers are unique is said by {@link
- *    systemNotificationTemplatesSchema}. The request schema uses both instead
- *    of copying them out — a second version would be the half that is milder
- *    later.
- * 2. **They know no „patch".** As with
- *    `updateSystemMailSettingsRequestSchema` this is a full replacement: the
- *    page holds the whole document, so it names it whole. A partial change to a
- *    *list* would anyway be the question „welcher Eintrag ist gemeint", and a
- *    full replacement does not raise it in the first place.
+ *    notificationTemplatesDocumentSchema}. The request schema uses both
+ *    instead of copying them out — a second version would be the half that is
+ *    milder later.
+ * 2. **They know no „patch".** As with `updateTenantLegalRequestSchema` this
+ *    is a full replacement: the page holds the whole document, so it names it
+ *    whole. A partial change to a *list* would anyway be the question „welcher
+ *    Eintrag ist gemeint", and a full replacement does not raise it in the
+ *    first place.
  * ---------------------------------------------------------------------------
  */
 
 /**
- * What the templates page gets.
+ * What the templates tab of an organisation gets.
  *
- * `templates` is **always** a usable list — the stored one, or {@link
- * NOTIFICATION_TEMPLATES_FLOOR} when nothing has been decided. Which of the two
- * cases applies is said by {@link
- * systemNotificationTemplatesResponseSchema.shape.decided}, and that is no
- * cosmetics: „das sind die ausgelieferten Vorlagen" and „das hat hier jemand so
- * hinterlegt" are two different sentences for the same three cards, and without
- * the difference nobody would know whether they are changing something or
- * confirming something.
+ * `templates` is **always** a usable list — the organisation's own stored
+ * document, or {@link NOTIFICATION_TEMPLATES_FLOOR} on the rare row that
+ * cannot be read. Which of the two applies is said by {@link
+ * tenantNotificationTemplatesResponseSchema.shape.decided}, and that is no
+ * cosmetics: „das sind die ausgelieferten Vorlagen" and „das hat diese
+ * Organisation so hinterlegt" are two different sentences for the same three
+ * cards, and without the difference nobody would know whether they are
+ * changing something or confirming something.
  */
-export const systemNotificationTemplatesResponseSchema = z.strictObject({
+export const tenantNotificationTemplatesResponseSchema = z.strictObject({
   templates: z.array(notificationTemplateSchema),
   /**
-   * Whether the row decides the templates (`true`) or the shipping does
+   * Whether the row decides the templates (`true`) or the shipped floor does
    * (`false`).
    *
-   * `false` means „keine Zeile, keine Spalte, nichts entschieden" — **and**
-   * „ein Dokument, das nicht parst". The two are deliberately not
-   * distinguished here: for the editor the action is the same (they see the
-   * shipped templates and save them or something else), and the unreadable case
-   * is the situation this page has to be able to repair. The difference that
-   * counts stands in the server's log.
+   * `false` means „keine Zeile, kein lesbares Dokument" — a state every
+   * organisation is seeded out of at creation and every existing one was
+   * backfilled into (ADR-0032), so seeing it in the running application means
+   * the row was cleared or corrupted by hand. For the editor the action is
+   * the same either way: see the shipped templates and save them or something
+   * else — and that is exactly the repair this page has to be able to offer.
    */
   decided: z.boolean(),
   /** `notification_templates_revision` — this column's **own** counter. */
   lock: z.number().int().positive(),
 });
-export type SystemNotificationTemplatesResponse = z.infer<
-  typeof systemNotificationTemplatesResponseSchema
+export type TenantNotificationTemplatesResponse = z.infer<
+  typeof tenantNotificationTemplatesResponseSchema
 >;
 
 /**
- * A write onto the installation's templates.
+ * A write onto one organisation's templates.
  *
- * The **empty list is allowed and means something**: „diese Installation
+ * The **empty list is allowed and means something**: „diese Organisation
  * bietet keine Vorlagen an" — not „nichts entschieden". The difference is the
- * same one {@link systemNotificationTemplatesSchema} describes, and it survives
- * precisely because the request schema uses the same check.
+ * same one {@link notificationTemplatesDocumentSchema} describes, and it
+ * survives precisely because the request schema uses the same check.
  */
-export const updateSystemNotificationTemplatesRequestSchema = z.strictObject({
-  templates: systemNotificationTemplatesSchema,
+export const updateTenantNotificationTemplatesRequestSchema = z.strictObject({
+  templates: notificationTemplatesDocumentSchema,
   /**
-   * The counter value this superadmin assumed.
+   * The counter value this caller assumed.
    *
-   * Never `null`, as with the two counters next door: a fresh installation
-   * without a row reports the number at which the column starts, so that the
-   * first write can name it instead of making the lock optional.
+   * Never `null`: every organisation's row exists with a real counter from
+   * the moment it is created (or was backfilled by the migration), so there
+   * is no row-less case here that would make the lock optional.
    */
   lock: z.number().int().positive(),
 });
-export type UpdateSystemNotificationTemplatesRequest = z.infer<
-  typeof updateSystemNotificationTemplatesRequestSchema
+export type UpdateTenantNotificationTemplatesRequest = z.infer<
+  typeof updateTenantNotificationTemplatesRequestSchema
 >;

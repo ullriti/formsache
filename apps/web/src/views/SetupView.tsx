@@ -3,7 +3,7 @@ import { useState, type ReactElement } from 'react';
 import type { WizardStepStatus } from '../wizard';
 import { AccessStep } from './setup/AccessStep';
 import { AddressesStep, BaseUrlStep, MailServerStep } from './setup/MailSteps';
-import { AiStep, LegalStep, TemplatesStep } from './setup/SettingsSteps';
+import { AiStep, LegalStep } from './setup/SettingsSteps';
 import { SetupComplete } from './setup/SetupComplete';
 import { TenantStep } from './setup/TenantStep';
 import { SETUP_STEPS, wizardSteps } from './setup/steps';
@@ -146,8 +146,6 @@ export function SetupView(): ReactElement {
       return <MailServerStep {...common} />;
     case 'addresses':
       return <AddressesStep {...common} />;
-    case 'templates':
-      return <TemplatesStep {...common} />;
     case 'ai':
       return <AiStep {...common} />;
     case 'legal':

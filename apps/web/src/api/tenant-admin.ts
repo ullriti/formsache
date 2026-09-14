@@ -12,11 +12,13 @@ import {
   tenantMemberListSchema,
   tenantMemberCreatedSchema,
   tenantMemberSchema,
+  tenantNotificationTemplatesResponseSchema,
   type GroupDetail,
   type GroupList,
   type GroupWrite,
   type MailIdentityConfig,
   type MailIdentityWrite,
+  type NotificationTemplate,
   type OidcConfig,
   type OidcConfigWrite,
   parseSessionRevocation,
@@ -31,6 +33,7 @@ import {
   type TenantMemberCreate,
   type TenantMemberList,
   type TenantMemberUpdate,
+  type TenantNotificationTemplatesResponse,
   type TenantReplyTo,
   type TenantReplyToWrite,
   type TestMailResult,
@@ -873,6 +876,97 @@ export function useSaveTenantAiSwitch(): UseMutationResult<
     onSuccess: async (document, { tenantId }) => {
       queryClient.setQueryData(tenantAiQueryKey(tenantId), document);
       await invalidateSession(queryClient);
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Vorlagen — this organisation's own notification templates (ADR-0032)
+// ---------------------------------------------------------------------------
+
+/**
+ * A key of its own, for the same reason {@link tenantAiQueryKey} and its
+ * siblings each have one: this document has its **own** counter
+ * (`notification_templates_revision`), and a shared cache entry across
+ * unrelated documents would make one lock out of several.
+ */
+export function tenantNotificationTemplatesQueryKey(
+  tenantId: string | undefined,
+): readonly string[] {
+  return ['tenant-notification-templates', tenantId ?? 'none'];
+}
+
+/**
+ * The notification templates of this organisation (ADR-0032 — until then a
+ * single installation-wide row read by every organisation alike; now each
+ * organisation's own document).
+ *
+ * `retry: false`, like every document-shaped query in this module: a 403
+ * would otherwise be retried against an unchanged answer before the view ever
+ * sees it.
+ */
+export function useTenantNotificationTemplates(
+  tenantId: string | undefined,
+): UseQueryResult<TenantNotificationTemplatesResponse> {
+  return useQuery({
+    queryKey: tenantNotificationTemplatesQueryKey(tenantId),
+    enabled: tenantId !== undefined,
+    retry: false,
+    queryFn: async () =>
+      tenantNotificationTemplatesResponseSchema.parse(
+        await requestJson('/tenant/notification-templates', {
+          method: 'GET',
+        }),
+      ),
+  });
+}
+
+export interface SaveTenantNotificationTemplatesVariables {
+  readonly tenantId: string;
+  /** Full replacement, no patch — the page holds the whole document. */
+  readonly templates: readonly NotificationTemplate[];
+  readonly lock: number;
+}
+
+/**
+ * Writes the templates of this organisation.
+ *
+ * `retry: false` for the reason every settings write here has it: a 409 means
+ * that somebody else has saved this same document in the meantime, and
+ * repeating it would either fail again or silently overwrite what the lock is
+ * supposed to protect.
+ *
+ * ⚠️ Additionally discarded is the **notification list** of this
+ * organisation's forms: the templates travel along there
+ * (`notificationListResponseSchema.templates`), and without this line the
+ * selection dialog would offer the old ones until the next load — so exactly
+ * what this write has just changed.
+ */
+export function useSaveTenantNotificationTemplates(): UseMutationResult<
+  TenantNotificationTemplatesResponse,
+  Error,
+  SaveTenantNotificationTemplatesVariables
+> {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    retry: false,
+    mutationFn: async ({
+      templates,
+      lock,
+    }: SaveTenantNotificationTemplatesVariables) =>
+      tenantNotificationTemplatesResponseSchema.parse(
+        await requestJson('/tenant/notification-templates', {
+          method: 'PUT',
+          body: { templates, lock },
+        }),
+      ),
+    onSuccess: (document, { tenantId }) => {
+      queryClient.setQueryData(
+        tenantNotificationTemplatesQueryKey(tenantId),
+        document,
+      );
+      void queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
 }

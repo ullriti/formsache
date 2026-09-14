@@ -8,6 +8,7 @@ import {
   TENANT_FORM_DEFAULTS_PATH,
   TENANT_MAIL_PATH,
   TENANT_MEMBERS_PATH,
+  TENANT_TEMPLATES_PATH,
 } from '../router/routes';
 import { jsonResponse, stubFetch } from '../test/fetch-mock';
 import { renderWithQuery } from '../test/render-with-query';
@@ -62,7 +63,7 @@ describe('the Organisations-Verwaltung frame', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('shows all six entries, with the current one marked', () => {
+  it('shows all seven entries, with the current one marked', () => {
     stubFetch().mockResolvedValue(jsonResponse(403, { message: 'nope' }));
     renderWithQuery(
       <TenantAdminView
@@ -90,6 +91,9 @@ describe('the Organisations-Verwaltung frame', () => {
       'KI',
       // The sixth tab (ADR-0028) — this organisation's legal texts.
       'Rechtstexte',
+      // The seventh tab (ADR-0032) — this organisation's own notification
+      // templates, moved here from the system administration.
+      'Vorlagen',
     ]);
     expect(
       within(nav)
@@ -103,7 +107,7 @@ describe('the Organisations-Verwaltung frame', () => {
     ).toBeNull();
   });
 
-  it('navigates to the six real addresses, one per tab', () => {
+  it('navigates to the seven real addresses, one per tab', () => {
     stubFetch().mockResolvedValue(jsonResponse(403, { message: 'nope' }));
     renderWithQuery(
       <TenantAdminView
@@ -141,6 +145,11 @@ describe('the Organisations-Verwaltung frame', () => {
       within(nav).getByRole('button', { name: 'Formular-Standards' }),
     );
     expect(window.location.pathname).toBe(TENANT_FORM_DEFAULTS_PATH);
+
+    // The seventh tab (ADR-0032) — this organisation's own notification
+    // templates, moved here in full from the system administration.
+    fireEvent.click(within(nav).getByRole('button', { name: 'Vorlagen' }));
+    expect(window.location.pathname).toBe(TENANT_TEMPLATES_PATH);
   });
 
   it('embeds the Formular-Standards tab unchanged, without promising the other tabs a second time', async () => {
@@ -174,7 +183,7 @@ describe('the Organisations-Verwaltung frame', () => {
       within(
         screen.getByRole('navigation', { name: 'Organisations-Verwaltung' }),
       ).getAllByRole('button').length,
-    ).toBe(6);
+    ).toBe(7);
   });
 
   /**
