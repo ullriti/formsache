@@ -153,10 +153,8 @@ export class OidcLoginService {
       usable.push(row);
     }
 
-    // **After the usability check, not before:** uniqueness counts among the
-    // organisations that actually stand in the chooser. A second organisation
-    // at the same address that does not offer SSO at all does not make the
-    // match ambiguous for this purpose — it is not on offer.
+    // After the usability check, not before: an organisation that isn't
+    // offered doesn't make the address ambiguous for one that is.
     const atAddress = soleTenantAtHost(usable, requestHost);
     for (const row of usable) {
       offers.push({
@@ -640,23 +638,11 @@ function activeTenantOf(
 }
 
 /**
- * Which of the offered organisations is reachable under **this** address — or
- * `null` when that is none of them or more than one.
- *
- * ## Why "more than one" is the same answer as "none"
- *
- * `tenant.public_base_url` carries no unique index; two organisations may hold
- * the same address. "Two matches" is no answer to "which one is meant", and a
- * guessed pre-selection would be worse than none: it would look like a
- * statement of fact.
- *
- * ## What is compared
- *
- * The `host` of both sides — name **including port**, lower-cased: `URL.host`
- * on the stored address, the raw value on the request's side. A stored address
- * that does not parse as a URL counts as no match, which is the posture
- * `PublicUrlService.resolveBaseUrl` already takes towards such values ("treated
- * exactly like an absent one") and not an exception escaping upwards.
+ * Which of the offered organisations is reachable under **this** address, or
+ * `null` when that's none of them or more than one — `public_base_url` has no
+ * unique index, and a guessed pre-selection would be worse than none.
+ * Compares hostname only (port and path ignored), case-insensitively; a
+ * stored address that isn't a valid base address counts as no match.
  */
 function soleTenantAtHost(
   rows: readonly OfferableTenant[],
@@ -665,8 +651,6 @@ function soleTenantAtHost(
   if (requestHost === null || requestHost === '') {
     return null;
   }
-  // Der Port fällt auch hier weg — siehe {@link hostOf}. Eine IPv6-Adresse in
-  // Klammern („[::1]:5173") behält ihre Klammern und verliert nur den Port.
   const wanted = requestHost.toLowerCase().replace(/:\d+$/, '');
   let found: string | null = null;
   for (const row of rows) {
@@ -674,8 +658,6 @@ function soleTenantAtHost(
       continue;
     }
     if (found !== null) {
-      // A second match: not unambiguous, so none. No early exit on the first —
-      // this case is precisely the one the rule is about.
       return null;
     }
     found = row.id;
@@ -684,22 +666,9 @@ function soleTenantAtHost(
 }
 
 /**
- * The hostname of a stored base address, or `null`.
- *
- * **Through `normaliseBaseUrl`, not through a bare `new URL`** — `base-url.ts`
- * is the one place that says what counts as a base address, and a second
- * spelling here would quietly disagree with it: a raw `new URL` accepts
- * `ftp://`, a query string and credentials in the address, all of which
- * `PublicUrlService.resolveBaseUrl` treats as absent. A row that is „keine
- * Basis-Adresse" over there must not be a match over here.
- *
- * `hostname` and not `host`, so the port is out of the comparison on **both**
- * sides. `URL` drops a default port and a request's host carries one only when
- * the client wrote it out, so comparing ports would turn `https://x.example`
- * and a request for `x.example:443` into a silent non-match — a wrong answer
- * in the direction of „keine Vorbelegung", but for a reason nobody could see.
- * The price is that two organisations differing only in port, or only in path,
- * count as the same address and therefore as ambiguous.
+ * The hostname of a stored base address, or `null`. Through
+ * `normaliseBaseUrl`, not a bare `new URL`, so it agrees with
+ * `PublicUrlService.resolveBaseUrl` on what counts as a base address at all.
  */
 function hostOf(baseUrl: string): string | null {
   const normalised = normaliseBaseUrl(baseUrl);

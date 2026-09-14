@@ -241,17 +241,10 @@ Pflichtzeile, startet die API nicht und nennt sie. `NODE_ENV`, `API_PORT`,
 
 <!-- /env-contract:app -->
 
-`TRUST_PROXY_HOPS` entscheidet nicht nur, welche Adresse gezählt wird
-(Rate-Limits, `client-address.ts`), sondern seit der Adress-Vorauswahl auf der
-Anmeldeseite auch, **welchen Host die API glaubt**. Genau eine Route liest ihn:
-`GET /api/auth/oidc/providers` vergleicht ihn mit der Basis-Adresse jeder
-Organisation und markiert die passende, damit das Auswahlfeld sie vorbelegt.
-Steht der Wert auf `0`, während ein Proxy davor sitzt, sehen alle Anfragen den
-Namen des Proxys — die Vorauswahl greift dann nie, die Anmeldung funktioniert
-unverändert. Eine zweite Route, die den Host liest, darf es nicht geben: er
-kommt aus der Anfrage und trägt nichts, worauf sich eine Entscheidung über
-Zugriff, Weiterleitung oder Mandant stützen darf (siehe den Hinweis an
-`OidcLoginController.providers`).
+`TRUST_PROXY_HOPS` entscheidet seit der Adress-Vorauswahl auf der Anmeldeseite
+auch, welchen Host `GET /api/auth/oidc/providers` glaubt (siehe
+`OidcLoginController.providers`). Steht der Wert auf `0`, während ein Proxy
+davorsitzt, greift die Vorauswahl nie — die Anmeldung funktioniert unverändert.
 
 SMTP, Basis-Adresse und KI-Konfiguration sind **keine** Umgebungsvariablen: sie
 stehen als Systemeinstellung in der Datenbank und werden in der Oberfläche

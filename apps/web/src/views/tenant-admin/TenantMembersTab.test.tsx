@@ -632,26 +632,11 @@ describe('Nutzerrechte (Tenant-Ebene)', () => {
     });
 
     /**
-     * **Derselbe Satz wäre für ein SSO-Konto falsch** — und das ist der Fall,
-     * aus dem die Unterscheidung überhaupt entstand (Review-Runde 3 Nr. 13).
-     *
-     * Die Lage: `user.email` ist installationsweit eindeutig, es gibt also
-     * **ein** Konto, und eine zweite Organisation hängt sich nur eine
-     * Mitgliedschaft daran (ADR-0012 Nr. 3). Die Bindung bleibt das Paar
-     * *(Issuer, Subject)*, das beim ersten Login entstand — trägt diese
-     * Organisation einen anderen Anmeldedienst ein, erreicht deren
-     * Schaltfläche dieses Konto nie (`oidc-identity.service.ts`: „a second
-     * provider cannot claim it"). Die Person meldet sich weiter dort an, wo
-     * das Konto entstand, und wechselt danach hierher.
-     *
-     * „Die Anmeldung läuft mit dem vorhandenen Passwort" wäre für ein solches
-     * Konto schlicht falsch: es hat keines. Wer der Meldung glaubte, wartete
-     * auf ein Passwort, das nie kommt, und suchte den Fehler in der eigenen
-     * SSO-Einrichtung.
-     *
-     * Der Zweig stand ungetestet; dieser Test ist sein Regressionstest.
+     * An SSO account has no password — "signs in with the existing password"
+     * would simply be wrong here (review round 3 no. 13). This branch stood
+     * untested; this test is its regression test.
      */
-    it('nennt bei einem vorhandenen SSO-Konto den Anmeldedienst statt eines Passworts', async () => {
+    it('names the sign-in provider instead of a password for an existing SSO account', async () => {
       routeFetch({
         onMemberPost: () =>
           jsonResponse(200, {
@@ -686,8 +671,6 @@ describe('Nutzerrechte (Tenant-Ebene)', () => {
           /meldet sich weiterhin über den Anmeldedienst an, bei dem es entstanden ist/u,
         ),
       ).toBeDefined();
-      // **Das Gegenteil ist der Punkt:** ein SSO-Konto hat kein Passwort, und
-      // die Meldung darf keines versprechen.
       expect(screen.queryByText(/vorhandenen Passwort/u)).toBeNull();
       expect(screen.queryByText(/Einladung per Mail bekommen/u)).toBeNull();
     });

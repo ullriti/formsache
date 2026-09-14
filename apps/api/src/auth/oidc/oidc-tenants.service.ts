@@ -17,8 +17,8 @@ import type { TenantOidcRow } from '../../tenant-admin/oidc-config.service';
  * **What keeps it honest is what it selects.** Nine columns, named one by one:
  * the id plus the eight the OIDC configuration lives in — two of them the claim
  * names of Konzept no. 70 — plus, on the offer list, the two names it shows and
- * `public_base_url`, which is **only compared and never answered with**
- * ({@link findOfferable}). No `form_defaults`, no branding, no members — a
+ * `public_base_url` (only compared, never answered with, see
+ * {@link findOfferable}). No `form_defaults`, no branding, no members — a
  * widening of this `select` is the only way an unauthenticated route here could
  * start reading an organisation's data, and it is a visible line in a diff.
  */
@@ -89,13 +89,8 @@ export class OidcTenantsService {
         ...OidcTenantsService.OIDC_COLUMNS,
         name: true,
         shortName: true,
-        // **The column that never leaves the server.** It is compared
-        // against the host the request arrived under so the offer list can say
-        // which organisation belongs to the address in the browser's bar
-        // (`OidcProvider.atThisAddress`); what travels is that boolean, not the
-        // address. Widening a select on this route is the visible line the
-        // class doc asks for — this is that line, and the sentence above is
-        // what keeps it narrow.
+        // Compared against the request's host for `OidcProvider.atThisAddress`;
+        // only the boolean result travels, never this column.
         publicBaseUrl: true,
       },
       // Stable order, so the login page does not reshuffle its buttons between
@@ -109,11 +104,7 @@ export class OidcTenantsService {
 export interface OfferableTenant extends TenantOidcRow {
   readonly name: string;
   readonly shortName: string;
-  /**
-   * This organisation's own base address, or `null` for „die Systemvorgabe
-   * gilt" — read **only** to be compared against the request's host, never to
-   * be answered with. See the note at the `select` that fetches it.
-   */
+  /** This organisation's own base address, or `null`. Compared, never returned. */
   readonly publicBaseUrl: string | null;
 }
 

@@ -86,19 +86,10 @@ afterEach(() => {
 });
 
 /**
- * **Which host the offer list is given.**
- *
- * It decides `OidcProvider.atThisAddress` and thereby the pre-selection in the
- * chooser of the sign-in page — nothing else; why this one route may read it at
- * all is written at `OidcLoginController.providers`.
- *
- * **Only the handover is checked here, not the resolution.** Where the value
- * comes from — `X-Forwarded-Host` as far as `TRUST_PROXY_HOPS` allows,
- * otherwise `Host`, a list reduced to its first entry — is Express' `req.host`,
- * and re-testing that would be testing the framework while quietly inviting a
- * second answer to „darf dieser Kopf geglaubt werden?". That the trust setting
- * really bites is a question for the integration suite, next to the
- * `X-Forwarded-For` case that already stands there.
+ * Only the handover to `offers()` is checked here — where the host comes
+ * from is Express' own `req.host`, and re-testing that would just be
+ * testing the framework. `TRUST_PROXY_HOPS` actually biting is covered by
+ * the integration suite.
  */
 describe('der Host, den die Angebotsliste liest', () => {
   function offering() {

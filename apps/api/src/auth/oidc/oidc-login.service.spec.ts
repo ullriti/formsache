@@ -203,15 +203,6 @@ describe('the offer route holds no client secret', () => {
     expect(offer?.buttonLabel).toBe(DEFAULT_OIDC_BUTTON_LABEL);
   });
 
-  /**
-   * **Which organisation belongs to the address in the browser's bar.**
-   *
-   * The chooser of the sign-in page pre-selects it, so that an installation
-   * serving several organisations under their own addresses does not ask a
-   * question it can answer itself. Compared is the `host` — name including
-   * port — of `tenant.public_base_url` against the host the request arrived
-   * under.
-   */
   it('marks the organisation whose base address matches the request host', async () => {
     const h = harness([
       offerable({ publicBaseUrl: 'https://formulare.alpha.example' }),
@@ -230,12 +221,6 @@ describe('the offer route holds no client secret', () => {
     expect(offers.filter((one) => one.atThisAddress)).toHaveLength(1);
   });
 
-  /**
-   * **Two matches are no match.** `tenant.public_base_url` carries no unique
-   * index, two organisations may hold the same address — and "which of the
-   * two" is then unanswerable. A guessed pre-selection would be worse than
-   * none: it would look like a statement of fact.
-   */
   it('marks nobody when two organisations share the address', async () => {
     const h = harness([
       offerable({ publicBaseUrl: 'https://gemeinsam.example' }),
@@ -253,15 +238,7 @@ describe('the offer route holds no client secret', () => {
     expect(offers.filter((one) => one.atThisAddress)).toHaveLength(0);
   });
 
-  /**
-   * **Usability first, uniqueness after** — the rule the loop states and, up to
-   * this test, nothing held. A second organisation at the same address that
-   * cannot be offered at all (its secret does not open) is not on offer, so it
-   * does not make the match ambiguous; the usable one stays marked.
-   *
-   * Move `soleTenantAtHost` above the loop, or hand it `rows` instead of
-   * `usable`, and this goes red — which is the whole point of writing it down.
-   */
+  /** Usability is checked before uniqueness, so an unusable duplicate at the same address doesn't erase the mark. */
   it('counts only offerable organisations when deciding uniqueness', async () => {
     const h = harness([
       offerable({ publicBaseUrl: 'https://gemeinsam.example' }),
@@ -269,8 +246,8 @@ describe('the offer route holds no client secret', () => {
         id: BETA,
         name: 'Verein Beta',
         shortName: 'Beta',
-        // Ein Geheimnis, das sich hier nicht öffnen lässt: diese Organisation
-        // fällt aus der Liste, bevor die Eindeutigkeit gezählt wird.
+        // A secret that won't open — this organisation is filtered out before
+        // uniqueness is even considered.
         oidcClientSecret: new TextEncoder().encode('plaintext-in-the-column'),
         publicBaseUrl: 'https://gemeinsam.example',
       }),
@@ -282,7 +259,6 @@ describe('the offer route holds no client secret', () => {
     expect(offers[0]?.atThisAddress).toBe(true);
   });
 
-  /** Der Vergleich ist unabhängig von der Schreibweise des Anfrage-Hosts. */
   it('matches the request host case-insensitively', async () => {
     const h = harness([
       offerable({ publicBaseUrl: 'https://formulare.alpha.example' }),
@@ -293,11 +269,6 @@ describe('the offer route holds no client secret', () => {
     expect(offers[0]?.atThisAddress).toBe(true);
   });
 
-  /**
-   * **Der Port zählt auf keiner Seite mit** — `URL` wirft einen Standardport
-   * weg, eine Anfrage trägt ihn nur, wenn der Aufrufer ihn ausgeschrieben hat,
-   * und ein Vergleich über Ports ergäbe dann einen stillen Nicht-Treffer.
-   */
   it('ignores the port on both sides', async () => {
     const h = harness([
       offerable({ publicBaseUrl: 'https://formulare.alpha.example' }),
@@ -308,22 +279,11 @@ describe('the offer route holds no client secret', () => {
     expect(offers[0]?.atThisAddress).toBe(true);
   });
 
-  /**
-   * **Was `normaliseBaseUrl` als Basis-Adresse ablehnt, ist hier kein
-   * Treffer** — und was es durchlässt, ist einer. Der Punkt ist nicht eine
-   * eigene Strenge, sondern **dieselbe**: gäbe es hier ein zweites „was ist
-   * eine Basis-Adresse?", wäre es das großzügigere, und ein Wert, den
-   * `PublicUrlService.resolveBaseUrl` wie einen fehlenden behandelt, ergäbe
-   * hier eine Vorbelegung.
-   *
-   * Ein rohes `new URL` nähme beide Werte unten an. Deshalb sind sie hier
-   * aufgeschrieben und nicht die Regel, aus der sie folgen.
-   */
   it('refuses what is not a base address, exactly as PublicUrlService does', async () => {
     for (const stored of [
-      // Kein http(s) — `safeExternalUrl` lehnt das Schema ab.
+      // No http(s) — `safeExternalUrl` refuses the scheme.
       'ftp://formulare.alpha.example',
-      // Query: „cannot be part of a base address" (`base-url.ts`).
+      // A query string — "cannot be part of a base address" (`base-url.ts`).
       'https://formulare.alpha.example?a=1',
     ]) {
       const h = harness([offerable({ publicBaseUrl: stored })]);

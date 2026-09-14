@@ -275,26 +275,12 @@ export const oidcProviderSchema = z.strictObject({
   /** Caption of the button, already resolved to the shipped default if unset. */
   buttonLabel: z.string().min(1),
   /**
-   * Whether **this** organisation is the one the address in the browser's bar
-   * belongs to — `tenant.public_base_url` matched against the host the request
-   * arrived under, resolved server-side.
-   *
-   * At most one entry of a list carries `true`, and only when the match is
-   * unambiguous: two organisations may hold the same base address (the column
-   * has no unique index), and „zwei Treffer" is not an answer to „welche ist
-   * gemeint", so it counts as none.
-   *
-   * **A boolean, never the address.** The comparison happens on the server and
-   * only its outcome travels — the same posture `OidcSecretsService.isUsable`
-   * takes with a client secret, for a weaker but real reason: this route is
-   * reachable without a session, and handing out where every organisation is
-   * reachable would widen an answer that is already more talkative than it
-   * ought to be.
-   *
-   * **It decides nothing.** The client pre-selects the entry in its chooser and
-   * that is all; whoever is signing in sees the selection and may change it.
-   * That is what makes it sound to derive this from a request header at all —
-   * see `OidcLoginController.providers`.
+   * Whether this organisation's base address matches the host the request
+   * arrived under — resolved server-side, at most one `true` per list (two
+   * organisations sharing an address counts as none, not two). A boolean
+   * only, the address itself never travels; it merely pre-selects an entry
+   * in the client's chooser, which whoever signs in may still change (see
+   * `OidcLoginController.providers`).
    */
   atThisAddress: z.boolean(),
 });

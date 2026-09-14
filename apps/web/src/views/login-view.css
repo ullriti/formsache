@@ -158,17 +158,9 @@
 }
 
 /*
- * Zwei Zeilen: der Organisationsname, darunter die Handlung.
- *
- * Das Gewicht wanderte vom Knopf auf die erste Zeile — fett wäre auf beiden
- * Zeilen kein Gewicht mehr, sondern nur noch Lautstärke. Die zweite Zeile ist
- * gedämpft und kleiner, weil sie bei mehreren Organisationen oft dieselbe ist
- * (die ausgelieferte Vorgabe) und dann nichts unterscheidet: was unterscheidet,
- * steht oben.
- *
- * `align-items: center` statt `text-align` auf dem Anker: die Spans sind
- * Flex-Kinder, und eine zentrierte Textzeile in einem linksbündigen Kasten wäre
- * bei einem Namen, der umbricht, wieder linksbündig.
+ * Two lines: organisation name, then the caption underneath, muted and
+ * smaller — often the same shipped default across organisations, so it's
+ * the name that has to carry the distinction.
  */
 .login__sso-button {
   display: flex;

@@ -196,15 +196,9 @@ describe('OIDC login', () => {
     });
 
     /**
-     * **Die Kette über den Draht** — Kopfzeile, Express' `trust proxy`,
-     * Controller, Dienst. Die Einheitentests springen bei `providers({ host })`
-     * ein und überspringen damit genau die Schicht, in der entschieden wird, ob
-     * ein weitergereichter Host überhaupt geglaubt werden darf. Hier steht
-     * `TRUST_PROXY_HOPS: 1` (oben im Aufbau), also wird er geglaubt.
-     *
-     * Der zweite `expect` ist der Nicht-Preisgabe-Test für den Fall, den die
-     * Einheitentests nicht abdecken: eine **gesetzte** Basis-Adresse. Sie wird
-     * verglichen und darf trotzdem nicht in der Antwort stehen.
+     * The chain over the wire — header, Express' `trust proxy`, controller,
+     * service — which the unit tests skip past. `TRUST_PROXY_HOPS: 1` is set
+     * above, so `X-Forwarded-Host` is believed here.
      */
     it('marks the organisation reachable under the address the request came in on', async () => {
       const address = 'formulare.alpha.invalid';
@@ -222,8 +216,7 @@ describe('OIDC login', () => {
       expect(
         offers.find((offer) => offer.tenantId === alpha.id)?.atThisAddress,
       ).toBe(true);
-      // Positivliste wie nebenan: verglichen wird serverseitig, die Adresse
-      // selbst reist nicht mit.
+      // Compared server-side, but the address itself never travels.
       expect(response.text).not.toContain(address);
 
       await app().prisma.tenant.update({

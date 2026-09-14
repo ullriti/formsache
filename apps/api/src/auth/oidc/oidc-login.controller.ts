@@ -37,11 +37,8 @@ import {
  *
  * **All three are reachable without a session** — that is what a login is — so
  * all three carry their own rate limit and none of them answers a question about
- * an organisation that a stranger has no business asking. The **one** exception
- * is named where it is made: {@link providers} confirms, for a guessed host,
- * whether an SSO organisation answers there, because a chooser that cannot
- * pre-select is a question asked twice. Nothing else here reads the request's
- * host. `GET` throughout, which is not
+ * an organisation that a stranger has no business asking, with one exception
+ * named at {@link providers}. `GET` throughout, which is not
  * a style choice: the provider sends the browser back with a top-level
  * navigation, and a top-level navigation is a `GET`. The global `CsrfGuard`
  * therefore lets them pass on the safe-method rule and **no `@CsrfExempt` is
@@ -88,38 +85,15 @@ export class OidcLoginController {
    * application (`common/rate-limit.module.ts`), and a second one replaces it
    * silently — the regression that removed the login's rate limit.
    *
-   * ## The one route that reads the request's host, and why it may
-   *
-   * `OidcProvider.atThisAddress` says which organisation belongs to the address
-   * in the browser's bar, so that a chooser can pre-select it. That address can
-   * only come from the request, and the request's host is written by whoever
-   * calls — the very thing {@link callback} refuses to take `Host` or
-   * `X-Forwarded-Host` from.
-   *
-   * **The difference is what the value decides.** There it picks the address an
-   * authorization code is redeemed against; here it moves a pre-selection in a
-   * form that the person signing in sees and may change. Whoever forges the
-   * value reaches exactly what they would reach by opening the chooser and
-   * picking that entry — so there is nothing to gain and nothing to protect.
-   * It is also `request.host` rather than a header, so how far a forwarded
-   * value counts at all stays `TRUST_PROXY_HOPS`'s decision and not this
-   * route's (see {@link HostRequest}).
-   *
-   * **What it does cost, stated plainly:** this route confirms, for a host
-   * somebody may simply **guess**, whether an SSO organisation sits there and
-   * which one. No path to that address is needed and no trace is left on it;
-   * the only brake is this route's rate limit. That pairing — host to
-   * organisation — was not askable anywhere before, and it is the one point on
-   * which the class note above („none of them answers a question about an
-   * organisation that a stranger has no business asking") now carries an
-   * exception. The addresses themselves still never travel
-   * (`oidc-tenants.service.ts`); what can be confirmed is a guess about one.
-   *
-   * ⚠️ **This reasoning holds for a pre-selection and for nothing else.**
-   * Anything derived from this value that decides where a redirect goes, which
-   * organisation a session belongs to, or what somebody may see, is an
-   * assertion of the sender — and belongs to the rule {@link callback} states,
-   * not to this exception.
+   * **Reads `request.host`** to set `OidcProvider.atThisAddress`, so a chooser
+   * can pre-select the organisation the browser's address belongs to — the one
+   * exception to "answers no question a stranger has no business asking"
+   * above. Safe because the value only moves a pre-selection the person
+   * signing in sees and may change: forging it reaches nothing more than
+   * opening the chooser and picking that entry would. It is `request.host`,
+   * not a raw header, so `TRUST_PROXY_HOPS` still governs how far a forwarded
+   * value counts (see {@link HostRequest}). Nothing derived from it may decide
+   * a redirect, a session or access — that stays {@link callback}'s rule.
    */
   @Get('providers')
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
@@ -303,6 +277,17 @@ interface RedirectingResponse extends CookieResponse {
 }
 
 /**
+ * `host`, not a raw header: Express builds it applying `trust proxy`
+ * (`app-setup.ts`, from `TRUST_PROXY_HOPS`), so a caller-written
+ * `X-Forwarded-Host` counts only as far as the operator declared a proxy
+ * chain — the same question `client-address.ts` already settles, not a
+ * second one asked here.
+ */
+interface HostRequest {
+  readonly host?: string | undefined;
+}
+
+/**
  * The callback additionally needs the **query string of this request**, and
  * nothing else of it.
  *
@@ -312,24 +297,6 @@ interface RedirectingResponse extends CookieResponse {
  * *configured* callback address, and there is no member on this interface
  * through which a caller-written `Host` could reach it.
  */
-/**
- * "Something one host can be read from" — structurally minimal, like
- * {@link CookieRequest} next door: nothing here needs Express as a type.
- *
- * **`host`, not a header.** Express builds this value itself and applies
- * `trust proxy` while doing so (`app-setup.ts` sets it from
- * `TRUST_PROXY_HOPS`): `X-Forwarded-Host` counts only as far as the
- * operator declared a proxy chain, a caller-written header on an installation
- * without one does not, and a list left by a proxy that appends rather than
- * replaces is reduced to its first entry. Reading the header here instead would
- * be a second answer to "may this header be believed?" — the question
- * `client-address.ts` already settles for the whole application, and the one
- * place where a second opinion is worth nothing.
- */
-interface HostRequest {
-  readonly host?: string | undefined;
-}
-
 interface CallbackRequest extends CookieRequest {
   readonly url?: string | undefined;
 }
