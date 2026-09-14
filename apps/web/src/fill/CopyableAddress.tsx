@@ -43,8 +43,11 @@ async function writeToClipboard(text: string): Promise<boolean> {
 
 export interface CopyableAddressProps {
   readonly url: string;
-  /** What this address is and what is lost if it is not kept. */
-  readonly hint: string;
+  /**
+   * What this address is and what is lost if it is not kept. Omitted when the
+   * label above already says everything there is to say.
+   */
+  readonly hint?: string;
   /** Distinguishes the confirmation's edit address from a saved draft's. */
   readonly testId: string;
   /**
@@ -80,7 +83,7 @@ export function CopyableAddress({
         </span>
         {label}
       </p>
-      <p className="public__edit-hint">{hint}</p>
+      {hint ? <p className="public__edit-hint">{hint}</p> : null}
       {/*
         Address and copy button in one row, so the button is visibly *this*
         address's button and not a control belonging to the page.
