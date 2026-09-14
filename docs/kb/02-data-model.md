@@ -174,12 +174,19 @@ Editor zeigt beides. Am gespeicherten Dokument ändert das nichts — dieselbe
 Zeile, zwei Ausgaben.
 
 `system_setting` trägt keine Formular-Standards, sondern nur, was keine
-Umgebungsvariable ist: SMTP-Block, Basis-Adresse, `reply_to`, Alarm-Adresse,
-die KI-Konfiguration samt verschlüsseltem Schlüssel und die
-Benachrichtigungs-Vorlagen. Mail, Vorlagen und KI tragen **je einen eigenen**
-Revisionszähler: drei Seiten pflegen dieselbe Zeile, und ein gemeinsamer Zähler
-meldete „jemand war schneller" auch dann, wenn der andere etwas völlig anderes
-angefasst hat.
+Umgebungsvariable ist: SMTP-Block, Basis-Adresse, `reply_to`, Alarm-Adresse und
+die KI-Konfiguration samt verschlüsseltem Schlüssel. Mail und KI tragen **je
+einen eigenen** Revisionszähler: zwei Seiten pflegen dieselbe Zeile, und ein
+gemeinsamer Zähler meldete „jemand war schneller" auch dann, wenn die andere
+Seite etwas völlig anderes angefasst hat.
+
+Die Benachrichtigungs-Vorlagen standen bis
+[ADR-0032](../architecture/0032-benachrichtigungs-vorlagen-je-organisation.md)
+ebenfalls hier. Seitdem trägt sie `tenant.notification_templates`, mit
+`notification_templates_revision` als eigenem Zähler neben
+`branding_revision` und `legal_revision` — jede Organisation hat ihr eigenes
+Dokument, kopiert aus der damaligen Systemzeile bzw. der ausgelieferten
+Vorgabe.
 
 ### Betrieb
 

@@ -89,9 +89,16 @@ alle Systemeinstellungen, jeder mit dem Satz, was ohne ihn nicht geht.
 | 2 | **Basis-Adresse** — aus der Aufruf-Adresse vorbelegt, aber zu bestätigen | Links in Mails bleiben unaufgelöst (Bearbeiten-Link, Rücksetz-Link) |
 | 3 | **Mailserver der Instanz** | die Installation verschickt nichts — und **kein neues Konto entsteht**, siehe unten |
 | 4 | **Antwortadresse und Betreiberadresse** | ein Betriebsalarm erreicht niemanden |
-| 5 | **Benachrichtigungs-Vorlagen** | es gelten die ausgelieferten drei |
-| 6 | **KI** | die KI-Formularerstellung ist abwesend |
+| 5 | **KI** | die KI-Formularerstellung ist abwesend |
+| 6 | **Rechtliche Angaben** | Impressum und Datenschutzerklärung der Installation sagen „nichts hinterlegt" |
 | 7 | **Erste Organisation** | niemand kann ein Formular anlegen |
+
+Benachrichtigungs-Vorlagen stehen **nicht** mehr in dieser Liste: seit
+[ADR-0032](../architecture/0032-benachrichtigungs-vorlagen-je-organisation.md)
+gehören sie jeder Organisation einzeln (Reiter *Vorlagen* der
+Organisations-Verwaltung), mit den ausgelieferten drei bereits vorbelegt, sobald
+die Organisation angelegt wird — es gibt nichts Installationsweites mehr
+einzurichten.
 
 Nach Schritt 1 meldet der Assistent sich mit den eben getippten Zugangsdaten
 gewöhnlich an; die Schritte 2 bis 7 sind angemeldete Routen. Was offen bleibt,
