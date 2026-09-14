@@ -7,7 +7,6 @@ import {
   SYSTEM_MONITORING_PATH,
   SYSTEM_PATH,
   SYSTEM_SUPERADMINS_PATH,
-  SYSTEM_TEMPLATES_PATH,
 } from '../router/routes';
 import { navigate } from '../router/use-route';
 import { OpsView } from './OpsView';
@@ -15,7 +14,6 @@ import { SuperadminView } from './SuperadminView';
 import { SystemAiSettingsTab } from './system-settings/SystemAiSettingsTab';
 import { SystemMailSettingsTab } from './system-settings/SystemMailSettingsTab';
 import { SystemLegalTab } from './system-settings/SystemLegalTab';
-import { SystemNotificationTemplatesTab } from './system-settings/SystemNotificationTemplatesTab';
 import { SystemOpenItems } from './system-settings/SystemOpenItems';
 import { SystemSuperadminsTab } from './system-settings/SystemSuperadminsTab';
 
@@ -23,22 +21,20 @@ import './settings-view.css';
 import './system-admin-view.css';
 
 /**
- * The tabs of the system administration (finding 16; *Vorlagen* since ADR-0022,
- * continuation 2026-08-18).
+ * The tabs of the system administration (finding 16).
  *
  * They were three separate areas with three entries in the head navigation —
  * `superadmin` (Organisationen), `ops` (Betrieb) and `system-settings` with two
  * tabs of their own. Why they belong together and why each of them nonetheless
  * keeps its own address stands at the route (`router/routes.ts`).
+ *
+ * *Vorlagen* stood here from ADR-0022 until ADR-0032, which moved notification
+ * templates in full to the organisation administration — every organisation
+ * now owns and edits its own, so there is nothing installation-wide left to
+ * show here.
  */
 export type SystemAdminTab =
-  | 'tenants'
-  | 'monitoring'
-  | 'mail'
-  | 'templates'
-  | 'ai'
-  | 'legal'
-  | 'superadmins';
+  'tenants' | 'monitoring' | 'mail' | 'ai' | 'legal' | 'superadmins';
 
 /**
  * **„Überwachung" and not „Betrieb"** (finding 16, decision of the user).
@@ -52,7 +48,6 @@ const TAB_LABELS: Record<SystemAdminTab, string> = {
   tenants: 'Organisationen',
   monitoring: 'Überwachung',
   mail: 'Mailserver',
-  templates: 'Vorlagen',
   ai: 'KI',
   legal: 'Rechtstexte',
   /**
@@ -67,7 +62,6 @@ const TAB_PATHS: Record<SystemAdminTab, string> = {
   tenants: SYSTEM_PATH,
   monitoring: SYSTEM_MONITORING_PATH,
   mail: SYSTEM_MAIL_PATH,
-  templates: SYSTEM_TEMPLATES_PATH,
   ai: SYSTEM_AI_PATH,
   legal: SYSTEM_LEGAL_SETTINGS_PATH,
   superadmins: SYSTEM_SUPERADMINS_PATH,
@@ -77,16 +71,14 @@ const TAB_ORDER: readonly SystemAdminTab[] = [
   'tenants',
   'monitoring',
   'mail',
-  'templates',
   'ai',
-  // Appended and not inserted — the same consideration that *Mailversand* and
-  // *KI* have already received: a link or an E2E case that counts "the fifth
-  // tab" stays intact.
+  // Appended and not inserted — the same consideration ADR-0029 got below:
+  // a link or an E2E case that counts "the n-th tab" stays intact.
   'legal',
   // Likewise appended (ADR-0029). ⚠️ Two lists in `e2e/` count along: `TABS`
   // in `system-settings.spec.ts` (the count catches exactly the tab that
   // no loop knows) and `a11y/views.ts`, which is held against the route kinds
-  // of the router. Whoever appends an eighth one here enters it there
+  // of the router. Whoever appends another one here enters it there
   // afterwards — otherwise the count is red or the axe run quietly too short.
   'superadmins',
 ];
@@ -201,8 +193,6 @@ export function SystemAdminView({
         <div className="system-admin__forms">
           {tab === 'mail' ? (
             <SystemMailSettingsTab />
-          ) : tab === 'templates' ? (
-            <SystemNotificationTemplatesTab />
           ) : tab === 'legal' ? (
             <SystemLegalTab />
           ) : (

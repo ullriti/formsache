@@ -7,6 +7,7 @@ import {
   TENANT_LEGAL_SETTINGS_PATH,
   TENANT_MAIL_PATH,
   TENANT_MEMBERS_PATH,
+  TENANT_TEMPLATES_PATH,
 } from '../router/routes';
 import { navigate } from '../router/use-route';
 import { MailIdentityCard } from './tenant-admin/MailIdentityCard';
@@ -14,20 +15,29 @@ import { TenantAiTab } from './tenant-admin/TenantAiTab';
 import { TenantAppearanceTab } from './tenant-admin/TenantAppearanceTab';
 import { TenantLegalTab } from './tenant-admin/TenantLegalTab';
 import { TenantMembersTab } from './tenant-admin/TenantMembersTab';
+import { TenantTemplatesTab } from './tenant-admin/TenantTemplatesTab';
 import { TenantFormDefaultsView } from './TenantFormDefaultsView';
 
 import './settings-view.css';
 import './tenant-admin/tenant-admin-view.css';
 
 /**
- * The five sibling addresses, in the order the tabs show them.
+ * The seven sibling addresses, in the order the tabs show them.
  *
  * The first three are handoff; *Mailversand* arrived after them and is appended rather than inserted, so an existing
  * link or E2E case that counts "the third tab" is unaffected. *KI* came as
- * the fifth (ADR-0025) and was appended for the same reason.
+ * the fifth (ADR-0025), *Rechtstexte* as the sixth (ADR-0028) and *Vorlagen*
+ * as the seventh (ADR-0032, moved here from the system administration) —
+ * each appended for the same reason.
  */
 export type TenantAdminTab =
-  'appearance' | 'form-defaults' | 'members' | 'mail' | 'ai' | 'legal';
+  | 'appearance'
+  | 'form-defaults'
+  | 'members'
+  | 'mail'
+  | 'ai'
+  | 'legal'
+  | 'templates';
 
 export interface TenantAdminViewProps {
   /** Id of the active Organisation, or `undefined` while none is scoped. */
@@ -55,7 +65,7 @@ export interface TenantAdminViewProps {
    * `MailIdentityCard`.
    */
   readonly currentUserEmail: string;
-  /** Which of the five siblings the current address is. */
+  /** Which of the siblings the current address is. */
   readonly tab: TenantAdminTab;
 }
 
@@ -66,6 +76,7 @@ const TAB_LABELS: Record<TenantAdminTab, string> = {
   mail: 'Mailversand',
   ai: 'KI',
   legal: 'Rechtstexte',
+  templates: 'Vorlagen',
 };
 
 const TAB_PATHS: Record<TenantAdminTab, string> = {
@@ -75,6 +86,7 @@ const TAB_PATHS: Record<TenantAdminTab, string> = {
   mail: TENANT_MAIL_PATH,
   ai: TENANT_AI_PATH,
   legal: TENANT_LEGAL_SETTINGS_PATH,
+  templates: TENANT_TEMPLATES_PATH,
 };
 
 const TAB_ORDER: readonly TenantAdminTab[] = [
@@ -83,12 +95,14 @@ const TAB_ORDER: readonly TenantAdminTab[] = [
   'members',
   'mail',
   'ai',
-  // Appended like the two before it (ADR-0028).
   'legal',
+  // Appended (ADR-0032) — the notification templates of this organisation,
+  // moved here from the system administration.
+  'templates',
 ];
 
 /**
- * Tenant administration (handoff) — four sibling addresses, one segmented
+ * Tenant administration (handoff) — sibling addresses, one segmented
  * control switching between them.
  *
  * **Only the frame is new here.** The `form-defaults` tab is
@@ -98,11 +112,13 @@ const TAB_ORDER: readonly TenantAdminTab[] = [
  * deliberately still true: the tab bar lives here, one level up, not inside a
  * view three other tests already cover.
  *
- * **`mail` is the fourth, added after the handoff's own three** (ADR-0013): the organisation's own sending identity belongs
+ * **`mail` was the fourth, added after the handoff's own three** (ADR-0013): the organisation's own sending identity belongs
  * next to its branding and OIDC — same guard shape (`canManageSettings` on
  * the route), same reason to be a sibling address rather than a mode.
+ * `templates` (ADR-0032) is the most recent addition, moved here in full from
+ * the system administration.
  *
- * **Why a `tab` prop and not a `useRoute()` call in here.** The four routes
+ * **Why a `tab` prop and not a `useRoute()` call in here.** The routes
  * are parsed once, in the shell, and every other view in this application
  * takes its routing facts as props rather than re-deriving them — a second
  * reading of `window.location` here would be a second router.
@@ -155,7 +171,7 @@ export function TenantAdminView({
         is the same defect class as a disabled control that looks like a
         function — it tells assistive technology something the page does not do.
 
-        What these are is four sibling **addresses** (`TAB_PATHS`), each one a
+        What these are is sibling **addresses** (`TAB_PATHS`), each one a
         full page load away, so the honest markup is a navigation with
         `aria-current="page"` on the one being shown. Buttons rather than links
         because `navigate()` is this application's one router entry point; the
@@ -202,6 +218,8 @@ export function TenantAdminView({
           tenantName={tenantName}
           tenantShortName={tenantShortName}
         />
+      ) : tab === 'templates' ? (
+        <TenantTemplatesTab tenantId={tenantId} />
       ) : (
         <TenantAiTab tenantId={tenantId} />
       )}

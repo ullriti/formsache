@@ -427,6 +427,25 @@ export const A11Y_VIEWS: readonly A11yView[] = [
   },
   {
     /*
+      **Organisations-Verwaltung · Vorlagen** — the seventh tab (ADR-0032,
+      moved here in full from the system administration's former
+      `system-templates` entry, which stood next to `system-legal-settings`
+      above).
+
+      The marker is the first template card: the heading „Vorlagen"
+      stands only in the tab bar, and waiting for it would mean waiting for
+      the frame instead of for the content.
+    */
+    kind: 'tenant-templates',
+    name: 'Organisations-Verwaltung · Vorlagen',
+    audience: 'signed-in',
+    open: async (page) => {
+      await page.goto('/admin/templates');
+      await settledTenantTab(page, 'Vorlagen', 'Bestätigung an Teilnehmer');
+    },
+  },
+  {
+    /*
       **The setup assistant of an organisation** (ADR-0025) — not a
       tab, a flow above them, and therefore an address of its own.
 
@@ -464,14 +483,16 @@ export const A11Y_VIEWS: readonly A11yView[] = [
   },
   {
     /*
-      **The tabs of the system administration** (finding 16; *Vorlagen* since
-      ADR-0022, continued 2026-08-18). Until then there stood
+      **The tabs of the system administration** (finding 16). Until then there stood
       here five entries for three separate areas — the superadmin overview,
       the „Betrieb" and the „Systemeinstellungen" with their bare address and
       two sub-paths. The five kinds (`superadmin`, `ops`, `system-settings`,
       `system-mail-settings`, `system-ai-settings`) no longer exist; what
-      `parseRoute` produces today are the **six** below — *Vorlagen* since
-      ADR-0022, *Rechtstexte* since ADR-0028.
+      `parseRoute` produces today are the entries below — *Rechtstexte* since
+      ADR-0028, *Superadmins* since ADR-0029. *Vorlagen* stood among them from
+      ADR-0022 until ADR-0032 moved notification templates from the
+      installation to every organisation; its entry moved with it, to
+      `tenant-templates` further up.
 
       **Every tab is an entry of its own and not a click sequence through the
       tab bar.** What axe measures here is the state in which a human arrives
@@ -516,18 +537,6 @@ export const A11Y_VIEWS: readonly A11yView[] = [
     open: async (page) => {
       await page.goto('/admin/system/mail');
       await settledSystemTab(page, 'Mailserver', 'Mailserver');
-    },
-  },
-  {
-    kind: 'system-templates',
-    name: 'Systemverwaltung · Vorlagen',
-    audience: 'signed-in',
-    open: async (page) => {
-      await page.goto('/admin/system/templates');
-      // The marker is the first template card: the heading „Vorlagen"
-      // stands only in the tab bar, and waiting for it would mean waiting for
-      // the frame instead of for the content.
-      await settledSystemTab(page, 'Vorlagen', 'Bestätigung an Teilnehmer');
     },
   },
   {

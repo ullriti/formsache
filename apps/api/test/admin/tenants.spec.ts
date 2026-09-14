@@ -1,6 +1,8 @@
 import {
+  NOTIFICATION_TEMPLATES_FLOOR,
   TENANT_SETTINGS_FLOOR,
   parseTenantOverview,
+  type NotificationTemplate,
   type TenantFormSettings,
 } from '@formsache/shared';
 import request from 'supertest';
@@ -448,6 +450,44 @@ describe('the superadmin overview and creating an organisation ', () => {
         select: { formDefaults: true },
       });
       expect(row.formDefaults).toStrictEqual({});
+    });
+
+    /**
+     * **The opposite choice from `form_defaults`, and deliberately so**
+     * (ADR-0032). There is no installation-wide row left for notification
+     * templates to inherit from any more — the organisation's own row is the
+     * whole answer from the moment it exists, so this checks that it is
+     * genuinely **written**, not left empty the way `form_defaults` is.
+     */
+    it('seeds the shipped notification templates for a freshly created organisation', async () => {
+      const created = await createTenantRequest(
+        newTenant('NEWE', 'admin@newe.example'),
+      );
+      expect(created.status).toBe(201);
+      await redeemInvitation(app(), 'admin@newe.example', PASSWORD);
+      const session = await login(app(), 'admin@newe.example', PASSWORD);
+
+      const templates = await request(app().server)
+        .get(apiPath('/tenant/notification-templates'))
+        .set('Cookie', cookieHeader(session));
+      expect(templates.status).toBe(200);
+      expect(
+        (templates.body as { templates: unknown[]; decided: boolean }).decided,
+        'a fresh organisation already has its own document — not the ' +
+          '"nichts entschieden" state a merely tolerant fallback would show',
+      ).toBe(true);
+      expect(
+        (templates.body as { templates: NotificationTemplate[] }).templates,
+      ).toEqual(NOTIFICATION_TEMPLATES_FLOOR);
+
+      // And the column itself carries the document — unlike `form_defaults`
+      // above, which stays empty on purpose.
+      const { tenant } = created.body as { tenant: { id: string } };
+      const row = await app().prisma.tenant.findUniqueOrThrow({
+        where: { id: tenant.id },
+        select: { notificationTemplates: true },
+      });
+      expect(row.notificationTemplates).toEqual(NOTIFICATION_TEMPLATES_FLOOR);
     });
 
     it('refuses a Kurzname that is already taken', async () => {

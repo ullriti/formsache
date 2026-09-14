@@ -910,12 +910,12 @@ export {
   NOTIFICATION_TEMPLATES_FLOOR,
   NOTIFICATION_TEMPLATE_LIMIT,
   acceptsTemplate,
-  parseSystemNotificationTemplates,
-  systemNotificationTemplatesResponseSchema,
-  systemNotificationTemplatesSchema,
-  updateSystemNotificationTemplatesRequestSchema,
-  type SystemNotificationTemplatesResponse,
-  type UpdateSystemNotificationTemplatesRequest,
+  notificationTemplatesDocumentSchema,
+  parseNotificationTemplatesDocument,
+  tenantNotificationTemplatesResponseSchema,
+  updateTenantNotificationTemplatesRequestSchema,
+  type TenantNotificationTemplatesResponse,
+  type UpdateTenantNotificationTemplatesRequest,
 } from './notification-templates.ts';
 export {
   ADDRESS_QUESTION_TYPES,

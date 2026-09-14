@@ -3,8 +3,6 @@ import {
   updateSystemAiSettingsRequestSchema,
   updateSystemLegalRequestSchema,
   updateSystemMailSettingsRequestSchema,
-  updateSystemNotificationTemplatesRequestSchema,
-  type SystemNotificationTemplatesResponse,
 } from '@formsache/shared';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 
@@ -13,7 +11,6 @@ import { SuperadminGuard } from '../auth/superadmin.guard';
 import { parseRequest } from '../common/parse-request';
 import { SystemAiAdminService } from './system-ai-admin.service';
 import { SystemMailAdminService } from './system-mail-admin.service';
-import { SystemNotificationTemplatesAdminService } from './system-notification-templates-admin.service';
 import { SystemLegalService } from './system-legal.service';
 import type {
   SystemAiSettingsResponse,
@@ -43,9 +40,11 @@ const SYSTEM_SETTINGS_RATE_LIMIT = { limit: 60, ttl: 60_000 } as const;
  * second controller would be a second answer to a question
  * `system-settings.repository.ts` already settles once.
  *
- * The third pair, `GET`/`PUT /notification-templates`, arrived with the setup
- * wizard (ADR-0022, continuation 2026-08-18) and closed the one column of
- * this row that was read and never written.
+ * There used to be a *third* pair here, `GET`/`PUT /notification-templates`
+ * (ADR-0022, continuation 2026-08-18). It is gone with the row it edited —
+ * every organisation now owns and writes its own templates instead
+ * (ADR-0032, reversing ADR-0011 for this one facet), at
+ * `GET`/`PUT /tenant/notification-templates`.
  *
  * There used to be a *fourth* pair here, `GET`/`PUT /form-defaults`, for a layer
  * of form settings below every organisation. It is gone with the layer
@@ -94,7 +93,6 @@ export class SystemSettingsController {
   constructor(
     private readonly mail: SystemMailAdminService,
     private readonly ai: SystemAiAdminService,
-    private readonly templates: SystemNotificationTemplatesAdminService,
     private readonly legal: SystemLegalService,
   ) {}
 
@@ -132,31 +130,6 @@ export class SystemSettingsController {
   replaceAi(@Body() body: unknown): Promise<SystemAiSettingsResponse> {
     return this.ai.replace(
       parseRequest(updateSystemAiSettingsRequestSchema, body),
-    );
-  }
-
-  /**
-   * The **notification templates** of the installation (ADR-0022,
-   * continuation 2026-08-18) — the third pair on the same row, behind
-   * the same guard and under the same rate limit.
-   *
-   * It is the pair that did not exist for a long time: the column was read and
-   * written by nothing. What comes with this route is therefore not only
-   * a controller pair, but also the counter without which a write path on
-   * a shared row silently overwrites somebody else's change
-   * (`20260818100000_notification_templates_revision`).
-   */
-  @Get('notification-templates')
-  readTemplates(): Promise<SystemNotificationTemplatesResponse> {
-    return this.templates.read();
-  }
-
-  @Put('notification-templates')
-  replaceTemplates(
-    @Body() body: unknown,
-  ): Promise<SystemNotificationTemplatesResponse> {
-    return this.templates.replace(
-      parseRequest(updateSystemNotificationTemplatesRequestSchema, body),
     );
   }
 

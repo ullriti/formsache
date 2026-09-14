@@ -26,10 +26,10 @@ import { PrismaService } from '../prisma/prisma.service';
  *    make the write **miss**, never make it hit a different row, because
  *    there is no different row.
  * 3. **The counter-check:** no domain path writes this row. Reading is done by
- *    the templates' reader and by the readers of the mail block, the base
- *    address and the KI block; writing belongs to the superadmin routes behind
- *    the guard — `/mail`, `/ai` and `/notification-templates` in
- *    `system-settings.controller.ts` — and to nothing else. A service that started writing it from an
+ *    the readers of the mail block, the base address, the legal texts and the
+ *    KI block; writing belongs to the superadmin routes behind the guard —
+ *    `/mail`, `/ai` and `/legal` in `system-settings.controller.ts` — and to
+ *    nothing else. A service that started writing it from an
  *    organisation-facing route would be the regression that survives every
  *    test — the same warning `mail-queue.repository.ts` carries for the
  *    queue.
@@ -88,27 +88,6 @@ export interface SystemAiRow {
 export const INITIAL_AI_REVISION = 1;
 
 /**
- * The templates **with their counter** — what the superadmin page reads.
- *
- * A projection of its own next to {@link SystemSettingRow}, for the reason
- * {@link SystemSmtpRow} spells out for the mail page: the tolerant reader
- * ({@link SystemSettingsRepository.find}) runs on every call of an
- * organization's notification list and does not need the lock;
- * the page that writes needs it and is the only one that gets it.
- */
-export interface SystemNotificationTemplatesRow {
-  readonly notificationTemplates: Prisma.JsonValue | null;
-  readonly notificationTemplatesRevision: number;
-}
-
-/**
- * The counter value an installation **without** a row reports — the same
- * default the column carries (`schema.prisma`), so that the read on a missing
- * row and the write that creates it cannot disagree about the number.
- */
-export const INITIAL_NOTIFICATION_TEMPLATES_REVISION = 1;
-
-/**
  * The legal texts **with their counter** — what the superadmin page reads and
  * what the public delivery needs (ADR-0028).
  */
@@ -122,18 +101,6 @@ export interface SystemLegalRow {
  * default the column carries.
  */
 export const INITIAL_LEGAL_REVISION = 1;
-
-/** What a reader of the row needs — nothing more is selected. */
-export interface SystemSettingRow {
-  /**
-   * The delivered notification templates, or `null` for “nothing decided”.
-   *
-   * Nullable in the column: the absence of a decision is a state of its own
-   * here and does not have to be spelled as an empty document — see the
-   * field's own note in `schema.prisma`.
-   */
-  readonly notificationTemplates: Prisma.JsonValue | null;
-}
 
 /**
  * The two columns of the row that have nothing to do with the settings
@@ -228,22 +195,6 @@ export class SystemSettingsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * The stored row, or `null` when nobody has written one.
-   *
-   * `null` is a first-class answer here, not an error: “no row” means
-   * “nothing decided” and is the state of every fresh installation
-   * (no backfill). Telling it apart from “row there, but
-   * unreadable” is what the requirement is about, and it can only be told apart
-   * because this method hands back the row rather than a parsed document.
-   */
-  find(): Promise<SystemSettingRow | null> {
-    return this.prisma.systemSetting.findUnique({
-      where: { id: SYSTEM_SETTING_ID },
-      select: { notificationTemplates: true },
-    });
-  }
-
-  /**
    * The installation's mail block alone, or `null` when nobody has written
    * the row.
    *
@@ -262,73 +213,9 @@ export class SystemSettingsRepository {
   }
 
   /**
-   * The templates and their counter — the superadmin page of the templates.
-   *
-   * `null` means “no row”: the caller then reports
-   * {@link INITIAL_NOTIFICATION_TEMPLATES_REVISION} and the shipped templates,
-   * exactly as the mail page does for its two columns.
-   */
-  findTemplatesForAdmin(): Promise<SystemNotificationTemplatesRow | null> {
-    return this.prisma.systemSetting.findUnique({
-      where: { id: SYSTEM_SETTING_ID },
-      select: {
-        notificationTemplates: true,
-        notificationTemplatesRevision: true,
-      },
-    });
-  }
-
-  /**
-   * Writes the templates under their **own** counter.
-   *
-   * Built word for word like {@link writeMail} and {@link writeAi}, and that is
-   * the whole intent here: `updateMany` with the expected counter value in the
-   * `where` (a stale write matches **no** row instead of matching a different
-   * one — there is no different one), and only once nothing has been matched,
-   * either a 409 or — at the initial value — the creation of the row via
-   * `createMany({ skipDuplicates: true })`, that is an
-   * `INSERT … ON CONFLICT DO NOTHING`, decided by PostgreSQL and not a read
-   * followed by a write.
-   *
-   * `templates` has already been checked when it arrives here
-   * (`updateSystemNotificationTemplatesRequestSchema`); this repository judges
-   * no content.
-   */
-  async writeTemplates(
-    expectedRevision: number,
-    templates: Prisma.InputJsonValue,
-  ): Promise<boolean> {
-    const updated = await this.prisma.systemSetting.updateMany({
-      where: {
-        id: SYSTEM_SETTING_ID,
-        notificationTemplatesRevision: expectedRevision,
-      },
-      data: {
-        notificationTemplates: templates,
-        notificationTemplatesRevision: { increment: 1 },
-      },
-    });
-    if (updated.count === 1) {
-      return true;
-    }
-    if (expectedRevision !== INITIAL_NOTIFICATION_TEMPLATES_REVISION) {
-      return false;
-    }
-    const created = await this.prisma.systemSetting.createMany({
-      data: {
-        id: SYSTEM_SETTING_ID,
-        notificationTemplates: templates,
-        notificationTemplatesRevision: expectedRevision + 1,
-      },
-      skipDuplicates: true,
-    });
-    return created.count === 1;
-  }
-
-  /**
    * The installation's legal texts and their counter (ADR-0028).
    *
-   * A projection of its **own** next to {@link findTemplatesForAdmin}, for the
+   * A projection of its **own** next to {@link findMailForAdmin}, for the
    * reason {@link SystemSmtpRow} spells out for the mail page: this read runs
    * on the **public** path as well — every legal text page and every footer
    * asks for it —, and what a stranger triggers fetches exactly the columns

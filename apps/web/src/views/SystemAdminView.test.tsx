@@ -44,7 +44,7 @@ describe('the Systemverwaltung shell', () => {
     window.history.pushState(null, '', '/');
   });
 
-  it('offers the seven places an installation is administered from', async () => {
+  it('offers the six places an installation is administered from', async () => {
     stubFetch().mockResolvedValue(jsonResponse(200, MAIL_DOCUMENT));
     renderWithQuery(
       <SystemAdminView
@@ -63,10 +63,11 @@ describe('the Systemverwaltung shell', () => {
       'Organisationen',
       'Überwachung',
       'Mailserver',
-      // *Vorlagen* came with the write path of the notification templates
-      // (ADR-0022, continuation 2026-08-18) — until then the column existed,
-      // but nobody who could write it.
-      'Vorlagen',
+      // *Vorlagen* stood here from ADR-0022 until ADR-0032 moved notification
+      // templates in full to the organisation administration — every
+      // organisation now owns and edits its own row
+      // (`views/tenant-admin/TenantTemplatesTab.tsx`), so there is nothing
+      // installation-wide left to show on this tab bar.
       'KI',
       // *Rechtstexte* came with ADR-0028 — appended and not inserted,
       // so that a bookmark or an e2e case that counts "the fifth tab"

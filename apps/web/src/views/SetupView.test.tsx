@@ -173,12 +173,12 @@ describe('SetupView', () => {
     stubSetupFlow();
 
     renderWithQuery(<SetupView />);
-    expect(screen.getByText('Schritt 1 von 8')).toBeDefined();
+    expect(screen.getByText('Schritt 1 von 7')).toBeDefined();
 
     fillAdmin();
     click(SUBMIT);
 
-    expect(await screen.findByText('Schritt 2 von 8')).toBeDefined();
+    expect(await screen.findByText('Schritt 2 von 7')).toBeDefined();
     expect(
       screen.getByRole('heading', { name: 'Basis-Adresse' }),
     ).toBeDefined();
@@ -218,11 +218,11 @@ describe('SetupView', () => {
     renderWithQuery(<SetupView />);
     fillAdmin();
     click(SUBMIT);
-    await screen.findByText('Schritt 2 von 8');
+    await screen.findByText('Schritt 2 von 7');
 
     click('Überspringen');
 
-    expect(await screen.findByText('Schritt 3 von 8')).toBeDefined();
+    expect(await screen.findByText('Schritt 3 von 7')).toBeDefined();
     const writes = fetchMock.mock.calls.filter(
       ([, init]) => init?.method === 'PUT',
     );
@@ -261,7 +261,7 @@ describe('SetupView', () => {
     renderWithQuery(<SetupView />);
     fillAdmin();
     click(SUBMIT);
-    await screen.findByText('Schritt 2 von 8');
+    await screen.findByText('Schritt 2 von 7');
 
     expect(screen.queryByRole('button', { name: 'Zurück' })).toBeNull();
     // „Überspringen" on the other hand yes: from here on every step is skippable.
@@ -275,13 +275,13 @@ describe('SetupView', () => {
     renderWithQuery(<SetupView />);
     fillAdmin();
     click(SUBMIT);
-    await screen.findByText('Schritt 2 von 8');
+    await screen.findByText('Schritt 2 von 7');
     click('Überspringen');
-    await screen.findByText('Schritt 3 von 8');
+    await screen.findByText('Schritt 3 von 7');
 
     click('Zurück');
 
-    expect(await screen.findByText('Schritt 2 von 8')).toBeDefined();
+    expect(await screen.findByText('Schritt 2 von 7')).toBeDefined();
     /*
       The **field** and not the heading: on the way back the mail document is
       already in the cache, so the card is there at once —

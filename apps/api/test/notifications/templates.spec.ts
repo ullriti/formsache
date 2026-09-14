@@ -3,11 +3,11 @@ import {
   NOTIFICATION_TEMPLATES_FLOOR,
   type NotificationTemplate,
 } from '@formsache/shared';
+import { Prisma } from '@prisma/client';
 import request from 'supertest';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 
-import { UNREADABLE_NOTIFICATION_TEMPLATES_LOG } from '../../src/system-settings/notification-templates.service';
-import { SYSTEM_SETTING_ID } from '../../src/system-settings/system-settings.repository';
+import { unreadableTenantNotificationTemplatesLog } from '../../src/tenant-admin/tenant-notification-templates.service';
 import {
   acquireTestDatabase,
   type TestDatabase,
@@ -26,13 +26,13 @@ import {
 import { authedMutation, cookieHeader, openSession } from '../support/http';
 
 /**
- * **The delivered notification templates are a system setting, and they are
- * copied rather than inherited**.
+ * **The delivered notification templates are an organisation's own setting,
+ * and they are copied rather than inherited** (ADR-0032).
  *
  * Two halves, and the requirement is explicit that one without the other proves
  * nothing:
  *
- * (a) the superadmin changes a template → a **newly created** notification
+ * (a) the organisation changes a template → a **newly created** notification
  *     carries the new text;
  * (b) an **existing** notification is left untouched by the same change.
  *
@@ -48,11 +48,11 @@ import { authedMutation, cookieHeader, openSession } from '../support/http';
  * template at render time" — turns (b) red and leaves (a) green. That is what
  * makes (a) the control rather than a second version of the same test.
  *
- * **The system row is written with a raw `prisma` call.** The superadmin write
- * route does not exist yet (it belongs with a later surface);
- * what exists here is the read path, and a raw write is the only way to put a
- * document in front of it. The same reasoning `system-settings.spec.ts` states
- * for the settings half of the row.
+ * **The tenant row is written with a raw `prisma` call, not through
+ * `PUT /tenant/notification-templates`.** What is exercised here is the *read*
+ * path that hands the notification editor its offer
+ * (`TenantNotificationTemplatesService.forEditor`); the write route has its
+ * own dedicated tests in `test/tenant-admin/tenant-notification-templates.spec.ts`.
  *
  * **There is deliberately no test holding `NOTIFICATION_TEMPLATES_FLOOR`
  * against a stored document.** The requirement rules that out in as many
@@ -96,8 +96,8 @@ function editedTemplate(): NotificationTemplate {
   }
   return {
     ...first,
-    subject: 'Vom Superadmin geschriebener Betreff',
-    body: '<p>Vom Superadmin geschriebener Text.</p>',
+    subject: 'Von der Organisation geschriebener Betreff',
+    body: '<p>Von der Organisation geschriebener Text.</p>',
   };
 }
 
@@ -111,7 +111,7 @@ interface ListResponse {
   readonly templates: NotificationTemplate[];
 }
 
-describe('the delivered templates as a system setting', () => {
+describe('the delivered templates as an organisation setting', () => {
   let testApp: TestApp;
   let database: TestDatabase | undefined;
   let tenant: TenantFixture;
@@ -154,20 +154,28 @@ describe('the delivered templates as a system setting', () => {
   }, 120_000);
 
   afterEach(async () => {
-    // The row is installation-wide: one left behind would decide what „nichts
-    // entschieden" means for every test after it.
-    await app().prisma.systemSetting.deleteMany({});
+    // Every test in this `describe` shares the one tenant created in
+    // `beforeAll`; without resetting its row here, one test's document would
+    // decide what the next one reads.
+    await app().prisma.tenant.update({
+      where: { id: tenant.id },
+      data: { notificationTemplates: Prisma.DbNull },
+    });
     await app().prisma.notification.deleteMany({});
   });
 
+  /**
+   * A raw write onto `tenant.notification_templates` — bypassing the write
+   * route (see the module comment) so that this file measures the *read*
+   * path in isolation.
+   */
   async function setTemplates(
     templates: readonly NotificationTemplate[],
   ): Promise<void> {
     const notificationTemplates = templates as unknown as object[];
-    await app().prisma.systemSetting.upsert({
-      where: { id: SYSTEM_SETTING_ID },
-      create: { id: SYSTEM_SETTING_ID, notificationTemplates },
-      update: { notificationTemplates },
+    await app().prisma.tenant.update({
+      where: { id: tenant.id },
+      data: { notificationTemplates },
     });
   }
 
@@ -197,13 +205,19 @@ describe('the delivered templates as a system setting', () => {
     return (response.body as { id: string }).id;
   }
 
-  it('offers the shipped floor while nothing has been decided', async () => {
-    // No row at all — the state of every fresh installation. Not an error and
-    // not a backfill: the absence is the meaning (ADR-0011).
+  it('offers the shipped floor for a fixture tenant without a document', async () => {
+    // `createTenant` (the test fixture) does not seed a document the way the
+    // real `AdminRepository.createTenant` does — see its own comment. `null`
+    // is therefore the state to measure here, and the answer is the same the
+    // application gives a genuinely undecided row.
+    await app().prisma.tenant.update({
+      where: { id: tenant.id },
+      data: { notificationTemplates: Prisma.DbNull },
+    });
     expect((await list()).templates).toEqual([...NOTIFICATION_TEMPLATES_FLOOR]);
   });
 
-  it('offers what the superadmin wrote, once there is a document', async () => {
+  it('offers what the organisation wrote, once there is a document', async () => {
     const edited = editedTemplate();
     await setTemplates([edited]);
 
@@ -213,7 +227,7 @@ describe('the delivered templates as a system setting', () => {
     expect((await list()).templates).toEqual([edited]);
   });
 
-  it('offers nothing when the installation decided to offer nothing', async () => {
+  it('offers nothing when the organisation decided to offer nothing', async () => {
     await setTemplates([]);
 
     // `[]` is a decision, not an absence — it must not fall back to the floor.
@@ -284,19 +298,15 @@ describe('the delivered templates as a system setting', () => {
   });
 
   it('falls back to the shipped templates when the document does not parse', async () => {
-    await app().prisma.systemSetting.upsert({
-      where: { id: SYSTEM_SETTING_ID },
-      create: {
-        id: SYSTEM_SETTING_ID,
-        notificationTemplates: { vorlageAusM9: true },
-      },
-      update: { notificationTemplates: { vorlageAusM9: true } },
+    await app().prisma.tenant.update({
+      where: { id: tenant.id },
+      data: { notificationTemplates: { vorlageAusM9: true } },
     });
 
-    // Tolerant on purpose, and this is the whole reason the service has no
-    // strict reading: a template decides nothing about a submission, so *fail
-    // closed* would only mean "the notifications page of every organisation
-    // answers 503", for a page whose own rows are perfectly readable.
+    // Tolerant on purpose: a template decides nothing about a submission, so
+    // *fail closed* would only mean "the notifications page of this
+    // organisation answers 503" for a page whose own rows are perfectly
+    // readable.
     const response = await list();
     expect(response.templates).toEqual([...NOTIFICATION_TEMPLATES_FLOOR]);
     expect(response.notifications).toEqual([]);
@@ -304,16 +314,16 @@ describe('the delivered templates as a system setting', () => {
 });
 
 /**
- * The fallback is reported **once per process**, not once per request.
- *
- * The same shape as the settings half of the row: a `toContain` stays green for
- * a line written on every single request, so the assertion has to be a count.
- * A broken document here is one document affecting every organisation at once.
+ * **Unlike the installation-wide reader this replaced, a broken document here
+ * is logged on every occurrence** (`tenant-notification-templates.service.ts`
+ * explains why: the row belongs to one organisation and is read only behind a
+ * session). What is measured is therefore the opposite of the old case —
+ * every read produces its own line, naming the organisation.
  */
-describe('the unreadable template document is reported once', () => {
-  const REQUESTS = 4;
+describe('the unreadable template document is reported per organisation, on every read', () => {
+  const REQUESTS = 3;
 
-  it(`says it once over ${String(REQUESTS)} list reads`, async () => {
+  it(`says it ${String(REQUESTS)} times over ${String(REQUESTS)} list reads`, async () => {
     const database = await acquireTestDatabase();
     const capture = captureStdio();
     let booted: TestApp | undefined;
@@ -337,11 +347,9 @@ describe('the unreadable template document is reported once', () => {
         .send({ title: 'Zähltest' });
       const form = created.body as { id: string };
 
-      await booted.prisma.systemSetting.create({
-        data: {
-          id: SYSTEM_SETTING_ID,
-          notificationTemplates: { vorlageAusM9: true },
-        },
+      await booted.prisma.tenant.update({
+        where: { id: tenant.id },
+        data: { notificationTemplates: { vorlageAusM9: true } },
       });
 
       for (let round = 0; round < REQUESTS; round += 1) {
@@ -350,12 +358,14 @@ describe('the unreadable template document is reported once', () => {
           .set('Cookie', cookieHeader(session));
         expect(response.status).toBe(200);
       }
+
+      expect(
+        capture.countOf(unreadableTenantNotificationTemplatesLog(tenant.id)),
+      ).toBe(REQUESTS);
     } finally {
       capture.restore();
       await booted?.close();
       await database.release();
     }
-
-    expect(capture.countOf(UNREADABLE_NOTIFICATION_TEMPLATES_LOG)).toBe(1);
   }, 180_000);
 });

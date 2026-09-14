@@ -6,7 +6,7 @@ import { WizardFrame } from '../../wizard';
 import type { SetupStepProps } from './MailSteps';
 
 /**
- * **Step 8 — the first organisation.**
+ * **Step 7 — the first organisation.**
  *
  * ## Why this no longer does `POST /api/setup`
  *

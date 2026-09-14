@@ -4,23 +4,23 @@ import { NOTIFICATION_TEMPLATES_FLOOR } from '@formsache/shared';
 
 import { jsonResponse, stubFetch } from '../../test/fetch-mock';
 import { renderWithQuery } from '../../test/render-with-query';
-import { SystemNotificationTemplatesTab } from './SystemNotificationTemplatesTab';
+import { TenantTemplatesTab } from './TenantTemplatesTab';
 
 /**
- * **The tab *Vorlagen*** (ADR-0022, amendment 2026-08-18) — the surface to the
- * write path that `system_setting.notification_templates` did not have until
- * then.
+ * **The tab *Vorlagen* of an organisation** (ADR-0032, moved here from the
+ * system administration) — the surface to `PUT /tenant/notification-templates`.
  *
  * Three things a screenshot does not show:
  *
- * 1. **„Nothing decided" says so.** A fresh installation sees the shipped
- *    templates — and next to them the sentence that they are the shipped ones.
- *    Without it nobody would know whether they are changing something or
- *    confirming something.
- * 2. **The lock goes out with it.** Without it the server's 409 would never be
- *    reachable, and two superadmins would silently overwrite each other.
- * 3. **What is written is the whole document**, never a single entry: the route
- *    knows no patch.
+ * 1. **„Nothing decided" says so.** A row without a document shows the
+ *    shipped templates — and next to them the sentence that they are the
+ *    shipped ones. Without it nobody would know whether they are changing
+ *    something or confirming something.
+ * 2. **The lock goes out with it.** Without it the server's 409 would never
+ *    be reachable, and two people editing the same organisation would
+ *    silently overwrite each other.
+ * 3. **What is written is the whole document**, never a single entry: the
+ *    route knows no patch.
  * 4. **„Nothing decided" is saveable.** Otherwise this tab would be locked
  *    exactly where it is needed — at a row that cannot be read.
  */
@@ -47,7 +47,7 @@ function bodyOf(fetchMock: ReturnType<typeof stubFetch>): unknown {
 
 async function renderLoaded(doc = document_()) {
   const fetchMock = stubFetch().mockResolvedValue(jsonResponse(200, doc));
-  renderWithQuery(<SystemNotificationTemplatesTab />);
+  renderWithQuery(<TenantTemplatesTab tenantId="t-1" />);
   // Three templates, three identically labelled fields — `findAllBy`, and what
   // is waited for is the first one.
   await screen.findAllByLabelText('Betreff', { selector: 'input' });
@@ -58,7 +58,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('SystemNotificationTemplatesTab', () => {
+describe('TenantTemplatesTab', () => {
   it('zeigt die ausgelieferten Vorlagen und sagt, dass es sie sind', async () => {
     await renderLoaded();
 
@@ -83,19 +83,19 @@ describe('SystemNotificationTemplatesTab', () => {
   });
 
   /**
-   * **The tab has to be able to repair a broken document** — a blocking finding,
-   * and the case that holds it fast.
+   * **The tab has to be able to repair a broken document** — a blocking finding
+   * carried over from the tab this one replaced, and the case that holds it
+   * fast.
    *
-   * `decided: false` means „no row **or** one that cannot be read"; the server
-   * then delivers the shipped state
-   * (`system-notification-templates-admin.service.ts`, which in doing so
-   * promises that this tab is the one place at which such a thing is to be
-   * repaired). The comparison „draft against document" is inevitably equal in
-   * this state — the button would thus be locked exactly when it is needed, and
-   * the bar would on top of that claim „Gespeichert".
+   * `decided: false` means „no document **or** one that cannot be read"; the
+   * server then delivers the shipped state, promising that this tab is the
+   * one place at which such a thing is to be repaired. The comparison „draft
+   * against document" is inevitably equal in this state — the button would
+   * thus be locked exactly when it is needed, and the bar would on top of
+   * that claim „Gespeichert".
    *
    * *Counter-check:* remove the `!document.decided ||` in
-   * `use-system-templates.ts` → both assertions here turn red.
+   * `use-tenant-notification-templates.ts` → both assertions here turn red.
    */
   it('lässt bei einem unentschiedenen Dokument sofort speichern und sagt, dass nichts hinterlegt ist', async () => {
     await renderLoaded();
@@ -141,7 +141,7 @@ describe('SystemNotificationTemplatesTab', () => {
 
   /**
    * **The empty list is a decision**, not a „nothing decided": it means „this
-   * installation offers no templates". Removing must therefore be able to go
+   * organisation offers no templates". Removing must therefore be able to go
    * down to zero.
    */
   it('lässt eine Vorlage entfernen', async () => {
@@ -179,12 +179,14 @@ describe('SystemNotificationTemplatesTab', () => {
     expect(screen.getByText(/Ohne einen Auslöser/u)).toBeDefined();
   });
 
-  it('sagt einem Nicht-Superadmin, dass die Ansicht ihm nicht gehört', async () => {
+  it('sagt jemandem ohne das Recht, dass diese Ansicht ihm nicht gehört', async () => {
     stubFetch().mockResolvedValue(jsonResponse(403, { message: 'nein' }));
-    renderWithQuery(<SystemNotificationTemplatesTab />);
+    renderWithQuery(<TenantTemplatesTab tenantId="t-1" />);
 
     expect(
-      await screen.findByText('Diese Ansicht ist Superadmins vorbehalten.'),
+      await screen.findByText(
+        'Dafür fehlt dir das Recht „Einstellungen verwalten".',
+      ),
     ).toBeDefined();
   });
 });

@@ -601,3 +601,50 @@ Fortschreibung von [ADR-0028](0028-rechtstexte.md).
 > ist ersatzlos gestrichen. Der Schritt nennt nur noch die beiden Seiten, die
 > jeden Betreiber treffen.
 
+## Fortschreibung 2026-09-14: der Schritt „Benachrichtigungs-Vorlagen" entfällt
+
+- **Status:** accepted
+- **Date:** 2026-09-14
+- **Ersetzt:** §1 Listenpunkt 5 und §4 der Fortschreibung vom 2026-08-18
+  („Sieben Schritte" bzw. „Der Schreibweg der Benachrichtigungs-Vorlagen — mit
+  seinem Zähler"). Alles Übrige dieser ADR — die Schritte 1 bis 4 und 6 bis 7,
+  die Anmeldung nach Schritt 1, die Liste offener Punkte, das Gerüst — gilt
+  unverändert weiter.
+
+### Warum
+
+[ADR-0032](0032-benachrichtigungs-vorlagen-je-organisation.md) verschiebt die
+Benachrichtigungs-Vorlagen vollständig von der Installation zu jeder
+Organisation. Der Schritt *Benachrichtigungs-Vorlagen* dieses Assistenten
+bediente ausgerechnet die Route, die es jetzt nicht mehr gibt
+(`/admin/system-settings/notification-templates`) — und er stand dazu an der
+**falschen Stelle im Ablauf**: vor Schritt 7, „Erste Organisation". Selbst mit
+einer weiterhin bestehenden Route hätte der Schritt an einer Installation ohne
+eine einzige Organisation nichts, wovon er die Vorlagen hätte hinterlegen
+können — der ganze Sinn des Schrittes hing an einer Reihenfolge, die diese
+Fortschreibung selbst nicht mehr zulässt.
+
+### Was seine Stelle einnimmt — nichts, und das ist die Entscheidung
+
+Kein Ersatzschritt am Ende des Assistenten und keiner im
+Organisations-Assistenten (ADR-0025). Jede Organisation bekommt ihre eigenen
+Vorlagen — die ausgelieferten drei — schon **bei der Anlage** vorbelegt
+(`AdminRepository.createTenant`), genau wie ihr Erscheinungsbild die
+Auslieferungsfarben bekommt, ohne dass ein Schritt dafür nötig wäre. Was
+bleibt, ist der Reiter *Vorlagen* der Organisations-Verwaltung
+(`/admin/templates`) — dauerhaft erreichbar, nicht einmalig im Leben einer
+Organisation.
+
+Damit sinkt die Zahl der Schritte von sieben auf sechs — die Nummerierung der
+Schritte in `apps/web/src/views/setup/steps.ts` und in diesem Dokument
+verschiebt sich entsprechend; `docs/kb/09-betrieb.md` führt die aktuelle
+Tabelle.
+
+### Konsequenzen
+
+- **Positiv:** ein Schritt weniger, der eine Route bediente, die es nicht mehr
+  gibt — und eine Reihenfolge-Frage weniger, seit Review-Runde 4 Nr. 4 auch
+  bei den Rechtstexten schon einmal aufgefallen.
+- **Unberührt:** §7 der Grundentscheidung (der Seed bleibt, was er ist) und
+  alle übrigen Fortschreibungen dieser ADR.
+

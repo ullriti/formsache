@@ -10,9 +10,9 @@ import {
   NOTIFICATION_TEMPLATES_FLOOR,
   NOTIFICATION_TEMPLATE_LIMIT,
   acceptsTemplate,
-  parseSystemNotificationTemplates,
-  systemNotificationTemplatesResponseSchema,
-  updateSystemNotificationTemplatesRequestSchema,
+  parseNotificationTemplatesDocument,
+  tenantNotificationTemplatesResponseSchema,
+  updateTenantNotificationTemplatesRequestSchema,
 } from './notification-templates.ts';
 
 /**
@@ -122,9 +122,9 @@ describe('the delivered notification templates', () => {
 });
 
 /**
- * The stored document — `system_setting.notification_templates`.
+ * The stored document — `tenant.notification_templates`.
  *
- * **Deliberately not a test that holds the constant against a system row.**
+ * **Deliberately not a test that holds the constant against a tenant row.**
  * That would defeat the purpose: such a test would be the proof
  * that there are two versions of the text. What is checked here is that the
  * floor is a *valid* document (so „nichts entschieden" and „so geschrieben"
@@ -133,14 +133,14 @@ describe('the delivered notification templates', () => {
 describe('the stored template document', () => {
   it('accepts the shipped floor unchanged', () => {
     expect(
-      parseSystemNotificationTemplates(NOTIFICATION_TEMPLATES_FLOOR),
+      parseNotificationTemplatesDocument(NOTIFICATION_TEMPLATES_FLOOR),
     ).toEqual(NOTIFICATION_TEMPLATES_FLOOR);
   });
 
-  it('accepts the empty list — „diese Installation bietet keine Vorlagen an"', () => {
+  it('accepts the empty list — „diese Organisation bietet keine Vorlagen an"', () => {
     // A different statement from „nichts entschieden", which is the absent
     // column and is answered by the floor. The two must not collapse into one.
-    expect(parseSystemNotificationTemplates([])).toEqual([]);
+    expect(parseNotificationTemplatesDocument([])).toEqual([]);
   });
 
   it('refuses two templates under one id', () => {
@@ -149,7 +149,7 @@ describe('the stored template document', () => {
       throw new Error('NOTIFICATION_TEMPLATES_FLOOR is unexpectedly empty');
     }
     expect(() =>
-      parseSystemNotificationTemplates([first, { ...first, name: 'Zweite' }]),
+      parseNotificationTemplatesDocument([first, { ...first, name: 'Zweite' }]),
     ).toThrow();
   });
 
@@ -162,7 +162,7 @@ describe('the stored template document', () => {
       { length: NOTIFICATION_TEMPLATE_LIMIT + 1 },
       (_unused, index) => ({ ...first, id: `t${String(index)}` }),
     );
-    expect(() => parseSystemNotificationTemplates(many)).toThrow();
+    expect(() => parseNotificationTemplatesDocument(many)).toThrow();
   });
 
   it('refuses a template whose subject or body is empty', () => {
@@ -173,10 +173,10 @@ describe('the stored template document', () => {
     // A template is „usable as it is" (rule 3 of the module comment); an empty
     // body is a picker entry that does nothing but overwrite the name.
     expect(() =>
-      parseSystemNotificationTemplates([{ ...first, body: '' }]),
+      parseNotificationTemplatesDocument([{ ...first, body: '' }]),
     ).toThrow();
     expect(() =>
-      parseSystemNotificationTemplates([{ ...first, subject: '' }]),
+      parseNotificationTemplatesDocument([{ ...first, subject: '' }]),
     ).toThrow();
   });
 
@@ -186,7 +186,7 @@ describe('the stored template document', () => {
       throw new Error('NOTIFICATION_TEMPLATES_FLOOR is unexpectedly empty');
     }
     expect(() =>
-      parseSystemNotificationTemplates([
+      parseNotificationTemplatesDocument([
         { ...first, replyTo: 'x@example.org' },
       ]),
     ).toThrow();
@@ -201,7 +201,7 @@ describe('the stored template document', () => {
     // trigger no notification may carry would produce a draft the server then
     // refuses to save.
     expect(() =>
-      parseSystemNotificationTemplates([{ ...first, triggers: ['save'] }]),
+      parseNotificationTemplatesDocument([{ ...first, triggers: ['save'] }]),
     ).toThrow();
   });
 });
@@ -229,15 +229,14 @@ describe('when a template may be applied', () => {
 });
 
 /**
- * **The wire contract of the write path** (ADR-0022, continuation
- * 2026-08-18).
+ * **The wire contract of the write path** (ADR-0032).
  *
  * What is checked is what a schema really promises — not that a valid
  * document is valid, but that the three limits hold at which a
  * route would give way without them: count, id uniqueness and the
  * counter.
  */
-describe('the write contract of the system templates', () => {
+describe("the write contract of an organisation's templates", () => {
   const template: NotificationTemplate = {
     id: 'eigene',
     name: 'Eigene Vorlage',
@@ -250,7 +249,7 @@ describe('the write contract of the system templates', () => {
   };
 
   it('takes a full document with its lock', () => {
-    const parsed = updateSystemNotificationTemplatesRequestSchema.parse({
+    const parsed = updateTenantNotificationTemplatesRequestSchema.parse({
       templates: [template],
       lock: 3,
     });
@@ -266,7 +265,7 @@ describe('the write contract of the system templates', () => {
    */
   it('accepts the empty list as a decision', () => {
     expect(
-      updateSystemNotificationTemplatesRequestSchema.parse({
+      updateTenantNotificationTemplatesRequestSchema.parse({
         templates: [],
         lock: 1,
       }).templates,
@@ -275,7 +274,7 @@ describe('the write contract of the system templates', () => {
 
   it('refuses more than the limit and two templates under one id', () => {
     expect(() =>
-      updateSystemNotificationTemplatesRequestSchema.parse({
+      updateTenantNotificationTemplatesRequestSchema.parse({
         templates: Array.from(
           { length: NOTIFICATION_TEMPLATE_LIMIT + 1 },
           (_, index) => ({ ...template, id: `v${String(index)}` }),
@@ -285,7 +284,7 @@ describe('the write contract of the system templates', () => {
     ).toThrow();
 
     expect(() =>
-      updateSystemNotificationTemplatesRequestSchema.parse({
+      updateTenantNotificationTemplatesRequestSchema.parse({
         templates: [template, template],
         lock: 1,
       }),
@@ -299,7 +298,7 @@ describe('the write contract of the system templates', () => {
    */
   it('refuses a write without a lock', () => {
     expect(() =>
-      updateSystemNotificationTemplatesRequestSchema.parse({
+      updateTenantNotificationTemplatesRequestSchema.parse({
         templates: [template],
       }),
     ).toThrow();
@@ -311,7 +310,7 @@ describe('the write contract of the system templates', () => {
    * they are changing something or confirming something.
    */
   it('reads an answer that says whether the row decides', () => {
-    const parsed = systemNotificationTemplatesResponseSchema.parse({
+    const parsed = tenantNotificationTemplatesResponseSchema.parse({
       templates: [...NOTIFICATION_TEMPLATES_FLOOR],
       decided: false,
       lock: 1,

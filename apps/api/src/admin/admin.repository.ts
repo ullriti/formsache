@@ -7,6 +7,7 @@ import {
   ADMIN_GROUP_RANK,
   DEFAULT_GROUP_RANKS,
   DEFAULT_TENANT_BRANDING,
+  NOTIFICATION_TEMPLATES_FLOOR,
 } from '@formsache/shared';
 import type { Prisma } from '@prisma/client';
 
@@ -447,6 +448,26 @@ export class AdminRepository {
    * fresh Organisation shows the shipped look until somebody opens the
    * *Erscheinungsbild* tab.
    *
+   * **Notification templates are seeded, and that is the opposite choice from
+   * `form_defaults`** (ADR-0032). There is no installation-wide row left to
+   * inherit from any more — this organisation's own row *is* the whole of
+   * "welche Vorlagen gibt es hier?" from the moment it exists, so a fresh one
+   * is written with {@link NOTIFICATION_TEMPLATES_FLOOR}, the same document a
+   * previously existing organisation was backfilled with by the migration
+   * that introduced the column. Left `NULL` here, the tab would show the same
+   * three cards regardless (the tolerant reader degrades to the same floor) —
+   * but `decided` would then wrongly read `false` for an organisation that has
+   * simply never touched the page, the same distinction `formDefaults`' `{}`
+   * default is not asked to draw because that column still has a layer above
+   * it to mean "nichts entschieden".
+   *
+   * Fresh array copies (`[...NOTIFICATION_TEMPLATES_FLOOR.map(...)]`), for
+   * the same reason `stripeColors` gets one a few lines below: the shared
+   * constant is frozen, and Prisma's generated input is mutable — handing it
+   * the frozen entries directly would still let Prisma's own serialisation
+   * treat them as ordinary objects, but copying costs nothing and removes the
+   * question entirely.
+   *
    * The one read of `user` this class makes lives inside that transaction and
    * resolves an **address to an identity** — it is not an organisation's membership list
    * and must not grow into one (see the file header). It returns an id and
@@ -468,6 +489,9 @@ export class AdminRepository {
           headerColor: DEFAULT_TENANT_BRANDING.headerBg,
           canvasColor: DEFAULT_TENANT_BRANDING.canvasBg,
           // No `formDefaults` — see the doc above. This absence is deliberate, not an oversight.
+          notificationTemplates: NOTIFICATION_TEMPLATES_FLOOR.map((entry) => ({
+            ...entry,
+          })),
         },
         select: { id: true, shortName: true },
       });

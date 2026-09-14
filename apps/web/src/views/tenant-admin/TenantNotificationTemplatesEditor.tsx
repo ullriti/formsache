@@ -17,16 +17,12 @@ import '../settings-view.css';
 import './notification-templates.css';
 
 /**
- * **The editor of the notification templates** (ADR-0022, continuation
- * 2026-08-18) — the interface to the write path that did not exist until then.
+ * **The editor of an organisation's notification templates** (ADR-0032) — the
+ * tab *Vorlagen* of the organisation administration.
  *
  * Pure and controlled, without hooks, without a route, without layout: the
  * same construction `TestMailCard` and the building blocks from `settings/`
- * have, and for the same reason — it stands in **two** places. Once as a tab
- * of the system administration (`SystemNotificationTemplatesTab`) and once as
- * step 5 of the setup wizard. Two versions would be two evaluations of the
- * field messages, and the drifting one would be the one nobody looks at as
- * long as all goes well.
+ * have.
  *
  * ## What a template is — and what it expressly is not
  *
@@ -69,7 +65,9 @@ export interface NotificationTemplatesEditorProps {
    * That is displayed with the same two words the inheritance uses elsewhere:
    * what one sees is either a standard or something adapted, and without the
    * difference nobody would know whether they are changing something or
-   * confirming something.
+   * confirming something. In the running application `decided` is `false`
+   * only on a row a raw write cleared or broke — a fresh organisation already
+   * has its own document, seeded at creation (`AdminRepository.createTenant`).
    */
   readonly decided: boolean;
   /** Field messages of a 400, keyed by `templates.<index>.<feld>`. */
@@ -97,8 +95,8 @@ export function NotificationTemplatesEditor({
     <>
       <p className="settings__note">
         {decided
-          ? 'Diese Installation hat eigene Vorlagen hinterlegt.'
-          : 'Es sind die ausgelieferten Vorlagen zu sehen — hier ist noch nichts entschieden. Beim Speichern werden sie zu den Vorlagen dieser Installation.'}{' '}
+          ? 'Diese Organisation hat eigene Vorlagen hinterlegt.'
+          : 'Es sind die ausgelieferten Vorlagen zu sehen — hier ist noch nichts entschieden. Beim Speichern werden sie zu den Vorlagen dieser Organisation.'}{' '}
         Eine Vorlage ist ein <strong>Startpunkt</strong>: sie wird beim Anwenden
         in die Benachrichtigung kopiert. Eine Änderung hier rührt deshalb keine
         bestehende Benachrichtigung an.
@@ -106,7 +104,7 @@ export function NotificationTemplatesEditor({
 
       {templates.length === 0 ? (
         <p className="settings__note">
-          Diese Installation bietet zurzeit keine Vorlagen an. Wer eine
+          Diese Organisation bietet zurzeit keine Vorlagen an. Wer eine
           Benachrichtigung anlegt, fängt dann mit einem leeren Betreff und einem
           leeren Text an.
         </p>
@@ -123,10 +121,8 @@ export function NotificationTemplatesEditor({
               {/*
                 `h2` like every other settings card — and not `h3`, although the
                 cards here form a list. Above them the tab sets only the `h1`
-                „Systemverwaltung"; an `h3` would thereby skip a level, and axe
-                counts that as a violation (`heading-order`). In the wizard the
-                step's `h2` stands above it — two `h2` one after another skip
-                nothing.
+                „Organisations-Verwaltung"; an `h3` would thereby skip a level,
+                and axe counts that as a violation (`heading-order`).
               */}
               <h2
                 className="settings-card__heading"

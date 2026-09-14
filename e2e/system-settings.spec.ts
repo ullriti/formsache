@@ -58,7 +58,6 @@ import { authStateFile, seedTenantAdmin } from './seed-account';
 const SYSTEM_PATH = '/admin/system';
 const SYSTEM_MONITORING_PATH = '/admin/system/monitoring';
 const SYSTEM_MAIL_PATH = '/admin/system/mail';
-const SYSTEM_TEMPLATES_PATH = '/admin/system/templates';
 const SYSTEM_AI_PATH = '/admin/system/ai';
 const SYSTEM_SUPERADMINS_PATH = '/admin/system/superadmins';
 const SYSTEM_LEGAL_SETTINGS_PATH = '/admin/system/legal';
@@ -75,21 +74,18 @@ const TABS = [
   ['Organisationen', SYSTEM_PATH],
   ['Überwachung', SYSTEM_MONITORING_PATH],
   ['Mailserver', SYSTEM_MAIL_PATH],
-  // *Vorlagen* since ADR-0022 (amendment 2026-08-18): the column
-  // `notification_templates` was read up to then and written by nothing, so
-  // there was nothing to show either. Without this line the count below would
-  // stand at four against five — and the tab bar would have an entry that no
-  // case visits.
-  ['Vorlagen', SYSTEM_TEMPLATES_PATH],
+  // *Vorlagen* stood here from ADR-0022 (amendment 2026-08-18) until
+  // ADR-0032 moved notification templates from the installation to every
+  // organisation — see `tenant-admin.spec.ts` for its case there now.
   ['KI', SYSTEM_AI_PATH],
   /*
     *Rechtstexte* since ADR-0028 — imprint and privacy policy
     statement **of the installation**. Appended and not inserted
-    (`SystemAdminView.tsx` says why), so none of the five lines above it
+    (`SystemAdminView.tsx` says why), so none of the lines above it
     shifts.
 
-    Without this line the count below would stand at five against six — the same
-    gap through which *Vorlagen* had moved in.
+    Without this line the count below would be one short — the tab bar would
+    have an entry that no case visits.
   */
   ['Rechtstexte', SYSTEM_LEGAL_SETTINGS_PATH],
   /*
@@ -196,9 +192,8 @@ test.describe('Systemverwaltung — Superadmin', () => {
         tabs(page).getByRole('button', { name: label, exact: true }),
       ).toBeVisible();
     }
-    // The count catches the tab that the loop above does not know — exactly
-    // the gap through which *Vorlagen* moved in without any case ever having
-    // visited it.
+    // The count catches a tab the loop above does not know — the gap through
+    // which *Vorlagen* once moved in without any case ever having visited it.
     await expect(tabs(page).getByRole('button')).toHaveCount(TABS.length);
 
     await expect(

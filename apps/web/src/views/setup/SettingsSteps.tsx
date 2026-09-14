@@ -1,24 +1,28 @@
 import type { ReactElement, ReactNode } from 'react';
 
-import { NotificationTemplatesEditor } from '../system-settings/NotificationTemplatesEditor';
 import { SystemLegalCards } from '../system-settings/SystemLegalTab';
 import { useSystemLegalPages } from '../system-settings/use-system-legal';
 import { SystemAiCard } from '../system-settings/SystemAiCard';
 import { useSystemAi } from '../system-settings/use-system-ai';
-import { useSystemTemplates } from '../system-settings/use-system-templates';
 import { WizardFrame, type WizardStepMeta } from '../../wizard';
 import type { SetupStepProps } from './MailSteps';
 
 /**
- * **Steps 5, 6 and 7 of the setup wizard** — notification templates, AI and the
- * legal statements.
+ * **Steps 5 and 6 of the setup wizard** — AI and the legal statements.
  *
- * All three show exactly what the corresponding tab of the system
+ * Both show exactly what the corresponding tab of the system
  * administration shows, and talk to the same route through the same hooks
- * (`use-system-templates.ts`, `use-system-ai.ts`, `use-system-legal.ts`). What
+ * (`use-system-ai.ts`, `use-system-legal.ts`). What
  * the wizard contributes:
  * the order, the sentence „what does not work without this step", the skipping —
  * and that „Weiter" saves instead of putting a second button next to it.
+ *
+ * A third step, *Benachrichtigungs-Vorlagen*, stood here from ADR-0022 until
+ * ADR-0032 moved notification templates from the installation to every
+ * organisation: there is no installation-wide row left to set up during the
+ * first commissioning, only each organisation's own tab
+ * (`views/tenant-admin/TenantTemplatesTab.tsx`), seeded with sensible
+ * defaults the moment that organisation is created.
  */
 
 /**
@@ -98,26 +102,8 @@ function SettingsStepFrame({
   );
 }
 
-/** Step 5 — the templates a notification starts from. */
-export function TemplatesStep(props: SetupStepProps): ReactElement {
-  const state = useSystemTemplates();
-
-  return (
-    <SettingsStepFrame {...props} status={state}>
-      {state.kind === 'ready' ? (
-        <NotificationTemplatesEditor
-          templates={state.templates}
-          decided={state.decided}
-          issues={state.issues}
-          onChange={state.setTemplates}
-        />
-      ) : null}
-    </SettingsStepFrame>
-  );
-}
-
 /**
- * Step 6 — the AI.
+ * Step 5 — the AI.
  *
  * ⚠️ **The only step that raises a legal question.** As soon as a provider
  * stands in this form for the first time, the card shows the five preconditions
@@ -152,7 +138,7 @@ export function AiStep(props: SetupStepProps): ReactElement {
 }
 
 /**
- * Step 7 — **the legal statements of the installation** (ADR-0028).
+ * Step 6 — **the legal statements of the installation** (ADR-0028).
  *
  * It shows the same editor as the tab *Rechtstexte* of the system
  * administration and talks through the same hook to the same route

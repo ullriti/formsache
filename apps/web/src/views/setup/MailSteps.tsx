@@ -170,7 +170,7 @@ export function BaseUrlStep(props: SetupStepProps): ReactElement {
  * Die Route hing an `TenantScopeGuard`, und zwar nie wegen der Berechtigung,
  * sondern wegen der Zeile: `mail_log.tenant_id` ist `NOT NULL`. Ein
  * Superadministrator ohne Mitgliedschaft bekam 403 — ausgerechnet während der
- * Erstinbetriebnahme, wo die erste Organisation erst in Schritt 8 kommt. Die
+ * Erstinbetriebnahme, wo die erste Organisation erst in Schritt 7 kommt. Die
  * Route lässt jetzt durch und **protokolliert nicht**
  * (`TestMailService.sendWithoutTenant`); die Karte schreibt genau das an den
  * Knopf, statt es zu verschweigen (`logged`).
