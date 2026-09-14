@@ -25,13 +25,12 @@ import { AppShell } from './AppShell';
 /**
  * A fetch response that never settles — parks whatever view mounts after
  * navigation in its loading state, so a test about the *address* is not also
- * a test about that view's data. `resolve` is deliberately never called, only
- * referenced so the executor is not an empty function.
+ * a test about that view's data. The executor deliberately never calls
+ * `resolve`.
  */
 function pendingForever(): Promise<Response> {
-  return new Promise<Response>((resolve) => {
-    void resolve;
-  });
+  // eslint-disable-next-line @typescript-eslint/no-empty-function -- deliberately never resolved
+  return new Promise<Response>(() => {});
 }
 
 const bothMemberships = [
