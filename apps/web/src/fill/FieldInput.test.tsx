@@ -1392,6 +1392,23 @@ describe('FieldInput – Veranstaltung', () => {
     expect(screen.getByLabelText('Stadtfest: Anzahl Personen')).toBeDefined();
   });
 
+  /**
+   * `min={1}` used to be the box's HTML `min` — which does not error on
+   * typing, but does keep the browser's own stepper and Pfeiltasten from
+   * ever going below `1`, so a participant who reached „1" could never step
+   * back down to „nicht angemeldet" through the control itself. `0` is the
+   * one number the box already treats as absent everywhere downstream
+   * (`withSeats`, `canonicalAnswerValue`) — this pins the box to accept it
+   * natively too, rather than only through a manual clear.
+   */
+  it('lets the native control reach `0`, not only `1`', () => {
+    render(<EventHarness />);
+
+    expect(
+      screen.getByLabelText<HTMLInputElement>('Stadtfest: Anzahl Personen').min,
+    ).toBe('0');
+  });
+
   it('shows „Ausgebucht" and locks the empty box', () => {
     render(
       <EventHarness

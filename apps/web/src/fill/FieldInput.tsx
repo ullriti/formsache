@@ -945,7 +945,15 @@ function EventField({
             <input
               className="field__control field__event-count"
               type="number"
-              min={1}
+              // `0`, not `1`: a Personenzahl of `0` is a valid spelling of
+              // „nicht angemeldet" (`withSeats`, `canonicalSeats`), not an
+              // error. `min={1}` used to fight the participant here — the
+              // browser's own stepper and the Pfeiltasten refuse to go below
+              // `min`, so a box holding `1` could climb but never come back
+              // down to „leer" through the control itself, only by clearing
+              // it by hand. `min={0}` lets the native control reach the value
+              // this field already treats as absent everywhere downstream.
+              min={0}
               max={EVENT_SEATS_MAX}
               // The name alone would be ambiguous: a screen reader announces
               // the box, and „Sommerfest" says nothing about what goes in it.
