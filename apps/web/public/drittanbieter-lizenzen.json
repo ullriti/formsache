@@ -220,7 +220,7 @@
   "packages": [
     {
       "name": "@anthropic-ai/sdk",
-      "version": "0.116.0",
+      "version": "0.125.0",
       "spdx": "MIT",
       "author": "Anthropic",
       "homepage": "https://github.com/anthropics/anthropic-sdk-typescript#readme",
@@ -292,7 +292,7 @@
     },
     {
       "name": "@mistralai/mistralai",
-      "version": "2.6.1",
+      "version": "2.7.0",
       "spdx": "Apache-2.0",
       "author": "Mistral AI",
       "homepage": "https://github.com/mistralai/client-ts#readme",
@@ -332,7 +332,7 @@
     },
     {
       "name": "@node-rs/argon2",
-      "version": "2.0.2",
+      "version": "2.2.1",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/napi-rs/node-rs",
@@ -340,7 +340,7 @@
     },
     {
       "name": "@node-rs/argon2-linux-x64-gnu",
-      "version": "2.0.2",
+      "version": "2.2.1",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/napi-rs/node-rs",
@@ -356,7 +356,7 @@
     },
     {
       "name": "@prisma/adapter-pg",
-      "version": "7.9.1",
+      "version": "7.10.0",
       "spdx": "Apache-2.0",
       "author": "Tom Houlé",
       "homepage": "https://github.com/prisma/prisma#readme",
@@ -364,7 +364,7 @@
     },
     {
       "name": "@prisma/client",
-      "version": "7.9.1",
+      "version": "7.10.0",
       "spdx": "Apache-2.0",
       "author": "Tim Suchanek",
       "homepage": "https://www.prisma.io",
@@ -372,7 +372,7 @@
     },
     {
       "name": "@prisma/client-runtime-utils",
-      "version": "7.9.1",
+      "version": "7.10.0",
       "spdx": "Apache-2.0",
       "author": null,
       "homepage": "https://github.com/prisma/prisma#readme",
@@ -384,6 +384,14 @@
       "spdx": "Apache-2.0",
       "author": "Alberto Schiabel",
       "homepage": "https://github.com/prisma/prisma#readme",
+      "text": "283ea6cc2997a1a7"
+    },
+    {
+      "name": "@prisma/debug",
+      "version": "7.10.0",
+      "spdx": "Apache-2.0",
+      "author": "Tim Suchanek",
+      "homepage": "https://www.prisma.io",
       "text": "283ea6cc2997a1a7"
     },
     {
@@ -412,7 +420,7 @@
     },
     {
       "name": "@prisma/driver-adapter-utils",
-      "version": "7.9.1",
+      "version": "7.10.0",
       "spdx": "Apache-2.0",
       "author": "Alberto Schiabel",
       "homepage": "https://github.com/prisma/prisma#readme",
@@ -564,7 +572,7 @@
     },
     {
       "name": "@tanstack/query-core",
-      "version": "5.101.4",
+      "version": "5.102.8",
       "spdx": "MIT",
       "author": "tannerlinsley",
       "homepage": "https://tanstack.com/query",
@@ -572,7 +580,7 @@
     },
     {
       "name": "@tanstack/react-query",
-      "version": "5.101.4",
+      "version": "5.102.8",
       "spdx": "MIT",
       "author": "tannerlinsley",
       "homepage": "https://tanstack.com/query",
@@ -708,7 +716,7 @@
     },
     {
       "name": "@types/node",
-      "version": "26.2.0",
+      "version": "26.5.1",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/node",
@@ -724,14 +732,6 @@
     },
     {
       "name": "@types/react",
-      "version": "19.2.17",
-      "spdx": "MIT",
-      "author": null,
-      "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react",
-      "text": "ff82c90f84945c60"
-    },
-    {
-      "name": "@types/react",
       "version": "19.2.18",
       "spdx": "MIT",
       "author": null,
@@ -739,8 +739,16 @@
       "text": "ff82c90f84945c60"
     },
     {
+      "name": "@types/react",
+      "version": "19.3.0",
+      "spdx": "MIT",
+      "author": null,
+      "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react",
+      "text": "ff82c90f84945c60"
+    },
+    {
       "name": "@types/react-dom",
-      "version": "19.2.4",
+      "version": "19.3.0",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react-dom",
@@ -1844,7 +1852,7 @@
     },
     {
       "name": "jose",
-      "version": "6.2.9",
+      "version": "6.2.12",
       "spdx": "MIT",
       "author": "Filip Skokan",
       "homepage": "https://github.com/panva/jose",
@@ -2172,7 +2180,7 @@
     },
     {
       "name": "nodemailer",
-      "version": "10.0.3",
+      "version": "10.0.7",
       "spdx": "MIT-0",
       "author": "Andris Reinman",
       "homepage": "https://nodemailer.com/",
@@ -2188,7 +2196,7 @@
     },
     {
       "name": "oauth4webapi",
-      "version": "3.8.7",
+      "version": "3.8.8",
       "spdx": "MIT",
       "author": "Filip Skokan",
       "homepage": "https://github.com/panva/oauth4webapi",
@@ -2236,7 +2244,7 @@
     },
     {
       "name": "openid-client",
-      "version": "6.8.5",
+      "version": "6.8.8",
       "spdx": "MIT",
       "author": "Filip Skokan",
       "homepage": "https://github.com/panva/openid-client",
@@ -2492,7 +2500,7 @@
     },
     {
       "name": "react",
-      "version": "19.2.8",
+      "version": "19.3.0",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://react.dev/",
@@ -2500,7 +2508,7 @@
     },
     {
       "name": "react-dom",
-      "version": "19.2.8",
+      "version": "19.3.0",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://react.dev/",
@@ -2652,7 +2660,7 @@
     },
     {
       "name": "scheduler",
-      "version": "0.27.0",
+      "version": "0.28.0",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://react.dev/",
@@ -2940,7 +2948,7 @@
     },
     {
       "name": "undici-types",
-      "version": "8.3.0",
+      "version": "8.9.0",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://undici.nodejs.org",
@@ -3052,7 +3060,7 @@
     },
     {
       "name": "zod",
-      "version": "4.4.3",
+      "version": "4.6.2",
       "spdx": "MIT",
       "author": "Colin McDonnell",
       "homepage": "https://zod.dev",
@@ -3068,7 +3076,7 @@
     },
     {
       "name": "zustand",
-      "version": "5.0.14",
+      "version": "5.0.15",
       "spdx": "MIT",
       "author": "Paul Henschel",
       "homepage": "https://github.com/pmndrs/zustand",
