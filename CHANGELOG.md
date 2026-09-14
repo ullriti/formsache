@@ -11,7 +11,24 @@ Kategorien je Eintrag: **Added** · **Changed** · **Deprecated** · **Removed**
 
 ## [Unreleased]
 
+### Added
+
+- **Bei Auswahl-Fragen lässt sich die Position von „Sonstiges" umschalten.**
+  Die Option stand bisher immer am Ende der Liste. Ein neuer Schalter in den
+  Fragen-Eigenschaften zeigt sie standardmäßig zuerst an, mit der Möglichkeit,
+  auf „unten" zurückzuschalten — sichtbar nur, wenn „Sonstiges" überhaupt
+  erlaubt ist.
+
 ### Changed
+
+- **Benachrichtigungs-Vorlagen gehören jetzt der Organisation, nicht mehr der
+  Installation.** Sie werden in den Organisationseinstellungen unter
+  „Vorlagen" verwaltet statt in den Systemeinstellungen, und jede Organisation
+  bearbeitet ihre eigenen unabhängig von allen anderen. Bestehende
+  Organisationen haben beim Umstieg eine Kopie der bisherigen, gemeinsamen
+  Vorlagen erhalten; neue Organisationen starten mit denselben Standardtexten.
+  Die alte systemweite Verwaltung ist entfallen
+  ([ADR-0032](docs/architecture/0032-benachrichtigungs-vorlagen-je-organisation.md)).
 
 - **Die Anmeldeseite nennt die Organisation und wird ab zwei Angeboten zur
   Auswahl.** `oidcButtonLabel` ist wahlfrei und fiel für jede Organisation ohne
@@ -39,3 +56,16 @@ Kategorien je Eintrag: **Added** · **Changed** · **Deprecated** · **Removed**
   entstanden nie, obwohl `docker-compose.prod.yml` auf `latest` zurückfällt
   ([ADR-0009](docs/architecture/0009-ci-versioning-and-images.md),
   [Betrieb](docs/kb/09-betrieb.md#woher-eine-fassung-kommt)).
+
+### Fixed
+
+- **Bei „Veranstaltung"-Fragen lässt sich die Teilnehmerzahl wieder auf leer
+  zurücksetzen.** Der Zahlen-Stepper und die Pfeiltasten konnten wegen der
+  unteren Grenze des Eingabefelds nicht bis 0 herunter — wer aus Versehen
+  einmal hochgestellt hatte, kam über das Feld selbst nicht mehr zurück auf
+  „keine Anmeldung". 0 zählt weiterhin nicht als Antwort, nur der Weg dorthin
+  war blockiert.
+
+- **Der Hinweistext unter „Adresse zu Ihrer Antwort" ist entfernt.** Er
+  stimmte in der Sache nicht und war neben der Überschrift ohnehin
+  überflüssig.
