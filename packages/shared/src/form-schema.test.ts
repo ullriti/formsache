@@ -8,6 +8,7 @@ import {
   formDefinitionSchema,
   isChoiceQuestion,
   otherLabelOf,
+  otherPositionOf,
   pageSchema,
   parseFormDefinition,
   questionSchema,
@@ -336,6 +337,57 @@ describe('formDefinitionSchema', () => {
     expect(isChoiceQuestion(unnamed) && otherLabelOf(unnamed)).toBe(
       'Sonstiges',
     );
+  });
+
+  /**
+   * `otherPosition` (Issue #37) — optional for the same reason `visibleIf`
+   * is: every choice question stored before this switch existed has no such
+   * key, and demanding one would turn every one of those documents into one
+   * that no longer parses.
+   */
+  it('parses a document without `otherPosition` at all, and reads it as „first"', () => {
+    const question = questionSchema.parse({
+      ...selectQuestion(Q3),
+      allowOther: true,
+      otherLabel: 'Sonstiges',
+    });
+
+    expect(isChoiceQuestion(question) && 'otherPosition' in question).toBe(
+      false,
+    );
+    expect(isChoiceQuestion(question) && otherPositionOf(question)).toBe(
+      'first',
+    );
+  });
+
+  it('keeps an explicit „first" or „last" as given', () => {
+    const first = questionSchema.parse({
+      ...selectQuestion(Q3),
+      allowOther: true,
+      otherLabel: 'Sonstiges',
+      otherPosition: 'first',
+    });
+    const last = questionSchema.parse({
+      ...selectQuestion(Q3),
+      allowOther: true,
+      otherLabel: 'Sonstiges',
+      otherPosition: 'last',
+    });
+
+    expect(isChoiceQuestion(first) && otherPositionOf(first)).toBe('first');
+    expect(isChoiceQuestion(last) && otherPositionOf(last)).toBe('last');
+  });
+
+  it('rejects a value beyond „first"/„last"', () => {
+    const result = questionSchema.safeParse({
+      ...selectQuestion(Q3),
+      allowOther: true,
+      otherLabel: 'Sonstiges',
+      otherPosition: 'middle',
+    });
+
+    expect(result.success).toBe(false);
+    expect(issuePaths(result)).toContain('otherPosition');
   });
 
   /**

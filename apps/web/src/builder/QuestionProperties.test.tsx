@@ -394,3 +394,113 @@ describe('QuestionProperties – die Ablehnung beim Fragewechsel', () => {
     );
   });
 });
+
+/* --- The „Sonstiges" position (Issue #37) ----------------------- */
+
+const OTHER_POSITION_ID = '019fe220-0000-7000-8000-0000000000d1';
+
+function selectWithOther(
+  overrides: Partial<{
+    allowOther: boolean;
+    otherLabel: string | null;
+  }> = {},
+): Question {
+  return {
+    id: OTHER_POSITION_ID,
+    label: 'Organisation',
+    hint: null,
+    required: false,
+    width: 'full',
+    type: 'select',
+    options: [{ value: 'option-1', label: 'Alte Breslauer' }],
+    allowOther: true,
+    otherLabel: 'Sonstiges',
+    ...overrides,
+  };
+}
+
+function OtherPositionHarness(): ReactElement | null {
+  const question = useBuilderStore((state) =>
+    state.pages
+      .flatMap((page) => page.questions)
+      .find((entry) => entry.id === OTHER_POSITION_ID),
+  );
+  return question === undefined ? null : (
+    <QuestionProperties question={question} />
+  );
+}
+
+function storedOtherPositionQuestion(): Question | undefined {
+  return useBuilderStore
+    .getState()
+    .pages.flatMap((page) => page.questions)
+    .find((entry) => entry.id === OTHER_POSITION_ID);
+}
+
+/**
+ * The switch that decides whether „Sonstiges" opens or closes the list
+ * (design handoff via Issue #37).
+ *
+ * Gated on `allowOther`: there is nothing to reorder around a „Sonstiges"
+ * entry the question does not offer, and the switch says so by not being on
+ * screen — the same reasoning `otherLabel`'s own field already follows.
+ */
+describe('QuestionProperties – „Sonstiges" Position', () => {
+  function load(question: Question): void {
+    useBuilderStore.getState().reset();
+    useBuilderStore.getState().load({
+      id: 'form-other-position',
+      title: 'Testformular',
+      definition: {
+        pages: [
+          {
+            id: PAGE_ID,
+            title: 'Seite 1',
+            description: null,
+            questions: [question],
+          },
+        ],
+      },
+      revision: 1,
+    });
+  }
+
+  it('zeigt den Schalter erst, sobald „Sonstiges“ überhaupt angeboten wird', () => {
+    load(selectWithOther({ allowOther: false, otherLabel: null }));
+    render(<OtherPositionHarness />);
+
+    expect(screen.queryByLabelText('„Sonstiges“ unten anzeigen')).toBeNull();
+
+    fireEvent.click(screen.getByLabelText('„Sonstiges“ mit Freitext anbieten'));
+
+    expect(screen.getByLabelText('„Sonstiges“ unten anzeigen')).toBeDefined();
+  });
+
+  it('steht ohne eigene Einstellung auf „zuerst" — dem Vorgabewert des Schalters', () => {
+    // No `otherPosition` in the stored document at all — the state every
+    // question saved before this switch existed is in, and the one
+    // `otherPositionOf` reads as „first" (`form-schema.ts`).
+    load(selectWithOther());
+    render(<OtherPositionHarness />);
+
+    expect(
+      screen.getByLabelText<HTMLInputElement>('„Sonstiges“ unten anzeigen')
+        .checked,
+    ).toBe(false);
+  });
+
+  it('schreibt „first"/„last" beim Umlegen, und nur das', () => {
+    load(selectWithOther());
+    render(<OtherPositionHarness />);
+
+    fireEvent.click(screen.getByLabelText('„Sonstiges“ unten anzeigen'));
+    expect(storedOtherPositionQuestion()).toMatchObject({
+      otherPosition: 'last',
+    });
+
+    fireEvent.click(screen.getByLabelText('„Sonstiges“ unten anzeigen'));
+    expect(storedOtherPositionQuestion()).toMatchObject({
+      otherPosition: 'first',
+    });
+  });
+});

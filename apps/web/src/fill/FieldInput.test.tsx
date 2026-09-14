@@ -34,7 +34,12 @@ const OTHER_TEXT = 'Schachverein Nord';
 
 function choiceQuestion(
   type: 'select' | 'radio' | 'checkbox',
-  overrides: Partial<{ required: boolean; otherLabel: string | null }> = {},
+  overrides: Partial<{
+    required: boolean;
+    otherLabel: string | null;
+    allowOther: boolean;
+    otherPosition: 'first' | 'last';
+  }> = {},
 ): ChoiceQuestion {
   const base = {
     id: '019fe600-0000-7000-8000-0000000000c1',
@@ -201,6 +206,84 @@ describe('FieldInput – „Sonstiges" in a dropdown', () => {
     });
 
     expect(onValue).toHaveBeenLastCalledWith({ values: [], other: OTHER_TEXT });
+  });
+});
+
+/**
+ * Where the „Sonstiges" entry sits among the real options — a display order,
+ * switchable in the builder (`otherPosition`, Issue #37). Default „first"
+ * without a stored value at all, which is what every question saved before
+ * this switch existed reads as (`otherPositionOf`).
+ */
+describe('FieldInput – Position von „Sonstiges"', () => {
+  it('steht im Dropdown zuerst, ohne eigene Einstellung', () => {
+    render(<Harness question={choiceQuestion('select')} onValue={vi.fn()} />);
+
+    const labels = screen
+      .getAllByRole<HTMLOptionElement>('option')
+      .map((option) => option.textContent);
+    expect(labels).toStrictEqual(['Bitte wählen…', OTHER_LABEL, 'Nord', 'Süd']);
+  });
+
+  it('steht im Dropdown zuletzt, wenn otherPosition „last" ist', () => {
+    render(
+      <Harness
+        question={choiceQuestion('select', { otherPosition: 'last' })}
+        onValue={vi.fn()}
+      />,
+    );
+
+    const labels = screen
+      .getAllByRole<HTMLOptionElement>('option')
+      .map((option) => option.textContent);
+    expect(labels).toStrictEqual(['Bitte wählen…', 'Nord', 'Süd', OTHER_LABEL]);
+  });
+
+  /**
+   * Radio and checkbox share the rendering, so one case per control type is
+   * enough to pin both without repeating the assertion three times.
+   */
+  it.each(['radio', 'checkbox'] as const)(
+    'steht in der %s-Liste an der eingestellten Stelle',
+    (type) => {
+      const { rerender } = render(
+        <Harness question={choiceQuestion(type)} onValue={vi.fn()} />,
+      );
+      // The choices' captions, in DOM order — queried through the group
+      // rather than `getAllByText`, which would also match the free-text
+      // box's own label once it is on screen.
+      const group = screen.getByRole('group', { name: 'Organisation' });
+      const captions = (): (string | null)[] =>
+        Array.from(
+          group.querySelectorAll('.field__choice > span:first-of-type'),
+        ).map((el) => el.textContent);
+      expect(captions()).toStrictEqual([OTHER_LABEL, 'Nord', 'Süd']);
+
+      rerender(
+        <Harness
+          question={choiceQuestion(type, { otherPosition: 'last' })}
+          onValue={vi.fn()}
+        />,
+      );
+      expect(captions()).toStrictEqual(['Nord', 'Süd', OTHER_LABEL]);
+    },
+  );
+
+  it('lässt „Sonstiges" ganz weg, solange die Frage es nicht anbietet', () => {
+    render(
+      <Harness
+        question={choiceQuestion('select', {
+          allowOther: false,
+          otherLabel: null,
+        })}
+        onValue={vi.fn()}
+      />,
+    );
+
+    const labels = screen
+      .getAllByRole<HTMLOptionElement>('option')
+      .map((option) => option.textContent);
+    expect(labels).toStrictEqual(['Bitte wählen…', 'Nord', 'Süd']);
   });
 });
 

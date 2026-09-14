@@ -513,12 +513,36 @@ const matrixColumnsSchema = labelledListSchema(
   'Doppelter Spaltenwert.',
 );
 
+/** Where the „Sonstiges" choice sits among the others — {@link otherShape}. */
+export const otherPositionSchema = z.enum(['first', 'last']);
+export type OtherPosition = z.infer<typeof otherPositionSchema>;
+
 /** The „Sonstiges" escape hatch of a choice question (design handoff). */
 const otherShape = {
   /** Whether a free-text „Sonstiges" choice is offered at all. */
   allowOther: z.boolean(),
   /** Editable caption of that choice; null while `allowOther` is false. */
   otherLabel: z.string().min(1).max(LABEL_MAX).nullable(),
+  /**
+   * Whether „Sonstiges" is offered **before** the other options or
+   * **after** them — a display order, nothing the validator reads.
+   *
+   * **`.optional()`, the same exception `questionBaseShape.visibleIf`
+   * documents, and for the same reason**: this switch is new, so every
+   * choice question saved before it existed — which, unlike `visibleIf`, is
+   * *every* choice question stored so far — has no such key, and demanding
+   * one would turn every one of those documents into one that no longer
+   * parses. Absence means „first", the switch's own default, so a form
+   * nobody has touched since reads as though the switch had always been
+   * there and always been left at its default — the same reading
+   * `visibleIf`'s absence gives „keine Bedingung".
+   *
+   * Read through {@link otherPositionOf}, never directly — the same
+   * indirection {@link otherLabelOf} gives its neighbour, so the fallback
+   * for an absent key is spelled once rather than as a `?? 'first'` at every
+   * render site.
+   */
+  otherPosition: otherPositionSchema.optional(),
 };
 
 const textQuestionSchema = z
@@ -1287,6 +1311,21 @@ export function allQuestions(definition: FormDefinition): Question[] {
  */
 export function otherLabelOf(question: ChoiceQuestion): string {
   return question.otherLabel ?? 'Sonstiges';
+}
+
+/**
+ * Where a question's „Sonstiges" choice belongs among its other options.
+ *
+ * **`otherPosition` is optional** ({@link otherShape}) so that a document
+ * stored before this switch existed still parses; this is the one place that
+ * reads the fallback, for the same reason {@link otherLabelOf} is the one
+ * place that reads its neighbour's. Every renderer — the dropdown, the
+ * radio/checkbox list and the builder's preview of both — calls this rather
+ * than `question.otherPosition` directly, so „first" cannot drift into a
+ * fourth `?? 'first'` one of them forgot.
+ */
+export function otherPositionOf(question: ChoiceQuestion): OtherPosition {
+  return question.otherPosition ?? 'first';
 }
 
 /**
