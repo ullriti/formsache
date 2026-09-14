@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
   DEFAULT_OIDC_BUTTON_LABEL,
+  normaliseBaseUrl,
   type ApiEnv,
   type OidcOutcome,
   type OidcProvider,
@@ -664,7 +665,9 @@ function soleTenantAtHost(
   if (requestHost === null || requestHost === '') {
     return null;
   }
-  const wanted = requestHost.toLowerCase();
+  // Der Port fällt auch hier weg — siehe {@link hostOf}. Eine IPv6-Adresse in
+  // Klammern („[::1]:5173") behält ihre Klammern und verliert nur den Port.
+  const wanted = requestHost.toLowerCase().replace(/:\d+$/, '');
   let found: string | null = null;
   for (const row of rows) {
     if (row.publicBaseUrl === null || hostOf(row.publicBaseUrl) !== wanted) {
@@ -680,11 +683,25 @@ function soleTenantAtHost(
   return found;
 }
 
-/** The `host` of a stored base address, or `null`. */
+/**
+ * The hostname of a stored base address, or `null`.
+ *
+ * **Through `normaliseBaseUrl`, not through a bare `new URL`** — `base-url.ts`
+ * is the one place that says what counts as a base address, and a second
+ * spelling here would quietly disagree with it: a raw `new URL` accepts
+ * `ftp://`, a query string and credentials in the address, all of which
+ * `PublicUrlService.resolveBaseUrl` treats as absent. A row that is „keine
+ * Basis-Adresse" over there must not be a match over here.
+ *
+ * `hostname` and not `host`, so the port is out of the comparison on **both**
+ * sides. `URL` drops a default port and a request's host carries one only when
+ * the client wrote it out, so comparing ports would turn `https://x.example`
+ * and a request for `x.example:443` into a silent non-match — a wrong answer
+ * in the direction of „keine Vorbelegung", but for a reason nobody could see.
+ * The price is that two organisations differing only in port, or only in path,
+ * count as the same address and therefore as ambiguous.
+ */
 function hostOf(baseUrl: string): string | null {
-  try {
-    return new URL(baseUrl).host.toLowerCase();
-  } catch {
-    return null;
-  }
+  const normalised = normaliseBaseUrl(baseUrl);
+  return normalised === null ? null : new URL(normalised).hostname;
 }

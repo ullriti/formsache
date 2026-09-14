@@ -86,17 +86,19 @@ afterEach(() => {
 });
 
 /**
- * **Welchen Host die Angebotsliste zu sehen bekommt.**
+ * **Which host the offer list is given.**
  *
- * Er entscheidet `OidcProvider.atThisAddress` und damit die Vorbelegung im
- * Auswahlfeld der Anmeldeseite — sonst nichts; warum diese eine Route ihn
- * überhaupt lesen darf, steht an `OidcLoginController.providers`.
+ * It decides `OidcProvider.atThisAddress` and thereby the pre-selection in the
+ * chooser of the sign-in page — nothing else; why this one route may read it at
+ * all is written at `OidcLoginController.providers`.
  *
- * Getestet wird die Auflösung selbst, weil sie drei Fälle hat, die still
- * falsch werden: hinter einem Reverse-Proxy trägt `Host` dessen eigenen Namen
- * und `X-Forwarded-Host` den, den der Browser benutzt hat; ein Proxy, der
- * anhängt statt zu ersetzen, macht daraus eine Liste; und ohne beides gibt es
- * keinen Host.
+ * **Only the handover is checked here, not the resolution.** Where the value
+ * comes from — `X-Forwarded-Host` as far as `TRUST_PROXY_HOPS` allows,
+ * otherwise `Host`, a list reduced to its first entry — is Express' `req.host`,
+ * and re-testing that would be testing the framework while quietly inviting a
+ * second answer to „darf dieser Kopf geglaubt werden?". That the trust setting
+ * really bites is a question for the integration suite, next to the
+ * `X-Forwarded-For` case that already stands there.
  */
 describe('der Host, den die Angebotsliste liest', () => {
   function offering() {
@@ -110,41 +112,18 @@ describe('der Host, den die Angebotsliste liest', () => {
     return { subject, offers };
   }
 
-  it('zieht X-Forwarded-Host dem Host vor', async () => {
+  it('reicht den Host der Anfrage an die Angebotsliste weiter', async () => {
     const { subject, offers } = offering();
 
-    await subject.providers({
-      headers: {
-        host: 'interner-proxy.invalid',
-        'x-forwarded-host': 'formulare.alpha.example',
-      },
-    });
+    await subject.providers({ host: 'formulare.alpha.example' });
 
     expect(offers).toHaveBeenCalledWith('formulare.alpha.example');
   });
 
-  it('nimmt aus einer angehängten Liste den ersten Eintrag', async () => {
+  it('antwortet ohne Host mit null — keine Vorbelegung', async () => {
     const { subject, offers } = offering();
 
-    await subject.providers({
-      headers: { 'x-forwarded-host': 'formulare.alpha.example, proxy.invalid' },
-    });
-
-    expect(offers).toHaveBeenCalledWith('formulare.alpha.example');
-  });
-
-  it('fällt ohne Weiterleitungskopf auf Host zurück', async () => {
-    const { subject, offers } = offering();
-
-    await subject.providers({ headers: { host: 'formsache.example' } });
-
-    expect(offers).toHaveBeenCalledWith('formsache.example');
-  });
-
-  it('antwortet ohne beides mit null — keine Vorbelegung', async () => {
-    const { subject, offers } = offering();
-
-    await subject.providers({ headers: {} });
+    await subject.providers({});
 
     expect(offers).toHaveBeenCalledWith(null);
   });

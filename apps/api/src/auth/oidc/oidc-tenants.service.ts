@@ -16,10 +16,11 @@ import type { TenantOidcRow } from '../../tenant-admin/oidc-config.service';
  *
  * **What keeps it honest is what it selects.** Nine columns, named one by one:
  * the id plus the eight the OIDC configuration lives in — two of them the claim
- * names of Konzept no. 70 — plus the names the offer list shows.
- * No `form_defaults`, no branding, no members — a widening of this `select` is
- * the only way an unauthenticated route here could start reading an organisation's data,
- * and it is a visible line in a diff.
+ * names of Konzept no. 70 — plus, on the offer list, the two names it shows and
+ * `public_base_url`, which is **only compared and never answered with**
+ * ({@link findOfferable}). No `form_defaults`, no branding, no members — a
+ * widening of this `select` is the only way an unauthenticated route here could
+ * start reading an organisation's data, and it is a visible line in a diff.
  */
 @Injectable()
 export class OidcTenantsService {
@@ -88,7 +89,7 @@ export class OidcTenantsService {
         ...OidcTenantsService.OIDC_COLUMNS,
         name: true,
         shortName: true,
-        // **The tenth column, and it never leaves the server.** It is compared
+        // **The column that never leaves the server.** It is compared
         // against the host the request arrived under so the offer list can say
         // which organisation belongs to the address in the browser's bar
         // (`OidcProvider.atThisAddress`); what travels is that boolean, not the

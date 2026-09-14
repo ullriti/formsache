@@ -195,6 +195,43 @@ describe('OIDC login', () => {
       expect(response.text).not.toContain(CLIENT_SECRET);
     });
 
+    /**
+     * **Die Kette über den Draht** — Kopfzeile, Express' `trust proxy`,
+     * Controller, Dienst. Die Einheitentests springen bei `providers({ host })`
+     * ein und überspringen damit genau die Schicht, in der entschieden wird, ob
+     * ein weitergereichter Host überhaupt geglaubt werden darf. Hier steht
+     * `TRUST_PROXY_HOPS: 1` (oben im Aufbau), also wird er geglaubt.
+     *
+     * Der zweite `expect` ist der Nicht-Preisgabe-Test für den Fall, den die
+     * Einheitentests nicht abdecken: eine **gesetzte** Basis-Adresse. Sie wird
+     * verglichen und darf trotzdem nicht in der Antwort stehen.
+     */
+    it('marks the organisation reachable under the address the request came in on', async () => {
+      const address = 'formulare.alpha.invalid';
+      await app().prisma.tenant.update({
+        where: { id: alpha.id },
+        data: { publicBaseUrl: `https://${address}` },
+      });
+
+      const response = await request(app().server)
+        .get(apiPath('/auth/oidc/providers'))
+        .set('X-Forwarded-Host', address);
+      expect(response.status).toBe(200);
+
+      const offers = parseOidcProviders(response.body);
+      expect(
+        offers.find((offer) => offer.tenantId === alpha.id)?.atThisAddress,
+      ).toBe(true);
+      // Positivliste wie nebenan: verglichen wird serverseitig, die Adresse
+      // selbst reist nicht mit.
+      expect(response.text).not.toContain(address);
+
+      await app().prisma.tenant.update({
+        where: { id: alpha.id },
+        data: { publicBaseUrl: null },
+      });
+    });
+
     it('leaves out an organisation whose SSO is switched off', async () => {
       const response = await request(app().server).get(
         apiPath('/auth/oidc/providers'),

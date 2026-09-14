@@ -253,6 +253,87 @@ describe('the offer route holds no client secret', () => {
     expect(offers.filter((one) => one.atThisAddress)).toHaveLength(0);
   });
 
+  /**
+   * **Usability first, uniqueness after** — the rule the loop states and, up to
+   * this test, nothing held. A second organisation at the same address that
+   * cannot be offered at all (its secret does not open) is not on offer, so it
+   * does not make the match ambiguous; the usable one stays marked.
+   *
+   * Move `soleTenantAtHost` above the loop, or hand it `rows` instead of
+   * `usable`, and this goes red — which is the whole point of writing it down.
+   */
+  it('counts only offerable organisations when deciding uniqueness', async () => {
+    const h = harness([
+      offerable({ publicBaseUrl: 'https://gemeinsam.example' }),
+      offerable({
+        id: BETA,
+        name: 'Verein Beta',
+        shortName: 'Beta',
+        // Ein Geheimnis, das sich hier nicht öffnen lässt: diese Organisation
+        // fällt aus der Liste, bevor die Eindeutigkeit gezählt wird.
+        oidcClientSecret: new TextEncoder().encode('plaintext-in-the-column'),
+        publicBaseUrl: 'https://gemeinsam.example',
+      }),
+    ]);
+
+    const offers = await h.login.offers('gemeinsam.example');
+
+    expect(offers).toHaveLength(1);
+    expect(offers[0]?.atThisAddress).toBe(true);
+  });
+
+  /** Der Vergleich ist unabhängig von der Schreibweise des Anfrage-Hosts. */
+  it('matches the request host case-insensitively', async () => {
+    const h = harness([
+      offerable({ publicBaseUrl: 'https://formulare.alpha.example' }),
+    ]);
+
+    const offers = await h.login.offers('FORMULARE.ALPHA.EXAMPLE');
+
+    expect(offers[0]?.atThisAddress).toBe(true);
+  });
+
+  /**
+   * **Der Port zählt auf keiner Seite mit** — `URL` wirft einen Standardport
+   * weg, eine Anfrage trägt ihn nur, wenn der Aufrufer ihn ausgeschrieben hat,
+   * und ein Vergleich über Ports ergäbe dann einen stillen Nicht-Treffer.
+   */
+  it('ignores the port on both sides', async () => {
+    const h = harness([
+      offerable({ publicBaseUrl: 'https://formulare.alpha.example' }),
+    ]);
+
+    const offers = await h.login.offers('formulare.alpha.example:443');
+
+    expect(offers[0]?.atThisAddress).toBe(true);
+  });
+
+  /**
+   * **Was `normaliseBaseUrl` als Basis-Adresse ablehnt, ist hier kein
+   * Treffer** — und was es durchlässt, ist einer. Der Punkt ist nicht eine
+   * eigene Strenge, sondern **dieselbe**: gäbe es hier ein zweites „was ist
+   * eine Basis-Adresse?", wäre es das großzügigere, und ein Wert, den
+   * `PublicUrlService.resolveBaseUrl` wie einen fehlenden behandelt, ergäbe
+   * hier eine Vorbelegung.
+   *
+   * Ein rohes `new URL` nähme beide Werte unten an. Deshalb sind sie hier
+   * aufgeschrieben und nicht die Regel, aus der sie folgen.
+   */
+  it('refuses what is not a base address, exactly as PublicUrlService does', async () => {
+    for (const stored of [
+      // Kein http(s) — `safeExternalUrl` lehnt das Schema ab.
+      'ftp://formulare.alpha.example',
+      // Query: „cannot be part of a base address" (`base-url.ts`).
+      'https://formulare.alpha.example?a=1',
+    ]) {
+      const h = harness([offerable({ publicBaseUrl: stored })]);
+
+      const offers = await h.login.offers('formulare.alpha.example');
+
+      expect(offers[0]?.atThisAddress).toBe(false);
+    }
+  });
+
   it('marks nobody for an unknown host, no host, or an unreadable stored address', async () => {
     const rows = [
       offerable({ publicBaseUrl: 'https://formulare.alpha.example' }),
