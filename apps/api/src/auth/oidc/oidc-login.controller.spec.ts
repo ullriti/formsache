@@ -85,6 +85,71 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+/**
+ * **Welchen Host die Angebotsliste zu sehen bekommt.**
+ *
+ * Er entscheidet `OidcProvider.atThisAddress` und damit die Vorbelegung im
+ * Auswahlfeld der Anmeldeseite — sonst nichts; warum diese eine Route ihn
+ * überhaupt lesen darf, steht an `OidcLoginController.providers`.
+ *
+ * Getestet wird die Auflösung selbst, weil sie drei Fälle hat, die still
+ * falsch werden: hinter einem Reverse-Proxy trägt `Host` dessen eigenen Namen
+ * und `X-Forwarded-Host` den, den der Browser benutzt hat; ein Proxy, der
+ * anhängt statt zu ersetzen, macht daraus eine Liste; und ohne beides gibt es
+ * keinen Host.
+ */
+describe('der Host, den die Angebotsliste liest', () => {
+  function offering() {
+    const offers = vi.fn().mockResolvedValue([]);
+    const subject = new OidcLoginController(
+      { offers } as unknown as OidcLoginService,
+      { ttlSeconds: 3600 } as unknown as SessionService,
+      {} as unknown as PublicUrlService,
+      { NODE_ENV: 'production' } as ApiEnv,
+    );
+    return { subject, offers };
+  }
+
+  it('zieht X-Forwarded-Host dem Host vor', async () => {
+    const { subject, offers } = offering();
+
+    await subject.providers({
+      headers: {
+        host: 'interner-proxy.invalid',
+        'x-forwarded-host': 'formulare.alpha.example',
+      },
+    });
+
+    expect(offers).toHaveBeenCalledWith('formulare.alpha.example');
+  });
+
+  it('nimmt aus einer angehängten Liste den ersten Eintrag', async () => {
+    const { subject, offers } = offering();
+
+    await subject.providers({
+      headers: { 'x-forwarded-host': 'formulare.alpha.example, proxy.invalid' },
+    });
+
+    expect(offers).toHaveBeenCalledWith('formulare.alpha.example');
+  });
+
+  it('fällt ohne Weiterleitungskopf auf Host zurück', async () => {
+    const { subject, offers } = offering();
+
+    await subject.providers({ headers: { host: 'formsache.example' } });
+
+    expect(offers).toHaveBeenCalledWith('formsache.example');
+  });
+
+  it('antwortet ohne beides mit null — keine Vorbelegung', async () => {
+    const { subject, offers } = offering();
+
+    await subject.providers({ headers: {} });
+
+    expect(offers).toHaveBeenCalledWith(null);
+  });
+});
+
 describe('der Rückruf ohne Transaktions-Cookie', () => {
   it('nennt den erwarteten Cookie-Namen — hinter TLS den mit __Host-', async () => {
     const secure = controller(true);

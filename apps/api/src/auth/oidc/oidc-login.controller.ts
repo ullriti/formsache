@@ -83,11 +83,36 @@ export class OidcLoginController {
    * `ThrottlerModule.forRoot`: there is exactly **one** `forRoot` in this
    * application (`common/rate-limit.module.ts`), and a second one replaces it
    * silently — the regression that removed the login's rate limit.
+   *
+   * ## The one route that reads the request's host, and why it may
+   *
+   * `OidcProvider.atThisAddress` says which organisation belongs to the address
+   * in the browser's bar, so that a chooser can pre-select it. That address can
+   * only come from the request, and the request's host is written by whoever
+   * calls — the very thing {@link callback} refuses to take `Host` or
+   * `X-Forwarded-Host` from.
+   *
+   * **The difference is what the value decides.** There it picks the address an
+   * authorization code is redeemed against; here it moves a pre-selection in a
+   * form that the person signing in sees and may change. Whoever forges the
+   * header reaches exactly what they would reach by opening the chooser and
+   * picking that entry — so there is nothing to gain and nothing to protect.
+   *
+   * What it does cost is one fact: whoever already knows an organisation's
+   * address can confirm the pairing with its name. The names of this list are
+   * out anyway, and the address is the thing the asker had to bring; the
+   * addresses themselves never travel (`oidc-tenants.service.ts`).
+   *
+   * ⚠️ **This reasoning holds for a pre-selection and for nothing else.**
+   * Anything derived from this value that decides where a redirect goes, which
+   * organisation a session belongs to, or what somebody may see, is an
+   * assertion of the sender — and belongs to the rule {@link callback} states,
+   * not to this exception.
    */
   @Get('providers')
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
-  providers(): Promise<OidcProvider[]> {
-    return this.login.offers();
+  providers(@Req() request: HostRequest): Promise<OidcProvider[]> {
+    return this.login.offers(requestHost(request));
   }
 
   /**
@@ -275,6 +300,41 @@ interface RedirectingResponse extends CookieResponse {
  * *configured* callback address, and there is no member on this interface
  * through which a caller-written `Host` could reach it.
  */
+/**
+ * „Etwas, von dem sich der Host lesen lässt" — structurally minimal, like
+ * {@link CookieRequest} next door: nothing here needs Express.
+ */
+interface HostRequest {
+  readonly headers: {
+    readonly host?: string | undefined;
+    readonly 'x-forwarded-host'?: string | string[] | undefined;
+  };
+}
+
+/**
+ * The host this request arrived under, or `null`.
+ *
+ * `X-Forwarded-Host` before `Host`, because behind the reverse proxy of a
+ * normal installation the latter carries the proxy's own name and the former
+ * the address the browser actually used. A proxy that appends rather than
+ * replaces produces a list ("a, b"); the **first** entry is the original one.
+ *
+ * Only ever used for {@link OidcProvider.atThisAddress} — see the note on
+ * {@link OidcLoginController.providers} for why this route may read it and what
+ * must never be derived from it.
+ */
+function requestHost(request: HostRequest): string | null {
+  const forwarded = request.headers['x-forwarded-host'];
+  const raw =
+    (Array.isArray(forwarded) ? forwarded[0] : forwarded) ??
+    request.headers.host;
+  if (raw === undefined) {
+    return null;
+  }
+  const first = raw.split(',')[0]?.trim();
+  return first === undefined || first === '' ? null : first;
+}
+
 interface CallbackRequest extends CookieRequest {
   readonly url?: string | undefined;
 }

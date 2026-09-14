@@ -88,6 +88,14 @@ export class OidcTenantsService {
         ...OidcTenantsService.OIDC_COLUMNS,
         name: true,
         shortName: true,
+        // **The tenth column, and it never leaves the server.** It is compared
+        // against the host the request arrived under so the offer list can say
+        // which organisation belongs to the address in the browser's bar
+        // (`OidcProvider.atThisAddress`); what travels is that boolean, not the
+        // address. Widening a select on this route is the visible line the
+        // class doc asks for — this is that line, and the sentence above is
+        // what keeps it narrow.
+        publicBaseUrl: true,
       },
       // Stable order, so the login page does not reshuffle its buttons between
       // reloads — the same reason `membershipInclude` orders the switcher.
@@ -100,6 +108,12 @@ export class OidcTenantsService {
 export interface OfferableTenant extends TenantOidcRow {
   readonly name: string;
   readonly shortName: string;
+  /**
+   * This organisation's own base address, or `null` for „die Systemvorgabe
+   * gilt" — read **only** to be compared against the request's host, never to
+   * be answered with. See the note at the `select` that fetches it.
+   */
+  readonly publicBaseUrl: string | null;
 }
 
 /** Canonical uuid form, as Postgres accepts it for a `uuid` column. */

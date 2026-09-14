@@ -24,6 +24,14 @@ Kategorien je Eintrag: **Added** · **Changed** · **Deprecated** · **Removed**
   sichtbar bleibt. Beides ist Anzeige: gewählt wird der `tenantId` der Startadresse,
   und ob eine Organisation SSO anbietet, entscheidet unverändert der Server.
 
+- **Die Auswahl ist auf die Organisation dieser Adresse vorbelegt.** Führt eine
+  Organisation eine eigene Basis-Adresse und wird die Anmeldeseite unter genau
+  dieser aufgerufen, steht sie im Auswahlfeld schon vorn. Der Abgleich läuft
+  serverseitig; es reist nur ein Ja/Nein je Organisation, keine Adresse. Tragen
+  zwei Organisationen dieselbe Adresse — die Spalte hat keinen Unique-Index —,
+  ist nichts vorbelegt: „zwei Treffer" beantwortet nicht, welche gemeint ist.
+  Die Vorbelegung entscheidet nichts und ist frei änderbar.
+
 - **Das Release-Modell steht fest:** jeder Push auf `main`, der die Pipeline
   grün durchläuft, ist eine stabile Fassung, und die Pipeline schreibt sie als
   Tag `vX.Y.Z` zurück. Vorher war mangels Versionsquelle jede Fassung eine

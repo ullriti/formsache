@@ -366,7 +366,17 @@ function OidcOffer({
   // on a selection pointing at nothing — without a second render pass, and
   // without a moment in which the anchor carries an address that is gone.
   const selected =
-    offers.find((offer) => offer.tenantId === chosen) ?? offers[0];
+    offers.find((offer) => offer.tenantId === chosen) ??
+    // **The organisation this address belongs to, before the plain first one.**
+    // The server resolved it (`OidcProvider.atThisAddress`) and marks at most
+    // one entry, only when the match is unambiguous; where it marks none, the
+    // fallback is the first of the stable, server-sorted list as before.
+    //
+    // It is a pre-selection and no more: it stands in a chooser that says which
+    // organisation it is and that anybody may change. Nothing here treats it as
+    // a statement about who the person signing in is.
+    offers.find((offer) => offer.atThisAddress) ??
+    offers[0];
 
   // **"No organisation offers SSO" is decided here and only here.** The caller
   // used to ask the same question a second time, and two places for one

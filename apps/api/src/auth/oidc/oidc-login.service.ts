@@ -25,7 +25,10 @@ import { SessionService } from '../session.service';
 import { describeFailure, issuerScheme } from './oidc-diagnostics';
 import { OidcIdentityService } from './oidc-identity.service';
 import { OidcProviderService } from './oidc-provider.service';
-import { OidcTenantsService } from './oidc-tenants.service';
+import {
+  OidcTenantsService,
+  type OfferableTenant,
+} from './oidc-tenants.service';
 import {
   newOidcTransaction,
   stateMatches,
@@ -125,9 +128,10 @@ export class OidcLoginService {
    * itself, which is the fail-closed answer, and the log line is what tells an
    * operator that an organisation believes it has SSO on while nobody can use it.
    */
-  async offers(): Promise<OidcProvider[]> {
+  async offers(requestHost: string | null): Promise<OidcProvider[]> {
     const rows = await this.tenants.findOfferable();
     const offers: OidcProvider[] = [];
+    const usable: OfferableTenant[] = [];
     for (const row of rows) {
       // **Asked once, for both.** The reason *is* the answer to „does this
       // organisation offer SSO?" — a second call for the log line would mean
@@ -145,11 +149,21 @@ export class OidcLoginService {
         this.reportRefusalOnce(row, refusal, 'offer list');
         continue;
       }
+      usable.push(row);
+    }
+
+    // **After the usability check, not before:** uniqueness counts among the
+    // organisations that actually stand in the chooser. A second organisation
+    // at the same address that does not offer SSO at all does not make the
+    // match ambiguous for this purpose — it is not on offer.
+    const atAddress = soleTenantAtHost(usable, requestHost);
+    for (const row of usable) {
       offers.push({
         tenantId: row.id,
         name: row.name,
         shortName: row.shortName,
         buttonLabel: row.oidcButtonLabel ?? DEFAULT_OIDC_BUTTON_LABEL,
+        atThisAddress: row.id === atAddress,
       });
     }
     return offers;
@@ -622,4 +636,55 @@ function activeTenantOf(
     return signedInAt;
   }
   return deriveActiveTenant(user.memberships);
+}
+
+/**
+ * Which of the offered organisations is reachable under **this** address — or
+ * `null` when that is none of them or more than one.
+ *
+ * ## Why "more than one" is the same answer as "none"
+ *
+ * `tenant.public_base_url` carries no unique index; two organisations may hold
+ * the same address. "Two matches" is no answer to "which one is meant", and a
+ * guessed pre-selection would be worse than none: it would look like a
+ * statement of fact.
+ *
+ * ## What is compared
+ *
+ * The `host` of both sides — name **including port**, lower-cased: `URL.host`
+ * on the stored address, the raw value on the request's side. A stored address
+ * that does not parse as a URL counts as no match, which is the posture
+ * `PublicUrlService.resolveBaseUrl` already takes towards such values ("treated
+ * exactly like an absent one") and not an exception escaping upwards.
+ */
+function soleTenantAtHost(
+  rows: readonly OfferableTenant[],
+  requestHost: string | null,
+): string | null {
+  if (requestHost === null || requestHost === '') {
+    return null;
+  }
+  const wanted = requestHost.toLowerCase();
+  let found: string | null = null;
+  for (const row of rows) {
+    if (row.publicBaseUrl === null || hostOf(row.publicBaseUrl) !== wanted) {
+      continue;
+    }
+    if (found !== null) {
+      // A second match: not unambiguous, so none. No early exit on the first —
+      // this case is precisely the one the rule is about.
+      return null;
+    }
+    found = row.id;
+  }
+  return found;
+}
+
+/** The `host` of a stored base address, or `null`. */
+function hostOf(baseUrl: string): string | null {
+  try {
+    return new URL(baseUrl).host.toLowerCase();
+  } catch {
+    return null;
+  }
 }

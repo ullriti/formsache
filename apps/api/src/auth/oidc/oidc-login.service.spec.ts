@@ -88,6 +88,7 @@ function offerable(overrides: Partial<OfferableTenant> = {}): OfferableTenant {
     oidcEmailClaim: DEFAULT_OIDC_EMAIL_CLAIM,
     oidcEmailVerifiedClaim: DEFAULT_OIDC_EMAIL_VERIFIED_CLAIM,
     oidcButtonLabel: 'Mit Alpha-Konto anmelden',
+    publicBaseUrl: null,
     ...overrides,
   };
 }
@@ -189,16 +190,86 @@ describe('the offer route holds no client secret', () => {
         name: 'Verein Alpha',
         shortName: 'Alpha',
         buttonLabel: 'Mit Alpha-Konto anmelden',
+        atThisAddress: false,
       },
     ];
-    await expect(h.login.offers()).resolves.toStrictEqual(expected);
+    await expect(h.login.offers(null)).resolves.toStrictEqual(expected);
   });
 
   it('falls back to the shipped caption when the organisation set none', async () => {
     const h = harness([offerable({ oidcButtonLabel: null })]);
 
-    const [offer] = await h.login.offers();
+    const [offer] = await h.login.offers(null);
     expect(offer?.buttonLabel).toBe(DEFAULT_OIDC_BUTTON_LABEL);
+  });
+
+  /**
+   * **Which organisation belongs to the address in the browser's bar.**
+   *
+   * The chooser of the sign-in page pre-selects it, so that an installation
+   * serving several organisations under their own addresses does not ask a
+   * question it can answer itself. Compared is the `host` — name including
+   * port — of `tenant.public_base_url` against the host the request arrived
+   * under.
+   */
+  it('marks the organisation whose base address matches the request host', async () => {
+    const h = harness([
+      offerable({ publicBaseUrl: 'https://formulare.alpha.example' }),
+      offerable({
+        id: BETA,
+        name: 'Verein Beta',
+        shortName: 'Beta',
+        oidcClientSecret: sealedFor(BETA),
+        publicBaseUrl: 'https://formulare.beta.example',
+      }),
+    ]);
+
+    const offers = await h.login.offers('formulare.beta.example');
+
+    expect(offers.find((one) => one.atThisAddress)?.tenantId).toBe(BETA);
+    expect(offers.filter((one) => one.atThisAddress)).toHaveLength(1);
+  });
+
+  /**
+   * **Two matches are no match.** `tenant.public_base_url` carries no unique
+   * index, two organisations may hold the same address — and "which of the
+   * two" is then unanswerable. A guessed pre-selection would be worse than
+   * none: it would look like a statement of fact.
+   */
+  it('marks nobody when two organisations share the address', async () => {
+    const h = harness([
+      offerable({ publicBaseUrl: 'https://gemeinsam.example' }),
+      offerable({
+        id: BETA,
+        name: 'Verein Beta',
+        shortName: 'Beta',
+        oidcClientSecret: sealedFor(BETA),
+        publicBaseUrl: 'https://gemeinsam.example',
+      }),
+    ]);
+
+    const offers = await h.login.offers('gemeinsam.example');
+
+    expect(offers.filter((one) => one.atThisAddress)).toHaveLength(0);
+  });
+
+  it('marks nobody for an unknown host, no host, or an unreadable stored address', async () => {
+    const rows = [
+      offerable({ publicBaseUrl: 'https://formulare.alpha.example' }),
+    ];
+
+    for (const host of ['fremde.example', null, '']) {
+      const offers = await harness(rows).login.offers(host);
+      expect(offers.filter((one) => one.atThisAddress)).toHaveLength(0);
+    }
+
+    // A value that does not parse as a URL counts as an absent one — the same
+    // posture `PublicUrlService.resolveBaseUrl` takes, and not an exception
+    // escaping upwards.
+    const broken = await harness([
+      offerable({ publicBaseUrl: 'kein-url-wert' }),
+    ]).login.offers('kein-url-wert');
+    expect(broken.filter((one) => one.atThisAddress)).toHaveLength(0);
   });
 
   /**
@@ -209,7 +280,7 @@ describe('the offer route holds no client secret', () => {
   it('never builds an OidcSignIn — the only thing that carries the plaintext', async () => {
     const h = harness(ROW_CASES.map((one) => one.row));
 
-    await h.login.offers();
+    await h.login.offers(null);
 
     expect(h.signIn).not.toHaveBeenCalled();
   });
@@ -233,7 +304,7 @@ describe('the offer route holds no client secret', () => {
         expected = false;
       }
 
-      const offers = await h.login.offers();
+      const offers = await h.login.offers(null);
       expect(offers.length === 1, one.name).toBe(expected);
     }
   });
@@ -242,7 +313,7 @@ describe('the offer route holds no client secret', () => {
   it('finds one usable row and ten unusable ones in that table', async () => {
     const h = harness(ROW_CASES.map((one) => one.row));
 
-    await expect(h.login.offers()).resolves.toHaveLength(1);
+    await expect(h.login.offers(null)).resolves.toHaveLength(1);
     expect(ROW_CASES).toHaveLength(11);
   });
 
@@ -260,7 +331,7 @@ describe('the offer route holds no client secret', () => {
       offerable({ oidcClientSecret: sealedFor(BETA) }),
     ]);
 
-    await h.login.offers();
+    await h.login.offers(null);
 
     // Two: the fully configured Organisation, and the one whose secret belongs to
     // another organisation — that one has to be *tried* before it can be refused.

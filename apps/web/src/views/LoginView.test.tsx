@@ -1,6 +1,9 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_OIDC_BUTTON_LABEL } from '@formsache/shared';
+import {
+  DEFAULT_OIDC_BUTTON_LABEL,
+  type OidcProvider,
+} from '@formsache/shared';
 
 import { emptyResponse, jsonResponse, stubFetch } from '../test/fetch-mock';
 import type { FetchMock } from '../test/fetch-mock';
@@ -36,14 +39,7 @@ function loginCalls(fetchMock: FetchMock): unknown[] {
 }
 
 /** The SSO offer, as `GET /api/auth/oidc/providers` answers it. */
-function providers(
-  entries: readonly {
-    tenantId: string;
-    name: string;
-    shortName: string;
-    buttonLabel: string;
-  }[] = [],
-): Response {
+function providers(entries: readonly OidcProvider[] = []): Response {
   return jsonResponse(200, entries);
 }
 
@@ -53,12 +49,7 @@ function providers(
  * `mockResolvedValue` would hand the offer list a login body.
  */
 function stubRoutes(
-  offer: readonly {
-    tenantId: string;
-    name: string;
-    shortName: string;
-    buttonLabel: string;
-  }[],
+  offer: readonly OidcProvider[],
   otherwise: Response,
 ): FetchMock {
   const fetchMock = stubFetch();
@@ -219,6 +210,7 @@ describe('LoginView', () => {
         name: 'Ortsgruppe Musterstadt',
         shortName: 'Musterstadt',
         buttonLabel: 'Mit Musterstadt-Konto anmelden',
+        atThisAddress: false,
       },
     ];
 
@@ -265,12 +257,14 @@ describe('LoginView', () => {
             name: 'Ortsgruppe Musterstadt',
             shortName: 'Musterstadt',
             buttonLabel: DEFAULT_OIDC_BUTTON_LABEL,
+            atThisAddress: false,
           },
           {
             tenantId: '01919c3f-0000-7000-8000-0000000012ef',
             name: 'Ortsgruppe Beispieldorf',
             shortName: 'Beispieldorf',
             buttonLabel: DEFAULT_OIDC_BUTTON_LABEL,
+            atThisAddress: false,
           },
         ],
         emptyResponse(401),
@@ -293,17 +287,13 @@ describe('LoginView', () => {
     });
 
     /** Wie viele Angebote es sind, `n` Stück, stabil benannt und sortiert. */
-    function manyOffers(count: number): {
-      tenantId: string;
-      name: string;
-      shortName: string;
-      buttonLabel: string;
-    }[] {
+    function manyOffers(count: number): OidcProvider[] {
       return Array.from({ length: count }, (_, index) => ({
         tenantId: `01919c3f-0000-7000-8000-0000000000${String(index).padStart(2, '0')}`,
         name: `Ortsgruppe ${String.fromCharCode(65 + index)}dorf`,
         shortName: `${String.fromCharCode(65 + index)}dorf`,
         buttonLabel: DEFAULT_OIDC_BUTTON_LABEL,
+        atThisAddress: false,
       }));
     }
 
@@ -346,6 +336,61 @@ describe('LoginView', () => {
       // „Mit Organisationskonto anmelden" ohne jede Zuordnung.
       expect(screen.getByRole('link').getAttribute('aria-describedby')).toBe(
         chooser.getAttribute('id'),
+      );
+    });
+
+    /**
+     * **Die Organisation dieser Adresse steht vorn.**
+     *
+     * Wer eine Installation unter mehreren Adressen betreibt, muss auf der
+     * Adresse einer Organisation nicht noch einmal gefragt werden, welche
+     * gemeint ist. Welche das ist, hat der Server entschieden
+     * (`OidcProvider.atThisAddress`) — hier wird nur geprüft, dass die
+     * Markierung die Vorbelegung bewegt und nicht bloß mitreist.
+     */
+    it('pre-selects the organisation the current address belongs to', async () => {
+      const offers = manyOffers(5);
+      stubRoutes(
+        offers.map((offer, index) =>
+          index === 3 ? { ...offer, atThisAddress: true } : offer,
+        ),
+        emptyResponse(401),
+      );
+
+      renderWithQuery(<LoginView />);
+
+      const chooser = await screen.findByLabelText('Organisation');
+      // Nicht die erste der Liste, sondern die markierte.
+      expect((chooser as HTMLSelectElement).value).toBe(
+        '01919c3f-0000-7000-8000-000000000003',
+      );
+      expect(screen.getByRole('link').getAttribute('href')).toBe(
+        '/api/auth/oidc/start/01919c3f-0000-7000-8000-000000000003',
+      );
+    });
+
+    /**
+     * Eine eigene Wahl schlägt die Vorbelegung — sonst wäre sie keine Wahl,
+     * sondern eine Feststellung.
+     */
+    it('lets an explicit choice win over the pre-selection', async () => {
+      const offers = manyOffers(5);
+      stubRoutes(
+        offers.map((offer, index) =>
+          index === 3 ? { ...offer, atThisAddress: true } : offer,
+        ),
+        emptyResponse(401),
+      );
+
+      renderWithQuery(<LoginView />);
+
+      const chooser = await screen.findByLabelText('Organisation');
+      fireEvent.change(chooser, {
+        target: { value: '01919c3f-0000-7000-8000-000000000001' },
+      });
+
+      expect(screen.getByRole('link').getAttribute('href')).toBe(
+        '/api/auth/oidc/start/01919c3f-0000-7000-8000-000000000001',
       );
     });
 
