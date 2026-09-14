@@ -12,6 +12,8 @@
  * shutdown hook) is therefore under test by construction.
  */
 
+import type { IncomingMessage } from 'node:http';
+
 import type { NestApplicationOptions } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import type { ApiEnv } from '@formsache/shared';
@@ -298,7 +300,12 @@ export function configureApp(app: NestExpressApplication, env: ApiEnv): void {
   for (const [path, limit] of LEGAL_WRITE_BODY_LIMITS) {
     app.useBodyParser('json', {
       limit,
-      type: (request) =>
+      // Nest 12 types `type` from `express`'s own factory signature rather
+      // than a hand-maintained one, and this project carries no `express`
+      // type package (nothing here imports Express's request/response types
+      // directly) — so without an explicit annotation the parameter would be
+      // an implicit `any`. `IncomingMessage` is all the predicate reads.
+      type: (request: IncomingMessage) =>
         request.method === 'PUT' &&
         pathOf(request.url) === path &&
         mediaTypeOf(request.headers['content-type']) === 'application/json',
