@@ -1819,14 +1819,15 @@ test.describe('Rechtstexte der Organisation ', () => {
   }
 
   /**
-   * The frame carries **six** tabs, and *Rechtstexte* is the sixth.
+   * The frame carries **seven** tabs, and *Rechtstexte* is the sixth —
+   * *Vorlagen* (ADR-0032, moved here in full from the system administration)
+   * is the seventh.
    *
    * The count is the part that can turn red — the same shape
-   * `system-settings.spec.ts` runs for the system administration and which
-   * caught *Vorlagen* there: a loop over known captions never sees
-   * a seventh tab.
+   * `system-settings.spec.ts` runs for the system administration: a loop over
+   * known captions never sees an eighth tab.
    */
-  test('ist der sechste Reiter, und die Reiterleiste zählt sechs', async ({
+  test('trägt sieben Reiter, mit Rechtstexte an sechster und Vorlagen an siebter Stelle', async ({
     page,
   }) => {
     await page.goto(TENANT_LEGAL_SETTINGS_PATH);
@@ -1841,6 +1842,7 @@ test.describe('Rechtstexte der Organisation ', () => {
       'Mailversand',
       'KI',
       'Rechtstexte',
+      'Vorlagen',
     ];
     for (const label of labels) {
       await expect(
@@ -2002,5 +2004,54 @@ test.describe('Rechtstexte der Organisation ', () => {
     await expect(
       reloaded.getByRole('textbox', { name: 'Ort', exact: true }),
     ).toHaveValue('');
+  });
+});
+
+/**
+ * **The seventh tab: *Vorlagen*** (ADR-0032, moved here in full from the
+ * system administration) — the surface to the notification templates of one
+ * organisation.
+ *
+ * The count case above already proves the tab exists and sits at the right
+ * place; what is measured here is that it really shows *this* organisation's
+ * templates — the ones Musterstadt was seeded with at creation
+ * (`AdminRepository.createTenant`), not an empty editor and not the old
+ * installation-wide route's content.
+ *
+ * **Nothing is saved**, for the same reason the *Rechtstexte* block above
+ * states: this file runs `serial` over one shared organisation, and a write
+ * here would take the subject away from whatever else in this suite reads
+ * Musterstadt's own templates.
+ */
+test.describe('Vorlagen der Organisation', () => {
+  test.use({ storageState: tenantAdminStateFile });
+
+  const TENANT_TEMPLATES_PATH = '/admin/templates';
+
+  test('zeigt die Vorlagen dieser Organisation, mit dem Recht zum Ändern', async ({
+    page,
+  }) => {
+    await page.goto(TENANT_TEMPLATES_PATH);
+    await expect(
+      page.getByRole('heading', { name: 'Organisations-Verwaltung', level: 1 }),
+    ).toBeVisible();
+
+    // The marker is the first template card, not the tab label — the same
+    // reasoning `settledSystemTab()` gave in `e2e/a11y/views.ts` for the
+    // predecessor of this tab.
+    await expect(
+      page.getByRole('heading', { name: 'Bestätigung an Teilnehmer' }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Meldung ans Büro' }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Änderungsmeldung' }),
+    ).toBeVisible();
+
+    // A field is present and editable — the boundary this file's storage
+    // state grants (`can_manage_settings` on Musterstadt's admin group), not
+    // merely a read-only display of somebody else's decision.
+    await expect(page.getByRole('button', { name: 'Speichern' })).toBeVisible();
   });
 });

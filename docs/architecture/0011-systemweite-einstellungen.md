@@ -1,7 +1,19 @@
 # 11. Systemweite Einstellungen als unterste Vererbungsschicht
 
-- **Status:** superseded in Teilen — fortgeschrieben am 2026-08-14 und 2026-08-17
+- **Status:** superseded in Teilen — fortgeschrieben am 2026-08-14 und
+  2026-08-17; für die Benachrichtigungs-Vorlagen abgelöst durch ADR-0032
+  (2026-09-14)
 - **Date:** 2026-07-29
+
+> **Abgelöst seit 2026-09-14, nur für die Benachrichtigungs-Vorlagen.** §7
+> nennt sie unter den Gründen, warum `system_setting` kein `tenant_id` trägt,
+> und die Folgearbeit am Ende dieser ADR sagte ihre spätere Ankunft in dieser
+> Tabelle voraus — „kopiert, nicht vererbt". Sie sind stattdessen **nie** hier
+> angekommen: [ADR-0032](0032-benachrichtigungs-vorlagen-je-organisation.md)
+> gibt sie stattdessen vollständig jeder Organisation, mit `tenant_id` und
+> eigenem Zähler. Alles andere hier — die Systemzeile für Mailserver,
+> Basis-Adresse und KI, §7 (Allowlist) für sie — gilt unverändert weiter; siehe
+> ADR-0032 für die Begründung dieser einen Ausnahme.
 
 > **Fortschreibung 2026-08-17.** Der **Organisations-Standard kennt keine
 > Abschnittsschalter mehr.** `tenant.form_defaults` hält ein flaches,

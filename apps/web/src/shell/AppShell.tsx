@@ -196,7 +196,8 @@ export function AppShell({ user }: AppShellProps): ReactElement {
   const isDashboard = route.kind === 'dashboard';
   /**
    * Whether the header's „⚙ Organisations-Verwaltung" entry should read as current —
-   * widened to all four siblings of the tenant administration (`tenant-mail` was
+   * widened to every sibling of the tenant administration (`tenant-mail`,
+   * `tenant-ai`, `tenant-legal-settings` and `tenant-templates` were each
    * added afterwards), because the entry opens the first of them (`TENANT_APPEARANCE_PATH`) and
    * must not go dark the moment somebody switches to one of the other tabs
    * inside that view.
@@ -208,9 +209,10 @@ export function AppShell({ user }: AppShellProps): ReactElement {
     route.kind === 'tenant-mail' ||
     route.kind === 'tenant-ai' ||
     route.kind === 'tenant-legal-settings' ||
+    route.kind === 'tenant-templates' ||
     route.kind === 'tenant-setup';
   /**
-   * Whether one of the **four** tabs of the system administration is open (finding 16) —
+   * Whether one of the tabs of the system administration is open (finding 16) —
    * the same reasoning that `isTenantDefaults` gives for the tenant administration:
    * the one entry in the header opens the first tab and must not
    * go dark the moment somebody switches inside the view to
@@ -223,7 +225,6 @@ export function AppShell({ user }: AppShellProps): ReactElement {
     route.kind === 'system-tenants' ||
     route.kind === 'system-monitoring' ||
     route.kind === 'system-mail' ||
-    route.kind === 'system-templates' ||
     route.kind === 'system-ai' ||
     route.kind === 'system-legal-settings' ||
     route.kind === 'system-superadmins';
@@ -497,13 +498,14 @@ export function AppShell({ user }: AppShellProps): ReactElement {
           route.kind === 'tenant-members' ||
           route.kind === 'tenant-mail' ||
           route.kind === 'tenant-ai' ||
-          route.kind === 'tenant-legal-settings' ? (
+          route.kind === 'tenant-legal-settings' ||
+          route.kind === 'tenant-templates' ? (
           /*
-            The five sibling addresses of the tenant administration (`tenant-mail`
-            and `tenant-ai` added afterwards) share one view and one segmented control — see
-            `TenantAdminView` for why the `form-defaults` tab embeds
-            `TenantFormDefaultsView` unchanged rather than this shell rendering
-            it on its own, as it did earlier.
+            The sibling addresses of the tenant administration (`tenant-mail`,
+            `tenant-ai` and `tenant-templates` added afterwards) share one view
+            and one segmented control — see `TenantAdminView` for why the
+            `form-defaults` tab embeds `TenantFormDefaultsView` unchanged
+            rather than this shell rendering it on its own, as it did earlier.
           */
           <TenantAdminView
             tenantId={activeMembership?.tenant.id}
@@ -522,7 +524,9 @@ export function AppShell({ user }: AppShellProps): ReactElement {
                       ? 'ai'
                       : route.kind === 'tenant-legal-settings'
                         ? 'legal'
-                        : 'form-defaults'
+                        : route.kind === 'tenant-templates'
+                          ? 'templates'
+                          : 'form-defaults'
             }
           />
         ) : /*
@@ -532,8 +536,8 @@ export function AppShell({ user }: AppShellProps): ReactElement {
             over the same question, and the one that is wrong first is always
             the one that cannot see the session (`CONTRIBUTING.md`).
 
-            The **four tabs of the system administration** (finding 16) are four
-            addresses and one shell; which tab is open is said by the route
+            The **tabs of the system administration** (finding 16) are
+            addresses of their own, sharing one shell; which tab is open is said by the route
             and not by a state in the view. `activeTenantId` is the
             scope of the session, straight from `GET /auth/me`, so that the
             tab *Organisationen* marks its own row and no stranger's.
@@ -553,12 +557,6 @@ export function AppShell({ user }: AppShellProps): ReactElement {
         ) : route.kind === 'system-mail' ? (
           <SystemAdminView
             tab="mail"
-            activeTenantId={user.activeTenantId}
-            currentUserId={user.id}
-          />
-        ) : route.kind === 'system-templates' ? (
-          <SystemAdminView
-            tab="templates"
             activeTenantId={user.activeTenantId}
             currentUserId={user.id}
           />

@@ -2,13 +2,10 @@ import {
   parseTestMailResult,
   systemAiSettingsResponseSchema,
   systemMailSettingsSchema,
-  systemNotificationTemplatesResponseSchema,
   type AiProvider,
   type AiRegion,
   type SystemAiSettingsResponse,
-  type NotificationTemplate,
   type SystemMailSettings,
-  type SystemNotificationTemplatesResponse,
   type SystemSmtpWrite,
   type TestMailResult,
 } from '@formsache/shared';
@@ -241,80 +238,6 @@ export function useSaveSystemAiSettings(): UseMutationResult<
       // would stay standing until the next load and would contradict the
       // route.
       void queryClient.invalidateQueries({ queryKey: SESSION_QUERY_KEY });
-    },
-  });
-}
-
-// ---------------------------------------------------------------------------
-// The notification templates of the installation (ADR-0022, continuation
-// 2026-08-18)
-// ---------------------------------------------------------------------------
-
-/**
- * A key of its own next to the two above, and for the same reason: the three
- * blocks lie in **one** row but have **own** counters
- * (`notification_templates_revision` next to `mail_revision` and
- * `ai_revision`), and a shared cache entry would make one lock out of three.
- */
-export const SYSTEM_NOTIFICATION_TEMPLATES_QUERY_KEY: readonly string[] = [
-  'system-settings',
-  'notification-templates',
-];
-
-export function useSystemNotificationTemplates(): UseQueryResult<SystemNotificationTemplatesResponse> {
-  return useQuery({
-    queryKey: SYSTEM_NOTIFICATION_TEMPLATES_QUERY_KEY,
-    queryFn: async () =>
-      systemNotificationTemplatesResponseSchema.parse(
-        await requestJson('/admin/system-settings/notification-templates', {
-          method: 'GET',
-        }),
-      ),
-  });
-}
-
-export interface SaveSystemNotificationTemplatesVariables {
-  /** Full replacement, no patch — the page holds the whole document. */
-  readonly templates: readonly NotificationTemplate[];
-  readonly lock: number;
-}
-
-/**
- * Writes the templates.
- *
- * `retry: false` for the reason every settings write here has it: a 409 means
- * that somebody else has saved this same document in the meantime, and
- * repeating it would either fail again or silently overwrite what the lock is
- * supposed to protect.
- *
- * ⚠️ Additionally discarded is the **notification list** of every currently
- * opened organisation: the templates travel along there
- * (`notificationListResponseSchema.templates`), and without this line the
- * selection dialog would offer the old ones until the next load — so exactly
- * what this write has just changed.
- */
-export function useSaveSystemNotificationTemplates(): UseMutationResult<
-  SystemNotificationTemplatesResponse,
-  Error,
-  SaveSystemNotificationTemplatesVariables
-> {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    retry: false,
-    mutationFn: async (variables: SaveSystemNotificationTemplatesVariables) =>
-      systemNotificationTemplatesResponseSchema.parse(
-        await requestJson('/admin/system-settings/notification-templates', {
-          method: 'PUT',
-          body: variables,
-        }),
-      ),
-    onSuccess: (document) => {
-      queryClient.setQueryData(
-        SYSTEM_NOTIFICATION_TEMPLATES_QUERY_KEY,
-        document,
-      );
-      void queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
   });
 }

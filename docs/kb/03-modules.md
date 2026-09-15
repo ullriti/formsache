@@ -49,8 +49,8 @@ Anmeldung.
 
 | Modul | Zuständig für |
 |---|---|
-| `tenant-admin/` | Was eine Organisations-Admin an ihrer Organisation einstellt — je Gegenstand ein Modul: Erscheinungsbild, Gruppen, Personen (samt „Einladung erneut senden"), OIDC, SMTP, Basis-Adresse, Antwortadresse |
-| `system-settings/` | Die installationsweiten Einstellungen — Mail, Benachrichtigungs-Vorlagen und KI, je mit eigenem Revisionszähler |
+| `tenant-admin/` | Was eine Organisations-Admin an ihrer Organisation einstellt — je Gegenstand ein Modul: Erscheinungsbild, Gruppen, Personen (samt „Einladung erneut senden"), OIDC, SMTP, Basis-Adresse, Antwortadresse, Rechtstexte, Benachrichtigungs-Vorlagen (ADR-0032) |
+| `system-settings/` | Die installationsweiten Einstellungen — Mail und KI, je mit eigenem Revisionszähler |
 | `admin/` | Die Superadmin-Sicht über alle Organisationen |
 | `observability/` | `job_run`-Buchführung, Alarm-Wächter, Betriebsstatus |
 | `health/` | `GET /api/health` (Selbsttest) und `GET /api/health/ready` (fragt die Datenbank) |

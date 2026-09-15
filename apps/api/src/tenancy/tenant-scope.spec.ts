@@ -167,9 +167,8 @@ describe('ScopedTenantDelegate.updateOidc', () => {
   } {
     const exists = options.tenantRowExists ?? true;
     const calls: string[] = [];
-    const userUpdateMany = vi.fn((args: unknown) => {
+    const userUpdateMany = vi.fn(() => {
       calls.push('user.updateMany');
-      void args;
       return Promise.resolve({ count: options.restamped ?? 0 });
     });
     const tx = {

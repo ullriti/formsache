@@ -59,7 +59,7 @@ prüft Ablage und Benennung.
 | 0008 | [Test-Datenbanken kommen aus Testcontainers — oder aus einem laufenden Server](0008-test-database-provider.md) | accepted |
 | 0009 | [CI prüft jeden Push, GitVersion setzt die Version, zwei schlanke Images tragen sie](0009-ci-versioning-and-images.md) | accepted |
 | 0010 | [Eigenes Routing über die History-API statt einer Router-Bibliothek](0010-frontend-routing.md) | accepted |
-| 0011 | [Systemweite Einstellungen als unterste Vererbungsschicht](0011-systemweite-einstellungen.md) | accepted |
+| 0011 | [Systemweite Einstellungen als unterste Vererbungsschicht](0011-systemweite-einstellungen.md) | accepted (für die Benachrichtigungs-Vorlagen abgelöst durch ADR-0032) |
 | 0012 | [OIDC-Kontobindung an *(Issuer, Subject)* — nie an das Subject allein](0012-oidc-kontobindung.md) | accepted |
 | 0013 | [Versandidentität je Organisation — unteilbar und *fail closed*](0013-versandidentitaet-je-organisation.md) | accepted |
 | 0014 | [Datei-Upload — eine Naht, zwei Listen, zwei Wege](0014-datei-upload.md) | accepted |
@@ -70,7 +70,7 @@ prüft Ablage und Benennung.
 | 0019 | [Ein Produktzeichen, das der Software gehört — und keiner Organisation](0019-produktzeichen.md) | accepted |
 | 0020 | [Passwort setzen, ändern und zurücksetzen](0020-passwort-ruecksetzung.md) | accepted |
 | 0021 | [Ein eigenes Recht für die Einstellungen eines Formulars](0021-recht-formular-einstellungen.md) | accepted |
-| 0022 | [Erstinbetriebnahme — eine Seite, ein Befehl, eine Transaktion](0022-erstinbetriebnahme.md) | accepted (fortgeschrieben 2026-08-18: ein Assistent statt einer Maske) |
+| 0022 | [Erstinbetriebnahme — eine Seite, ein Befehl, eine Transaktion](0022-erstinbetriebnahme.md) | accepted (fortgeschrieben 2026-08-18: ein Assistent statt einer Maske; 2026-09-14: Schritt „Benachrichtigungs-Vorlagen" entfällt, siehe ADR-0032) |
 | 0023 | [Getrennte Mailserver — der der Instanz gehört dem Betrieb, der der Organisation ihr](0023-getrennte-mailserver-instanz-organisation.md) | accepted |
 | 0024 | [Einladung statt getipptem Passwort](0024-einladung-statt-getipptem-passwort.md) | accepted |
 | 0025 | [Ersteinrichtung einer Organisation](0025-ersteinrichtung-einer-organisation.md) | accepted |
@@ -80,3 +80,4 @@ prüft Ablage und Benennung.
 | 0029 | [Der zweite Superadministrator — eine Oberfläche statt einer Datenbanksitzung](0029-zweiter-superadministrator.md) | accepted |
 | 0030 | [Englische URL-Pfade — ein harter Schnitt ohne Weiterleitung](0030-englische-url-pfade.md) | accepted |
 | 0031 | [Lizenzliste nach Dependabot-PRs — ein privilegierter Workflow, eng gezäumt](0031-dependabot-lizenz-fixup.md) | accepted |
+| 0032 | [Benachrichtigungs-Vorlagen gehören jeder Organisation, nicht der Installation](0032-benachrichtigungs-vorlagen-je-organisation.md) | accepted |

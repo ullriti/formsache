@@ -2,6 +2,7 @@ import type { ReactElement } from 'react';
 import {
   ATTACHMENT_HINT,
   otherLabelOf,
+  otherPositionOf,
   type Question,
   type QuestionType,
   tableCanGrow,
@@ -34,10 +35,13 @@ export function QuestionPreview({
     case 'select':
       return (
         <select className="q-preview__input" disabled aria-hidden>
+          {question.allowOther && otherPositionOf(question) === 'first' ? (
+            <option>{otherLabelOf(question)}</option>
+          ) : null}
           {question.options.map((option) => (
             <option key={option.value}>{option.label}</option>
           ))}
-          {question.allowOther ? (
+          {question.allowOther && otherPositionOf(question) === 'last' ? (
             <option>{otherLabelOf(question)}</option>
           ) : null}
         </select>
@@ -46,20 +50,22 @@ export function QuestionPreview({
     case 'radio':
     case 'checkbox': {
       const control = question.type === 'radio' ? 'radio' : 'checkbox';
+      const otherChoice = question.allowOther ? (
+        <span className="q-preview__choice">
+          <input type={control} disabled />
+          <span>{otherLabelOf(question)}</span>
+        </span>
+      ) : null;
       return (
         <div className="q-preview__choices" aria-hidden>
+          {otherPositionOf(question) === 'first' ? otherChoice : null}
           {question.options.map((option) => (
             <span className="q-preview__choice" key={option.value}>
               <input type={control} disabled />
               <span>{option.label}</span>
             </span>
           ))}
-          {question.allowOther ? (
-            <span className="q-preview__choice">
-              <input type={control} disabled />
-              <span>{otherLabelOf(question)}</span>
-            </span>
-          ) : null}
+          {otherPositionOf(question) === 'last' ? otherChoice : null}
         </div>
       );
     }

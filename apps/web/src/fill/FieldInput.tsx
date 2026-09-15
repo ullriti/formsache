@@ -5,6 +5,7 @@ import {
   DEFAULT_ADDRESS_COUNTRY,
   EVENT_SEATS_MAX,
   otherLabelOf,
+  otherPositionOf,
   seatsOf,
   type AddressAnswer,
   type AnswerValue,
@@ -415,6 +416,10 @@ function Control({
         therefore cannot widen the field, and a half-width question keeps its
         half of the row (`rowsOf`).
       */
+      // „Sonstiges" is placed before or after the real options per
+      // `otherPositionOf` — first by default, switchable to last. The
+      // placeholder `<option value="">Bitte wählen…</option>` never moves:
+      // it is not a choice, so it stays the first entry on screen either way.
       return (
         <>
           <select
@@ -426,12 +431,17 @@ function Control({
             }}
           >
             <option value="">Bitte wählen…</option>
+            {question.allowOther && otherPositionOf(question) === 'first' ? (
+              <option value={otherSentinelOf(question)}>
+                {otherLabelOf(question)}
+              </option>
+            ) : null}
             {question.options.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
             ))}
-            {question.allowOther ? (
+            {question.allowOther && otherPositionOf(question) === 'last' ? (
               <option value={otherSentinelOf(question)}>
                 {otherLabelOf(question)}
               </option>
@@ -447,8 +457,30 @@ function Control({
       const answer = asChoice(value);
       const multiple = question.type === 'checkbox';
 
+      // Extracted rather than inlined twice: it is the same label whichever
+      // side of the option list it ends up on (`otherPositionOf`), and a
+      // second copy is exactly how the two would drift out of sync.
+      const otherChoice = question.allowOther ? (
+        <label className="field__choice">
+          <input
+            type={multiple ? 'checkbox' : 'radio'}
+            name={groupName}
+            checked={answer.other !== null}
+            onChange={(event) => {
+              onChange({
+                values: multiple ? answer.values : [],
+                other: event.target.checked ? '' : null,
+              });
+            }}
+          />
+          <span>{otherLabelOf(question)}</span>
+          <OtherText question={question} value={value} onChange={onChange} />
+        </label>
+      ) : null;
+
       return (
         <div className="field__choices">
+          {otherPositionOf(question) === 'first' ? otherChoice : null}
           {question.options.map((option) => (
             <label className="field__choice" key={option.value}>
               <input
@@ -473,28 +505,7 @@ function Control({
               <span>{option.label}</span>
             </label>
           ))}
-
-          {question.allowOther ? (
-            <label className="field__choice">
-              <input
-                type={multiple ? 'checkbox' : 'radio'}
-                name={groupName}
-                checked={answer.other !== null}
-                onChange={(event) => {
-                  onChange({
-                    values: multiple ? answer.values : [],
-                    other: event.target.checked ? '' : null,
-                  });
-                }}
-              />
-              <span>{otherLabelOf(question)}</span>
-              <OtherText
-                question={question}
-                value={value}
-                onChange={onChange}
-              />
-            </label>
-          ) : null}
+          {otherPositionOf(question) === 'last' ? otherChoice : null}
         </div>
       );
     }
@@ -945,7 +956,15 @@ function EventField({
             <input
               className="field__control field__event-count"
               type="number"
-              min={1}
+              // `0`, not `1`: a Personenzahl of `0` is a valid spelling of
+              // „nicht angemeldet" (`withSeats`, `canonicalSeats`), not an
+              // error. `min={1}` used to fight the participant here — the
+              // browser's own stepper and the Pfeiltasten refuse to go below
+              // `min`, so a box holding `1` could climb but never come back
+              // down to „leer" through the control itself, only by clearing
+              // it by hand. `min={0}` lets the native control reach the value
+              // this field already treats as absent everywhere downstream.
+              min={0}
               max={EVENT_SEATS_MAX}
               // The name alone would be ambiguous: a screen reader announces
               // the box, and „Sommerfest" says nothing about what goes in it.

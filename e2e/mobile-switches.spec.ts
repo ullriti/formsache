@@ -168,9 +168,10 @@ const SWITCHES_PER_VIEW: Readonly<Record<string, number>> = {
   /*
     **Three per template, and the seeded state has three templates** — the
     shipped ones. Per template: „Beim Absenden", „Bei nachträglicher Änderung"
-    and „Geht an die ausfüllende Person".
+    and „Geht an die ausfüllende Person". Moved from the system to the
+    tenant editor with the templates themselves (ADR-0032).
   */
-  'system-templates': 9,
+  'tenant-templates': 9,
 };
 
 let fixture: A11yFixture;

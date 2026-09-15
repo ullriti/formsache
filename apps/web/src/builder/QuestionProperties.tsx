@@ -16,6 +16,7 @@ import {
   conditionOperatorsFor,
   EVENT_CAPACITY_MAX,
   MAX_FILES_PER_RESPONSE,
+  otherPositionOf,
   questionSchema,
   TABLE_COLUMNS_MAX,
   TABLE_ROWS_MAX,
@@ -376,7 +377,7 @@ type Announce = (message: string) => void;
  *
  * ## Which switches get this, and which do not
  *
- * Provided for are the four whose effect stands **nowhere** in the
+ * Provided for are the five whose effect stands **nowhere** in the
  * accessibility tree, that is, only in the hidden preview or not at all:
  *
  * - „Zeilen ergänzbar" (Tabelle) — the effect is the „+ Zeile" button of the
@@ -389,6 +390,10 @@ type Announce = (message: string) => void;
  * - „„Sonstiges“ mit Freitext anbieten" (Auswahl) — the effect is the
  *   additional entry in the preview list. The field for its caption, which
  *   appears below it, is the *setting*, not the effect.
+ * - „„Sonstiges“ unten anzeigen" (Auswahl, Issue #37) — the effect is the
+ *   *position* of that same entry in the preview list, which is why this one
+ *   is shown only while the entry above it exists at all (`allowOther`):
+ *   there is nothing to reorder around an option nobody offered.
  *
  * Not provided for, because their effect stands in the accessibility tree and
  * is found there:
@@ -406,12 +411,13 @@ type Announce = (message: string) => void;
  * {@link Patch} and {@link Replace} can **refuse** a document (then the reason
  * stands in the `props__issue` and the question stays as it was), and none of
  * the callers below asks about that. That is right today and a trap tomorrow:
- * the four provided switches write exclusively values that `questionSchema`
- * *cannot* refuse — two bare booleans, a pair `allowOther`/`otherLabel`, and an
+ * the five provided switches write exclusively values that `questionSchema`
+ * *cannot* refuse — two bare booleans, a pair `allowOther`/`otherLabel`, an
  * upper limit that begins with {@link TABLE_ROWS_MAX} and therefore never lies
- * below the start rows. A **fifth** switch whose write can fail would have to
- * hang its announcement on that success; otherwise it announces a state the
- * document does not have.
+ * below the start rows, and one `otherPosition` whose two members are both
+ * always valid. A switch whose write **can** fail would have to hang its
+ * announcement on that success; otherwise it announces a state the document
+ * does not have.
  */
 function switchMessage(name: string, on: boolean, effect: string): string {
   return `${name}: ${on ? 'ein' : 'aus'}. ${effect}`;
@@ -2324,6 +2330,8 @@ function OptionsEditor({
   /** The panel's live region — see {@link switchMessage}. */
   readonly announce: Announce;
 }): ReactElement {
+  const otherPositionToggleId = useId();
+  const otherPositionCaptionId = `${otherPositionToggleId}-caption`;
   const [bulk, setBulk] = useState('');
   const [bulkOpen, setBulkOpen] = useState(false);
 
@@ -2490,6 +2498,40 @@ function OptionsEditor({
             }}
           />
         </label>
+      ) : null}
+
+      {question.allowOther ? (
+        <div className="props__condition-head">
+          <span className="props__label" id={otherPositionCaptionId}>
+            „Sonstiges“ unten anzeigen
+          </span>
+          <span className="switch">
+            <input
+              className="switch__input"
+              id={otherPositionToggleId}
+              type="checkbox"
+              role="switch"
+              checked={otherPositionOf(question) === 'last'}
+              aria-labelledby={otherPositionCaptionId}
+              onChange={(event) => {
+                const on = event.target.checked;
+                patch({ otherPosition: on ? 'last' : 'first' });
+                announce(
+                  switchMessage(
+                    '„Sonstiges“ unten anzeigen',
+                    on,
+                    on
+                      ? 'Der Eintrag „Sonstiges“ steht am Ende der Liste.'
+                      : 'Der Eintrag „Sonstiges“ steht am Anfang der Liste.',
+                  ),
+                );
+              }}
+            />
+            <span className="switch__track" aria-hidden="true">
+              <span className="switch__knob" />
+            </span>
+          </span>
+        </div>
       ) : null}
     </div>
   );

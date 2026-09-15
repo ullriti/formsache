@@ -240,13 +240,13 @@ describe('App', () => {
       screen.getByRole('button', { name: 'Zugang anlegen und weiter' }),
     );
 
-    expect(await screen.findByText('Schritt 2 von 8')).toBeDefined();
+    expect(await screen.findByText('Schritt 2 von 7')).toBeDefined();
 
     fireEvent.click(screen.getByRole('button', { name: 'Überspringen' }));
 
     // Step 3 is the one at which it tore — and it is, because this is where the
     // second observer of the session query is mounted.
-    expect(await screen.findByText('Schritt 3 von 8')).toBeDefined();
+    expect(await screen.findByText('Schritt 3 von 7')).toBeDefined();
 
     /*
       **What is waited for is the second answer of `/auth/me`, not a
@@ -262,7 +262,7 @@ describe('App', () => {
       expect(meCalls.length).toBeGreaterThan(1);
     });
 
-    expect(screen.getByText('Schritt 3 von 8')).toBeDefined();
+    expect(screen.getByText('Schritt 3 von 7')).toBeDefined();
     expect(screen.queryByRole('heading', { name: 'Dashboard' })).toBeNull();
     expect(
       screen.queryByRole('heading', { name: 'Systemverwaltung' }),

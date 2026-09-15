@@ -202,6 +202,11 @@ const SEAMS: readonly Seam[] = [
     path: '/api/tenant/smtp',
   },
   {
+    what: 'tenant-admin.useTenantNotificationTemplates',
+    use: () => tenantAdmin.useTenantNotificationTemplates('Organisation'),
+    path: '/api/tenant/notification-templates',
+  },
+  {
     what: 'trash.useTrash',
     use: () => trash.useTrash(),
     path: '/api/trash',

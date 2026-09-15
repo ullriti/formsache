@@ -149,6 +149,12 @@ export type Route =
   /** The legal texts of this organisation — the sixth tab (ADR-0028). */
   | { readonly kind: 'tenant-legal-settings' }
   /**
+   * This organisation's own notification templates — the seventh tab
+   * (ADR-0032, moved here in full from the system administration; every
+   * organisation now owns and edits its own set).
+   */
+  | { readonly kind: 'tenant-templates' }
+  /**
    * The **initial setup of an organisation** (ADR-0025) — the assistant that
    * walks once through all settings of this organisation.
    *
@@ -164,7 +170,7 @@ export type Route =
    */
   | { readonly kind: 'tenant-setup' }
   /**
-   * **The system administration — four tabs, four sibling addresses**
+   * **The system administration — six tabs, six sibling addresses**
    * (finding 16).
    *
    * Until then there were three separate areas: the superadmin overview, the
@@ -172,8 +178,12 @@ export type Route =
    * under an address of its own. Three entries in the header navigation for
    * a single role, and none of the three of any use without the others —
    * whoever creates organisations looks right afterwards whether the mail delivery
-   * runs. They are now **one** place with four tabs: *Organisationen*,
-   * *Überwachung*, *Mailserver*, *KI*.
+   * runs. They are now **one** place: *Organisationen*, *Überwachung*,
+   * *Mailserver*, *KI*, *Rechtstexte* (ADR-0028) and *Superadmins* (ADR-0029).
+   *
+   * A seventh tab, *Vorlagen*, stood here from ADR-0022 until ADR-0032 moved
+   * notification templates from the installation to every organisation — the
+   * tab moved with them, to `tenant-templates` below.
    *
    * „Betrieb" thereby means **Überwachung**: the page operates nothing, it
    * watches. What it shows are queue, storage, AI consumption and
@@ -199,7 +209,6 @@ export type Route =
   | { readonly kind: 'system-tenants' }
   | { readonly kind: 'system-monitoring' }
   | { readonly kind: 'system-mail' }
-  | { readonly kind: 'system-templates' }
   | { readonly kind: 'system-ai' }
   /** The legal texts of the installation — the sixth tab (ADR-0028). */
   | { readonly kind: 'system-legal-settings' }
@@ -427,6 +436,13 @@ export const TENANT_AI_PATH = '/admin/ai';
 export const TENANT_LEGAL_SETTINGS_PATH = '/admin/legal';
 
 /**
+ * The seventh — this organisation's own notification templates (ADR-0032,
+ * moved here in full from the system administration's former
+ * `/admin/system/templates`).
+ */
+export const TENANT_TEMPLATES_PATH = '/admin/templates';
+
+/**
  * The initial setup of an organisation (ADR-0025).
  *
  * Not a tab of the organisation administration but a flow **above** them —
@@ -439,24 +455,14 @@ export const TRASH_PATH = '/admin/trash';
 
 /**
  * The tabs of the system administration, in the order in which the tab bar
- * shows them (finding 16; *Vorlagen* since ADR-0022, continuation 2026-08-18).
+ * shows them (finding 16).
  *
- * The first carries the bare address; the other three hang one segment
- * below it. Why four addresses and no `?tab=`: see the route itself.
+ * The first carries the bare address; the others hang one segment
+ * below it. Why several addresses and no `?tab=`: see the route itself.
  */
 export const SYSTEM_PATH = '/admin/system';
 export const SYSTEM_MONITORING_PATH = '/admin/system/monitoring';
 export const SYSTEM_MAIL_PATH = '/admin/system/mail';
-/**
- * The notification templates of the installation.
- *
- * The tab arrived with the write path (ADR-0022, continuation 2026-08-18): the
- * column was read until then and written by nothing, so there was also
- * nothing to show. It has an address of its own and not merely a step in the
- * assistant, because a text one can change exactly once in the life of an
- * installation is no text one can change.
- */
-export const SYSTEM_TEMPLATES_PATH = '/admin/system/templates';
 /**
  * ⚠️ **„KI" is a short word, and Playwright matches names as a substring.**
  * The tab was therefore once called *„KI-Anbieter"*; it is now called *„KI"*, because
@@ -645,6 +651,12 @@ export function parseRoute(pathname: string): Route {
     return { kind: 'tenant-legal-settings' };
   }
 
+  // The seventh tab (ADR-0032) — this organisation's own notification
+  // templates, moved here in full from the system administration.
+  if (first === 'admin' && segments.length === 2 && second === 'templates') {
+    return { kind: 'tenant-templates' };
+  }
+
   // The assistant (ADR-0025) — no tab, a flow above them.
   if (first === 'admin' && segments.length === 2 && second === 'setup') {
     return { kind: 'tenant-setup' };
@@ -667,9 +679,6 @@ export function parseRoute(pathname: string): Route {
     }
     if (segments[2] === 'mail') {
       return { kind: 'system-mail' };
-    }
-    if (segments[2] === 'templates') {
-      return { kind: 'system-templates' };
     }
     if (segments[2] === 'ai') {
       return { kind: 'system-ai' };

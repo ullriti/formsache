@@ -205,6 +205,29 @@ model Tenant {
   /// aus demselben Grund wie dort.
   legalRevision Int @default(1) @map("legal_revision")
 
+  /// **Die Benachrichtigungs-Vorlagen dieser Organisation** (ADR-0032 — bis
+  /// dahin eine einzelne, installationsweite Zeile auf `system_setting`,
+  /// „kopiert, nicht vererbt"; das gilt unverändert, nur ist der Kopierzeitpunkt
+  /// jetzt die Anlage der Organisation statt das Anwenden einer Vorlage). Form:
+  /// `notificationTemplatesDocumentSchema` in `@formsache/shared`.
+  ///
+  /// NULL heißt „kein lesbares Dokument" — der Normalfall einer frischen
+  /// Zeile gibt es hier nicht: `AdminRepository.createTenant` schreibt beim
+  /// Anlegen die ausgelieferten Vorlagen hinein, und die Migration
+  /// `20260914130000_tenant_notification_templates` hat es jeder bestehenden
+  /// Organisation ebenso getan (aus der damaligen `system_setting`-Zeile
+  /// kopiert, oder aus der ausgelieferten Vorgabe, wo dort nichts stand). NULL
+  /// bleibt trotzdem die Spalte, nicht `NOT NULL` mit Vorgabewert: ein von Hand
+  /// geleertes oder unlesbares Dokument bleibt dieselbe Ausnahme wie bei
+  /// {@link legalPages} und ist tolerant lesbar statt die Seite mit 500 zu
+  /// sperren.
+  notificationTemplates Json? @map("notification_templates")
+
+  /// Optimistischer Zähler von {@link notificationTemplates} — ein **eigener**,
+  /// neben {@link legalRevision} und {@link brandingRevision}, aus demselben
+  /// Grund: die Blöcke dieser Zeile werden unabhängig voneinander gespeichert.
+  notificationTemplatesRevision Int @default(1) @map("notification_templates_revision")
+
   /// **Papierkorb für eine ganzen Organisation** .
   ///
   /// Unlike `Form.deletedAt` and `Response.deletedAt` this column arrives with
@@ -1644,41 +1667,6 @@ model SystemSetting {
   /// Fixed at `x`, enforced by a `CHECK` constraint — see above.
   id String @id @default("x") @db.Char(1)
 
-  /// The delivered notification templates, installation-wide. Shape: `systemNotificationTemplatesSchema` in
-  /// `@formsache/shared`.
-  ///
-  /// **Nullable, and that is the whole design.** SQL NULL means „nichts
-  /// entschieden" and reads as `NOTIFICATION_TEMPLATES_FLOOR`; `[]` means
-  /// „diese Installation bietet keine Vorlagen an", which is a decision
-  /// somebody took. The two settings columns one layer up cannot express that
-  /// difference — their `{}` is both — and pay for it with `refuseJsonNull`.
-  /// Here the absence is representable, so it is represented.
-  ///
-  /// A template is **copied** into a notification when it is applied, never
-  /// linked: changing this document does not touch a single existing
-  /// `notification` row.
-  ///
-  /// **Der Zähler ist da, seit es den Schreibweg gibt** (ADR-0022,
-  /// Fortschreibung 2026-08-18). Hier stand bis dahin, dass
-  /// `notification_templates_revision` bewusst fehlt: ein optimistischer Zähler
-  /// bewacht ein *Schreiben*, und diese Spalte hatte keinen Schreibweg — „wer
-  /// diesen Editor baut, bringt die Spalte in derselben Migration mit". Genau
-  /// das ist mit `20260818100000_notification_templates_revision` passiert.
-  notificationTemplates Json? @map("notification_templates")
-
-  /// Optimistischer Zähler von {@link notificationTemplates}.
-  ///
-  /// **Ein eigener, neben {@link mailRevision} und {@link aiRevision}.** Die
-  /// drei Blöcke dieser Zeile werden von drei Seiten gepflegt; ein gemeinsamer
-  /// Zähler machte aus drei Sperren eine und beantwortete „jemand anderes war
-  /// schneller" auch dann mit ja, wenn der andere etwas völlig anderes
-  /// angefasst hat.
-  ///
-  /// Vorgabe `1`, wie die beiden daneben: eine frische Installation ohne Zeile
-  /// meldet die Zahl, bei der die Spalte anfangen wird, damit der erste
-  /// Schreibvorgang sie nennen kann, ohne dass die Sperre optional wäre.
-  notificationTemplatesRevision Int @default(1) @map("notification_templates_revision")
-
   /// The installation's own mail server — the **system block** of ADR-0013.
   /// Shape: `smtpBlockSchema` in `@formsache/shared`, i.e.
   /// host, port, secure, auth and from, with `auth.password` sealed by
@@ -1783,9 +1771,9 @@ model SystemSetting {
   /// Cross-Site-Scripting-Lücke (`docs/legal/README.md` 5.6, 7.8).
   legalPages Json? @map("legal_pages")
 
-  /// Optimistischer Zähler von {@link legalPages} — ein **eigener**, aus
-  /// demselben Grund, den {@link notificationTemplatesRevision} ausschreibt:
-  /// die Blöcke dieser Zeile werden von verschiedenen Seiten gepflegt.
+  /// Optimistischer Zähler von {@link legalPages} — ein **eigener**, neben
+  /// {@link mailRevision} und {@link aiRevision}: die Blöcke dieser Zeile
+  /// werden von verschiedenen Seiten gepflegt.
   legalRevision Int @default(1) @map("legal_revision")
 
   // ---------------------------------------------------------------------------

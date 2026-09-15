@@ -21,11 +21,11 @@ import {
   SYSTEM_LEGAL_SETTINGS_PATH,
   SYSTEM_PATH,
   SYSTEM_SUPERADMINS_PATH,
-  SYSTEM_TEMPLATES_PATH,
   TENANT_APPEARANCE_PATH,
   TENANT_FORM_DEFAULTS_PATH,
   TENANT_MAIL_PATH,
   TENANT_MEMBERS_PATH,
+  TENANT_TEMPLATES_PATH,
   TRASH_PATH,
 } from './routes';
 
@@ -130,46 +130,66 @@ describe('parseRoute', () => {
   });
 
   /**
-   * **The seven tabs of the system administration** (finding 16; *Vorlagen* since
-   * ADR-0022, *Rechtstexte* since ADR-0028, *Superadmins* since ADR-0029) —
-   * seven addresses like any other, and what keeps everybody else out is a
-   * guard and not a URL.
+   * The seventh sibling (ADR-0032) — this organisation's own notification
+   * templates, moved here in full from the system administration. There is
+   * no installation-wide route left for them at all any more.
+   */
+  it('reads the seventh Organisations-Verwaltung sibling, Vorlagen', () => {
+    expect(parseRoute(TENANT_TEMPLATES_PATH)).toStrictEqual({
+      kind: 'tenant-templates',
+    });
+    const paths = new Set([
+      TENANT_APPEARANCE_PATH,
+      TENANT_FORM_DEFAULTS_PATH,
+      TENANT_MEMBERS_PATH,
+      TENANT_MAIL_PATH,
+      TENANT_TEMPLATES_PATH,
+      SYSTEM_PATH,
+      SYSTEM_MAIL_PATH,
+    ]);
+    expect(paths.size).toBe(7);
+  });
+
+  /**
+   * **The six tabs of the system administration** (finding 16; *Rechtstexte*
+   * since ADR-0028, *Superadmins* since ADR-0029) — six addresses like any
+   * other, and what keeps everybody else out is a guard and not a URL.
    *
    * ⚠️ Until 2026-08-19 the case was called „die vier Reiter" and counted a set
    * of four paths, while the bar had long been carrying six: three tabs had
    * been added without the count growing along with them. The count is the
    * reason for the case — two tabs sharing one address are otherwise not to be
    * told apart from „einer fehlt" —, so it now counts **all** of them.
+   *
+   * A seventh tab, *Vorlagen* (ADR-0022), stood here until ADR-0032 moved
+   * notification templates from the installation to every organisation — its
+   * case moved with it, to `TENANT_TEMPLATES_PATH` below.
    */
-  it('reads the seven tabs of the Systemverwaltung', () => {
+  it('reads the six tabs of the Systemverwaltung', () => {
     expect(parseRoute(SYSTEM_PATH)).toStrictEqual({ kind: 'system-tenants' });
     expect(parseRoute(SYSTEM_MONITORING_PATH)).toStrictEqual({
       kind: 'system-monitoring',
     });
     expect(parseRoute(SYSTEM_MAIL_PATH)).toStrictEqual({ kind: 'system-mail' });
-    expect(parseRoute(SYSTEM_TEMPLATES_PATH)).toStrictEqual({
-      kind: 'system-templates',
-    });
     expect(parseRoute(SYSTEM_AI_PATH)).toStrictEqual({ kind: 'system-ai' });
     expect(parseRoute(SYSTEM_LEGAL_SETTINGS_PATH)).toStrictEqual({
       kind: 'system-legal-settings',
     });
-    // The seventh tab (ADR-0029) — who carries the system administration.
+    // The sixth tab (ADR-0029) — who carries the system administration.
     expect(parseRoute(SYSTEM_SUPERADMINS_PATH)).toStrictEqual({
       kind: 'system-superadmins',
     });
-    // Seven tabs, seven addresses — no two share one.
+    // Six tabs, six addresses — no two share one.
     expect(
       new Set([
         SYSTEM_PATH,
         SYSTEM_MONITORING_PATH,
         SYSTEM_MAIL_PATH,
-        SYSTEM_TEMPLATES_PATH,
         SYSTEM_AI_PATH,
         SYSTEM_LEGAL_SETTINGS_PATH,
         SYSTEM_SUPERADMINS_PATH,
       ]).size,
-    ).toBe(7);
+    ).toBe(6);
   });
 
   it('does not invent an eighth tab', () => {
@@ -445,6 +465,7 @@ describe('routeFormId', () => {
     expect(routeFormId({ kind: 'tenant-appearance' })).toBeNull();
     expect(routeFormId({ kind: 'tenant-members' })).toBeNull();
     expect(routeFormId({ kind: 'tenant-mail' })).toBeNull();
+    expect(routeFormId({ kind: 'tenant-templates' })).toBeNull();
     expect(routeFormId({ kind: 'system-tenants' })).toBeNull();
     expect(routeFormId({ kind: 'trash' })).toBeNull();
     expect(routeFormId({ kind: 'system-monitoring' })).toBeNull();

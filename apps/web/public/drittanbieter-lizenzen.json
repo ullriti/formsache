@@ -220,7 +220,7 @@
   "packages": [
     {
       "name": "@anthropic-ai/sdk",
-      "version": "0.116.0",
+      "version": "0.125.0",
       "spdx": "MIT",
       "author": "Anthropic",
       "homepage": "https://github.com/anthropics/anthropic-sdk-typescript#readme",
@@ -292,7 +292,7 @@
     },
     {
       "name": "@mistralai/mistralai",
-      "version": "2.6.1",
+      "version": "2.7.0",
       "spdx": "Apache-2.0",
       "author": "Mistral AI",
       "homepage": "https://github.com/mistralai/client-ts#readme",
@@ -300,7 +300,7 @@
     },
     {
       "name": "@nestjs/common",
-      "version": "11.1.29",
+      "version": "12.0.2",
       "spdx": "MIT",
       "author": "Kamil Mysliwiec",
       "homepage": "https://nestjs.com",
@@ -308,7 +308,7 @@
     },
     {
       "name": "@nestjs/core",
-      "version": "11.1.29",
+      "version": "12.0.2",
       "spdx": "MIT",
       "author": "Kamil Mysliwiec",
       "homepage": "https://nestjs.com",
@@ -316,7 +316,7 @@
     },
     {
       "name": "@nestjs/platform-express",
-      "version": "11.1.29",
+      "version": "12.0.2",
       "spdx": "MIT",
       "author": "Kamil Mysliwiec",
       "homepage": "https://nestjs.com",
@@ -332,7 +332,7 @@
     },
     {
       "name": "@node-rs/argon2",
-      "version": "2.0.2",
+      "version": "2.2.1",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/napi-rs/node-rs",
@@ -340,7 +340,7 @@
     },
     {
       "name": "@node-rs/argon2-linux-x64-gnu",
-      "version": "2.0.2",
+      "version": "2.2.1",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/napi-rs/node-rs",
@@ -356,7 +356,7 @@
     },
     {
       "name": "@prisma/adapter-pg",
-      "version": "7.9.1",
+      "version": "7.10.0",
       "spdx": "Apache-2.0",
       "author": "Tom Houlé",
       "homepage": "https://github.com/prisma/prisma#readme",
@@ -364,7 +364,7 @@
     },
     {
       "name": "@prisma/client",
-      "version": "7.9.1",
+      "version": "7.10.0",
       "spdx": "Apache-2.0",
       "author": "Tim Suchanek",
       "homepage": "https://www.prisma.io",
@@ -372,7 +372,7 @@
     },
     {
       "name": "@prisma/client-runtime-utils",
-      "version": "7.9.1",
+      "version": "7.10.0",
       "spdx": "Apache-2.0",
       "author": null,
       "homepage": "https://github.com/prisma/prisma#readme",
@@ -403,14 +403,6 @@
       "text": "283ea6cc2997a1a7"
     },
     {
-      "name": "@prisma/debug",
-      "version": "7.9.1",
-      "spdx": "Apache-2.0",
-      "author": "Tim Suchanek",
-      "homepage": "https://www.prisma.io",
-      "text": "283ea6cc2997a1a7"
-    },
-    {
       "name": "@prisma/dev",
       "version": "0.24.17",
       "spdx": "ISC",
@@ -420,7 +412,7 @@
     },
     {
       "name": "@prisma/driver-adapter-utils",
-      "version": "7.9.1",
+      "version": "7.10.0",
       "spdx": "Apache-2.0",
       "author": "Alberto Schiabel",
       "homepage": "https://github.com/prisma/prisma#readme",
@@ -572,7 +564,7 @@
     },
     {
       "name": "@tanstack/query-core",
-      "version": "5.101.4",
+      "version": "5.102.8",
       "spdx": "MIT",
       "author": "tannerlinsley",
       "homepage": "https://tanstack.com/query",
@@ -580,7 +572,7 @@
     },
     {
       "name": "@tanstack/react-query",
-      "version": "5.101.4",
+      "version": "5.102.8",
       "spdx": "MIT",
       "author": "tannerlinsley",
       "homepage": "https://tanstack.com/query",
@@ -700,7 +692,7 @@
     },
     {
       "name": "@types/lodash",
-      "version": "4.17.25",
+      "version": "4.17.24",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/lodash",
@@ -716,7 +708,7 @@
     },
     {
       "name": "@types/node",
-      "version": "26.2.0",
+      "version": "26.5.1",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/node",
@@ -732,14 +724,6 @@
     },
     {
       "name": "@types/react",
-      "version": "19.2.18",
-      "spdx": "MIT",
-      "author": null,
-      "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react",
-      "text": "ff82c90f84945c60"
-    },
-    {
-      "name": "@types/react",
       "version": "19.3.0",
       "spdx": "MIT",
       "author": null,
@@ -748,7 +732,7 @@
     },
     {
       "name": "@types/react-dom",
-      "version": "19.2.4",
+      "version": "19.3.0",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/react-dom",
@@ -1101,14 +1085,6 @@
     {
       "name": "confbox",
       "version": "0.2.4",
-      "spdx": "MIT",
-      "author": null,
-      "homepage": "https://github.com/unjs/confbox#readme",
-      "text": "1dac0eee3a06e964"
-    },
-    {
-      "name": "confbox",
-      "version": "0.3.1",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/unjs/confbox#readme",
@@ -1500,7 +1476,7 @@
     },
     {
       "name": "exsolve",
-      "version": "1.1.1",
+      "version": "1.1.0",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/unjs/exsolve#readme",
@@ -1564,7 +1540,7 @@
     },
     {
       "name": "fast-uri",
-      "version": "3.1.7",
+      "version": "3.1.5",
       "spdx": "BSD-3-Clause",
       "author": "Vincent Le Goff",
       "homepage": "https://github.com/fastify/fast-uri",
@@ -1572,7 +1548,7 @@
     },
     {
       "name": "file-type",
-      "version": "21.3.4",
+      "version": "22.0.2",
       "spdx": "MIT",
       "author": "Sindre Sorhus",
       "homepage": "https://github.com/sindresorhus/file-type#readme",
@@ -1860,7 +1836,7 @@
     },
     {
       "name": "jose",
-      "version": "6.2.9",
+      "version": "6.2.12",
       "spdx": "MIT",
       "author": "Filip Skokan",
       "homepage": "https://github.com/panva/jose",
@@ -2044,7 +2020,7 @@
     },
     {
       "name": "lru.min",
-      "version": "1.1.5",
+      "version": "1.1.4",
       "spdx": "MIT",
       "author": "https://github.com/wellwelwel",
       "homepage": "https://github.com/wellwelwel/lru.min#readme",
@@ -2156,7 +2132,7 @@
     },
     {
       "name": "multer",
-      "version": "2.2.0",
+      "version": "2.3.0",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/expressjs/multer#readme",
@@ -2188,7 +2164,7 @@
     },
     {
       "name": "nodemailer",
-      "version": "10.0.4",
+      "version": "10.0.7",
       "spdx": "MIT-0",
       "author": "Andris Reinman",
       "homepage": "https://nodemailer.com/",
@@ -2204,7 +2180,7 @@
     },
     {
       "name": "oauth4webapi",
-      "version": "3.8.7",
+      "version": "3.8.8",
       "spdx": "MIT",
       "author": "Filip Skokan",
       "homepage": "https://github.com/panva/oauth4webapi",
@@ -2228,7 +2204,7 @@
     },
     {
       "name": "ohash",
-      "version": "2.0.12",
+      "version": "2.0.11",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/unjs/ohash#readme",
@@ -2252,7 +2228,7 @@
     },
     {
       "name": "openid-client",
-      "version": "6.8.5",
+      "version": "6.8.8",
       "spdx": "MIT",
       "author": "Filip Skokan",
       "homepage": "https://github.com/panva/openid-client",
@@ -2356,6 +2332,14 @@
     },
     {
       "name": "pg-protocol",
+      "version": "1.15.0",
+      "spdx": "MIT",
+      "author": null,
+      "homepage": "https://github.com/brianc/node-postgres#readme",
+      "text": "a66a0335a42bfcb5"
+    },
+    {
+      "name": "pg-protocol",
       "version": "1.16.0",
       "spdx": "MIT",
       "author": null,
@@ -2380,7 +2364,7 @@
     },
     {
       "name": "pkg-types",
-      "version": "2.3.3",
+      "version": "2.3.1",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/unjs/pkg-types#readme",
@@ -2500,7 +2484,7 @@
     },
     {
       "name": "rc9",
-      "version": "3.1.0",
+      "version": "3.0.1",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/unjs/rc9#readme",
@@ -2508,7 +2492,7 @@
     },
     {
       "name": "react",
-      "version": "19.2.8",
+      "version": "19.3.0",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://react.dev/",
@@ -2516,7 +2500,7 @@
     },
     {
       "name": "react-dom",
-      "version": "19.2.8",
+      "version": "19.3.0",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://react.dev/",
@@ -2548,7 +2532,7 @@
     },
     {
       "name": "readdirp",
-      "version": "5.1.1",
+      "version": "5.0.0",
       "spdx": "MIT",
       "author": "Thorsten Lorenz",
       "homepage": "https://github.com/paulmillr/readdirp",
@@ -2668,7 +2652,7 @@
     },
     {
       "name": "scheduler",
-      "version": "0.27.0",
+      "version": "0.28.0",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://react.dev/",
@@ -2956,7 +2940,7 @@
     },
     {
       "name": "undici-types",
-      "version": "8.3.0",
+      "version": "8.9.0",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://undici.nodejs.org",
@@ -3068,7 +3052,7 @@
     },
     {
       "name": "zod",
-      "version": "4.4.3",
+      "version": "4.6.2",
       "spdx": "MIT",
       "author": "Colin McDonnell",
       "homepage": "https://zod.dev",
@@ -3084,7 +3068,7 @@
     },
     {
       "name": "zustand",
-      "version": "5.0.14",
+      "version": "5.0.15",
       "spdx": "MIT",
       "author": "Paul Henschel",
       "homepage": "https://github.com/pmndrs/zustand",

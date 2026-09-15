@@ -1,5 +1,5 @@
 /*
- * The templates page (ADR-0022, continuation 2026-08-18).
+ * The templates tab of an organisation (ADR-0032).
  *
  * Almost nothing: the cards, fields and switches are the shared building
  * blocks from `settings-view.css`. What stands here is the one row that does

@@ -4,6 +4,7 @@
 !.env.example
 !.env.prod.example
 .claude/settings.local.json
+.claude/worktrees/
 
 # Uploaded files of a local installation (FILE_STORAGE_DIR, ADR-0014).
 # `scripts/dev-setup.sh` points the variable here and creates the directory;

@@ -18,8 +18,8 @@ import {
 import type { Notification, Prisma } from '@prisma/client';
 
 import { requireFullForm } from '../forms/forms.service';
-import { NotificationTemplatesService } from '../system-settings/notification-templates.service';
 import { SystemMailSettingsService } from '../system-settings/system-mail-settings.service';
+import { TenantNotificationTemplatesService } from '../tenant-admin/tenant-notification-templates.service';
 import type { NotificationWrite, TenantScope } from '../tenancy/tenant-scope';
 import { isUuid } from '../common/uuid';
 import {
@@ -51,11 +51,16 @@ export function unknownRecipientQuestionMessage(questionId: string): string {
  * **No `PrismaService` in the constructor**, like `FormsService` and
  * `FormSettingsService`: the only way to a *tenant* row is the `TenantScope`
  * the guard chain hands in, so „den Tenant vergessen" would be a visible change
- * to this constructor rather than a missing `where` key. Both
- * injected dependencies — `NotificationTemplatesService` and
- * `SystemMailSettingsService` — read the installation-wide `system_setting` row
- * and are *installationsweit* by construction: neither can be asked about a
- * Organisation — `SystemMailSettingsService.replyToDefaults` does take the values of an
+ * to this constructor rather than a missing `where` key.
+ *
+ * **`TenantNotificationTemplatesService`** reads the **calling**
+ * organisation's own row (ADR-0032) — the `scope` is passed in on every call,
+ * the same as every other tenant-bound read in this class.
+ *
+ * **`SystemMailSettingsService`** is the one dependency left that reads an
+ * installation-wide row and is *installationsweit* by construction: it cannot
+ * be asked about an organisation.
+ * `SystemMailSettingsService.replyToDefaults` does take the values of an
  * organisation as an argument, but reads no
  * `tenant` row itself for that (ADR-0011 no. 7). This class passes those values in out of the
  * `TenantScope` and out of nothing else
@@ -76,7 +81,7 @@ export function unknownRecipientQuestionMessage(questionId: string): string {
 @Injectable()
 export class NotificationsService {
   constructor(
-    private readonly templates: NotificationTemplatesService,
+    private readonly templates: TenantNotificationTemplatesService,
     /**
      * The two **lower** levels of the `Reply-To` chain — the
      * only way this service ever gets at an installation-wide row,
@@ -94,12 +99,12 @@ export class NotificationsService {
   ) {}
 
   /**
-   * Every notification of one form, oldest first — **and the templates the
-   * installation currently offers** .
+   * Every notification of one form, oldest first — **and the templates this
+   * organisation currently offers** (ADR-0032).
    *
-   * The templates come from `system_setting`, not from a constant: the
-   * superadmin edits them and the editor has to be offered what they wrote
-   * . They travel with this response rather than on a route of
+   * The templates come from `tenant.notification_templates`, not from a
+   * constant: this organisation edits them and the editor has to be offered
+   * what it wrote. They travel with this response rather than on a route of
    * their own so that the offer and the rows it sits beside come from one
    * moment; the permission is the same either way.
    *
@@ -121,7 +126,7 @@ export class NotificationsService {
     const inherited = await this.inheritedReplyTo(scope);
     return {
       notifications: rows.map((row) => toView(row, inherited)),
-      templates: await this.templates.forEditor(),
+      templates: await this.templates.forEditor(scope),
       /*
        * **The same two levels once more, raw** (the requirement) — for the
        * question `effectiveReplyTo` *cannot* answer per row: „what
