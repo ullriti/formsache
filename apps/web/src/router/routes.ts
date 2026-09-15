@@ -150,12 +150,8 @@ export type Route =
   | { readonly kind: 'tenant-legal-settings' }
   /**
    * This organisation's own notification templates — the seventh tab
-   * (ADR-0032, moved here in full from the system administration).
-   *
-   * Every organisation now owns and edits its own set — the same reasoning
-   * that gives {@link Route} its `tenant-mail` and `tenant-legal-settings`
-   * cases: a tab is a place, not a mode, so it gets its own address rather
-   * than a `?tab=` query the back button cannot see.
+   * (ADR-0032, moved here in full from the system administration; every
+   * organisation now owns and edits its own set).
    */
   | { readonly kind: 'tenant-templates' }
   /**

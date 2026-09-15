@@ -461,12 +461,9 @@ export class AdminRepository {
    * default is not asked to draw because that column still has a layer above
    * it to mean "nichts entschieden".
    *
-   * Fresh array copies (`[...NOTIFICATION_TEMPLATES_FLOOR.map(...)]`), for
-   * the same reason `stripeColors` gets one a few lines below: the shared
-   * constant is frozen, and Prisma's generated input is mutable — handing it
-   * the frozen entries directly would still let Prisma's own serialisation
-   * treat them as ordinary objects, but copying costs nothing and removes the
-   * question entirely.
+   * Written as fresh array copies, for the same reason `stripeColors` gets
+   * one a few lines below: the shared constant is frozen and Prisma's
+   * generated input is mutable.
    *
    * The one read of `user` this class makes lives inside that transaction and
    * resolves an **address to an identity** — it is not an organisation's membership list
