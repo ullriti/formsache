@@ -1,4 +1,9 @@
-import { EVENT_SEATS_MAX, type EventAnswer } from '@formsache/shared';
+import {
+  EVENT_SEATS_MAX,
+  isEventAnswer,
+  type AnswerValue,
+  type EventAnswer,
+} from '@formsache/shared';
 
 /**
  * The arithmetic between the number boxes of a Veranstaltung and the answer
@@ -9,13 +14,14 @@ import { EVENT_SEATS_MAX, type EventAnswer } from '@formsache/shared';
 /**
  * The answer after one Veranstaltung's number was edited.
  *
- * **An empty box and a `0` remove the entry** rather than storing a value, and
- * that is what keeps „nicht angemeldet" a single shape: `EventAnswer` is sparse,
- * and an event nobody registered for carries no key at all. The rule is the one
- * `setTableCell` follows for a cleared cell, and the server holds the same one
- * from the other side — `canonicalAnswerValue` drops exactly these two spellings
- * before anything is validated, so a payload from another client cannot write
- * what this view refuses to.
+ * **Only an empty box removes the entry; a `0` is stored like any other
+ * number.** Both still mean „nicht angemeldet" — `canonicalAnswerValue`
+ * (`@formsache/shared`) drops a `0` the same way it drops an absent key,
+ * before anything is validated or persisted, so a payload from another
+ * client cannot write what this view would not. What changed is only what
+ * the box shows while somebody is looking at it: a participant who types
+ * „0" should see „0", not have it vanish under their cursor as though the
+ * keystroke never landed ({@link rawSeatOf} reads it back for exactly that).
  *
  * The raw string is taken rather than `valueAsNumber`, because the two disagree
  * about the case that matters: an empty `<input type="number">` yields `NaN`,
@@ -34,7 +40,7 @@ export function withSeats(
   if (
     raw.trim() === '' ||
     !Number.isInteger(count) ||
-    count < 1 ||
+    count < 0 ||
     count > EVENT_SEATS_MAX
   ) {
     next.delete(key);
@@ -43,4 +49,29 @@ export function withSeats(
   }
 
   return { seats: Object.fromEntries(next) };
+}
+
+/**
+ * The literal number sitting in one Veranstaltung's box right now.
+ *
+ * Unlike `seatsOf` (`@formsache/shared`), which drops a `0` because it never
+ * means a registration, this keeps it — the box has to show what was typed,
+ * `0` included, even though the stored answer treats it exactly like empty
+ * everywhere else. Anything that is not a whole number in range is
+ * `undefined`, the same „show nothing" a cleared box gets.
+ */
+export function rawSeatOf(
+  value: AnswerValue | undefined,
+  key: string,
+): number | undefined {
+  if (!isEventAnswer(value)) {
+    return undefined;
+  }
+  const raw = value.seats[key];
+  return typeof raw === 'number' &&
+    Number.isInteger(raw) &&
+    raw >= 0 &&
+    raw <= EVENT_SEATS_MAX
+    ? raw
+    : undefined;
 }
