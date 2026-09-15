@@ -1522,11 +1522,13 @@ describe('FieldInput – Veranstaltung', () => {
    *
    * **The way *out* of the number is part of it.**
    * „Der Kasten ist leer" is not the same statement as „diese Person hat nichts
-   * angemeldet": `withSeats` drops the entry for an empty box, for a `0` and for
-   * every incomplete number in between, so somebody who selects their „3" and
+   * angemeldet": `withSeats` drops the entry for an empty box and for every
+   * incomplete number in between, so somebody who selects their „3" and
    * presses Backspace to type „1" passes through exactly the state the lock used
    * to fire on — and the box would be disabled under their cursor until a
    * reload, which is the reduction the requirement promises, prevented by the other door.
+   * `0` no longer passes through that state at all: it is a real, displayed
+   * value now, just one that still means „nicht angemeldet" once submitted.
    */
   it('leaves a full Veranstaltung editable while it holds a number', () => {
     const onValue = vi.fn();
@@ -1552,9 +1554,12 @@ describe('FieldInput – Veranstaltung', () => {
     expect(onValue).toHaveBeenLastCalledWith({ seats: {} });
     expect(box.disabled).toBe(false);
 
-    // The same state spelled as a number: `0` is „nicht angemeldet" too.
+    // The same state spelled as a number: `0` is „nicht angemeldet" too —
+    // but unlike the empty box above, it stays on screen as „0".
     fireEvent.change(box, { target: { value: '0' } });
     expect(box.disabled).toBe(false);
+    expect(box.value).toBe('0');
+    expect(onValue).toHaveBeenLastCalledWith({ seats: { stadtfest: 0 } });
 
     // …and the reduction the whole case is about actually goes through.
     fireEvent.change(box, { target: { value: '1' } });
@@ -1646,9 +1651,11 @@ describe('FieldInput – Veranstaltung', () => {
   });
 
   /**
-   * The Personenzahl, and the single spelling of „nicht angemeldet": an empty
-   * box and a `0` both **remove** the entry rather than storing a number
-   * (`withSeats`, and `canonicalAnswerValue` from the other side).
+   * The Personenzahl, and the two spellings of „nicht angemeldet": an empty
+   * box **removes** the entry, while a `0` is stored like any other number so
+   * the box keeps showing what was typed — both still mean the same thing to
+   * the server (`canonicalAnswerValue`), which is what the last assertion
+   * checks here, not that the local answer stays literally empty.
    */
   it('stores a Personenzahl per Veranstaltung and drops a cleared box', () => {
     const onValue = vi.fn();
@@ -1674,12 +1681,12 @@ describe('FieldInput – Veranstaltung', () => {
     });
     expect(onValue).toHaveBeenLastCalledWith({ seats: { festzug: 2 } });
 
-    fireEvent.change(
-      screen.getByLabelText('Festzug / Umzug: Anzahl Personen'),
-      {
-        target: { value: '0' },
-      },
+    const festzug = screen.getByLabelText<HTMLInputElement>(
+      'Festzug / Umzug: Anzahl Personen',
     );
-    expect(onValue).toHaveBeenLastCalledWith({ seats: {} });
+    fireEvent.change(festzug, { target: { value: '0' } });
+    // Stored as a real `0`, not dropped — the box goes on showing it.
+    expect(onValue).toHaveBeenLastCalledWith({ seats: { festzug: 0 } });
+    expect(festzug.value).toBe('0');
   });
 });

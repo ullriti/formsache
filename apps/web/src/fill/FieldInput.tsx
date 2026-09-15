@@ -17,7 +17,7 @@ import {
 
 import type { UploadTarget } from '../api/public-form';
 import { asAddress } from './address-answer';
-import { withSeats } from './event-answer';
+import { rawSeatOf, withSeats } from './event-answer';
 import { FileField } from './FileField';
 import { asMatrix, pickedIn, toggleMatrixCell } from './matrix-answer';
 import { TableField } from './TableField';
@@ -868,9 +868,9 @@ function EventField({
    * This, not the number standing in the box right now, is what the lock is
    * asked about (a review finding). „Der Kasten ist gerade leer" is
    * reached by *editing* as well as by never having answered: `withSeats` drops
-   * the entry for an empty box, for a `0` and for anything else that is not a
-   * whole number, so a participant who selects their „3" and presses Backspace
-   * to type „1" is momentarily indistinguishable from one who never registered.
+   * the entry for an empty box and for anything that is not a whole number in
+   * range, so a participant who selects their „3" and presses Backspace to
+   * type „1" is momentarily indistinguishable from one who never registered.
    * Locking on that would disable the box under their cursor and keep it
    * disabled until a reload — taking away the very correction the requirement
    * promises always works, lowering a number, through the back door.
@@ -893,7 +893,11 @@ function EventField({
     <div className="field__events">
       {question.events.map((entry, index) => {
         const state = seatStates?.get(entry.key);
-        const count = seats.get(entry.key);
+        // Not `seats.get(entry.key)`: that map comes from `seatsOf`, which
+        // drops a `0` because it never means a registration. The box itself
+        // has to show what was typed, `0` included — `rawSeatOf` is the one
+        // reader here that does not make that collapse.
+        const count = rawSeatOf(value, entry.key);
         /*
          * Built from the **index**, never from `entry.key`: the key is an
          * editor-supplied string the schema only bounds in length
