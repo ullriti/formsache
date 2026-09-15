@@ -101,7 +101,7 @@ test.use({ storageState: { cookies: [], origins: [] } });
  * **The assistant appears because there is no account** — and at every
  * step it says what does not work without it.
  *
- * The eight titles stand in `apps/web/src/views/setup/steps.ts`; they are
+ * The seven titles stand in `apps/web/src/views/setup/steps.ts`; they are
  * **not** copied out here but read one after another in the browser. A
  * list that stood here a second time would be the second truth that
  * departs from the first at some point.
@@ -120,7 +120,7 @@ test('ohne Konto führt die Anwendung in den Assistenten, und Schritt 1 nennt se
       'die Anmeldung (ADR-0022 Nr. 1).',
   ).toBeVisible();
 
-  await expect(page.getByText('Schritt 1 von 8')).toBeVisible();
+  await expect(page.getByText('Schritt 1 von 7')).toBeVisible();
   await expect(
     page.getByRole('heading', { name: 'Dein Zugang' }),
   ).toBeVisible();
@@ -155,7 +155,7 @@ test('ohne Konto führt die Anwendung in den Assistenten, und Schritt 1 nennt se
  */
 test('ungleiche Passwörter sperren den Weg weiter', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByText('Schritt 1 von 8')).toBeVisible();
+  await expect(page.getByText('Schritt 1 von 7')).toBeVisible();
 
   await page.getByLabel('Name', { exact: true }).fill(SUPERADMIN.name);
   await page
@@ -184,7 +184,7 @@ test('ungleiche Passwörter sperren den Weg weiter', async ({ page }) => {
 });
 
 /**
- * **The assistant leads through what it announces** — eight steps, and at the
+ * **The assistant leads through what it announces** — seven steps, and at the
  * end stands „Eingerichtet".
  *
  * ## What this case held on to until 2026-08-18
@@ -227,13 +227,13 @@ test('ungleiche Passwörter sperren den Weg weiter', async ({ page }) => {
  * *Reproduction:* remove the lock `setupRunning ||` in `App.tsx` → this
  * case turns red on step 3, with the system administration in the snapshot.
  */
-test('der Assistent führt von Schritt 1 bis zum Abschluss durch alle acht Schritte', async ({
+test('der Assistent führt von Schritt 1 bis zum Abschluss durch alle sieben Schritte', async ({
   page,
 }) => {
   await page.goto('/');
 
   const position = page.locator('.wizard__position');
-  await expect(position).toHaveText('Schritt 1 von 8');
+  await expect(position).toHaveText('Schritt 1 von 7');
 
   await page.getByLabel('Name', { exact: true }).fill(SUPERADMIN.name);
   await page
@@ -249,7 +249,7 @@ test('der Assistent führt von Schritt 1 bis zum Abschluss durch alle acht Schri
     position,
     'Nach dem Anlegen steht der Assistent auf Schritt 2 — bleibt er auf 1, ' +
       'ist entweder das Anlegen gescheitert oder die Anmeldung danach.',
-  ).toHaveText('Schritt 2 von 8');
+  ).toHaveText('Schritt 2 von 7');
 
   /*
     **The heading of the step, not that of the card inside it.**
@@ -278,7 +278,7 @@ test('der Assistent führt von Schritt 1 bis zum Abschluss durch alle acht Schri
   await page.getByRole('button', { name: 'Speichern und weiter' }).click();
 
   /*
-    **The six steps after it, each via „Überspringen".**
+    **The five steps after it, each via „Überspringen".**
 
     The titles stand in `apps/web/src/views/setup/steps.ts` and are not
     copied out here — what is measured is the position as text and the
@@ -287,10 +287,10 @@ test('der Assistent führt von Schritt 1 bis zum Abschluss durch alle acht Schri
     step except the first can be skipped" is a promise of the assistant
     (ADR-0022), and a promise one assumes instead of measuring is none.
   */
-  const remaining = ['mail', 'addresses', 'templates', 'ai', 'legal', 'tenant'];
+  const remaining = ['mail', 'addresses', 'ai', 'legal', 'tenant'];
   for (const [offset, key] of remaining.entries()) {
     const step = offset + 3;
-    await expect(position).toHaveText(`Schritt ${String(step)} von 8`);
+    await expect(position).toHaveText(`Schritt ${String(step)} von 7`);
     await expect(page.locator(`h2#wizard-step-${key}`)).toBeVisible();
 
     const skip = page.getByRole('button', { name: 'Überspringen' });
@@ -304,7 +304,7 @@ test('der Assistent führt von Schritt 1 bis zum Abschluss durch alle acht Schri
 
   await expect(
     page.getByRole('heading', { level: 1, name: 'Eingerichtet' }),
-    'Nach dem achten Schritt steht der Abschluss — der Assistent hält, was ' +
+    'Nach dem siebten Schritt steht der Abschluss — der Assistent hält, was ' +
       'seine Zählung ankündigt.',
   ).toBeVisible();
   await expect(position).toHaveCount(0);

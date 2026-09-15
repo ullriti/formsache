@@ -27,7 +27,7 @@ import type { WizardStepMeta, WizardStepStatus } from '../../wizard';
  *
  * ## Why only the first one is not skippable
  *
- * Because it creates the account all the others live off: steps 2 to 8 talk to
+ * Because it creates the account all the others live off: steps 2 to 7 talk to
  * the ordinary, **signed-in** system settings routes. Without step 1 there is
  * no session, and without a session no 200s.
  *

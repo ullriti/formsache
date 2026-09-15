@@ -12,5 +12,11 @@ import { CopyableAddress } from './CopyableAddress';
  * says what the address is for.
  */
 export function EditLink({ url }: { readonly url: string }): ReactElement {
-  return <CopyableAddress url={url} testId="public-edit-link" label="Adresse zu Ihrer Antwort" />;
+  return (
+    <CopyableAddress
+      url={url}
+      testId="public-edit-link"
+      label="Adresse zu Ihrer Antwort"
+    />
+  );
 }

@@ -461,11 +461,11 @@ describe('the superadmin overview and creating an organisation ', () => {
      */
     it('seeds the shipped notification templates for a freshly created organisation', async () => {
       const created = await createTenantRequest(
-        newTenant('NEWE', 'admin@newe.example'),
+        newTenant('NEWF', 'admin@newf.example'),
       );
       expect(created.status).toBe(201);
-      await redeemInvitation(app(), 'admin@newe.example', PASSWORD);
-      const session = await login(app(), 'admin@newe.example', PASSWORD);
+      await redeemInvitation(app(), 'admin@newf.example', PASSWORD);
+      const session = await login(app(), 'admin@newf.example', PASSWORD);
 
       const templates = await request(app().server)
         .get(apiPath('/tenant/notification-templates'))
