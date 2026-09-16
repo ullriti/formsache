@@ -96,6 +96,7 @@ const POPULATIONS: readonly string[] = [
   'KI-Nutzung — Zähler',
   'Sitzungen',
   'Rücksetz-Links (password_reset)',
+  'Quittierte Betriebsalarme — Personenbezug',
 ];
 
 /**
@@ -108,18 +109,17 @@ const POPULATIONS: readonly string[] = [
  * decision here, in writing.
  */
 const NO_DEADLINE_POPULATIONS: Readonly<Record<string, string>> = {
-  'KI-Nutzung — Zähler':
-    'ohne Personenbezug kein personenbezogenes Datum mehr ',
+  'KI-Nutzung — Zähler': 'ADR-0015 Nr. 8',
+  'Quittierte Betriebsalarme — Personenbezug': 'ADR-0016',
 };
 
 /**
- * The sentence the reason of a deadline-free row has to point at.
+ * The value of each entry above is the decision its reason has to point at.
  *
- * **That is the whole point of this exception rule.** „Keine Frist nötig" would be an assertion;
- * the number of the decision is a reference that the next session can
- * follow, instead of taking the missing deadline for an oversight.
+ * **That is the whole point of this exception rule.** „Keine Frist nötig" would
+ * be an assertion; the number of the decision is a reference that the next
+ * session can follow, instead of taking the missing deadline for an oversight.
  */
-const NO_DEADLINE_DECISION = 'ADR-0015 Nr. 8';
 
 /**
  * Every retention constant `packages/shared` exports, read out of the sources.
@@ -373,13 +373,14 @@ describe('das Löschkonzept, gegen die Konstanten gehalten', () => {
     for (const row of declared) {
       expect(row.deadline, `Zeile „${row.population}"`).toBe(NO_DEADLINE);
       expect(row.constant, `Zeile „${row.population}"`).toBe(NO_CONSTANT);
+      const decision = NO_DEADLINE_POPULATIONS[row.population] ?? '';
       expect(
         row.reason,
         `Die Begründung der fristlosen Zeile „${row.population}" muss auf die ` +
-          `Entscheidung zeigen (${NO_DEADLINE_DECISION}). Ohne sie ist eine ` +
+          `Entscheidung zeigen (${decision}). Ohne sie ist eine ` +
           'bewusst fristlose Zeile von einer vergessenen nicht zu ' +
           'unterscheiden — und genau das verhindert diese Prüfung.',
-      ).toContain(NO_DEADLINE_DECISION);
+      ).toContain(decision);
     }
 
     const undeclared = ROWS.filter(

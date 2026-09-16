@@ -4,6 +4,7 @@ import { AuthModule } from '../auth/auth.module';
 import { ConfigModule } from '../config/config.module';
 import { MailClockModule } from '../mail/mail-clock.module';
 import { PrismaModule } from '../prisma/prisma.module';
+import { OpsAcknowledgementService } from './ops-acknowledgement.service';
 import { OpsStatusController } from './ops-status.controller';
 import { OpsStatusService } from './ops-status.service';
 
@@ -17,6 +18,6 @@ import { OpsStatusService } from './ops-status.service';
 @Module({
   imports: [ConfigModule, PrismaModule, MailClockModule, AuthModule],
   controllers: [OpsStatusController],
-  providers: [OpsStatusService],
+  providers: [OpsStatusService, OpsAcknowledgementService],
 })
 export class OpsStatusModule {}

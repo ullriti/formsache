@@ -379,6 +379,27 @@ Die Schwellen lösen eine Mail an die Betreiberadresse aus
 ⚠️ Ein toter Mailserver kann seinen eigenen Ausfall nicht melden — dafür gibt
 es den äußeren Beobachter, und deshalb meldet der auf einem anderen Kanal.
 
+### Eine bekannte Ursache quittieren
+
+Ist die Ursache bekannt und die Behebung terminiert, meldet dieselbe Kennzahl
+bis dahin alle sechs Stunden weiter. Neben jeder gerissenen Schwelle steht
+deshalb **„Quittieren"**: Frist wählen (24 Stunden, 7 oder 30 Tage oder bis auf
+Weiteres), kurz begründen, fertig — die Mails bleiben aus.
+
+Was dabei zu wissen ist:
+
+- ⚠️ **Die Ampel bleibt rot.** Quittiert heißt stillgestellt, nicht behoben.
+  Wer nach dem Zustand der Installation sieht, sieht ihn weiterhin.
+- **Die Quittierung verfällt, sobald die Kennzahl sich erholt.** Ein späterer
+  Ausbruch meldet sich wieder — auch nach „bis auf Weiteres".
+- ⚠️ **Sie gilt der Kennzahl, nicht dem Lauf.** „Ein Aufräumlauf bleibt aus"
+  deckt alle Hintergrundläufe ab: wer wegen des Papierkorb-Laufs quittiert,
+  hört von einem später ausfallenden Anlagen-Lauf ebenfalls nichts. Deshalb im
+  Zweifel eine **Frist** wählen und nicht „bis auf Weiteres".
+- **Wer quittiert hat und warum, steht dabei** — für den zweiten Superadmin,
+  der sonst nur sähe, dass jemand den Alarm stillgelegt hat.
+- **„Quittierung aufheben"** nimmt sie jederzeit zurück.
+
 ## Wöchentlich
 
 1. **Die letzte Sicherung ansehen** — liegt ein Archiv von heute Nacht da, und
@@ -396,6 +417,9 @@ es den äußeren Beobachter, und deshalb meldet der auf einem anderen Kanal.
 
 2. **Alarme sichten** — im Postfach der Betreiberadresse, nicht in der
    Anwendung. Kam etwas, das weggeklickt wurde — und kam überhaupt je etwas an?
+   Dazu ein Blick auf *Überwachung*: steht dort eine **quittierte** Kennzahl,
+   deren Frist man vor drei Wochen gesetzt hat, ist das die Aufgabe, die
+   liegengeblieben ist.
 
 3. **Quartalsweise eine Wiederherstellung proben**, aus der Sicherung der
    Produktivinstallation in eine zweite Umgebung. Protokolleintrag mit Datum,

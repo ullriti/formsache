@@ -1,14 +1,32 @@
-import type { ReactElement, ReactNode } from 'react';
+import {
+  useId,
+  useState,
+  type ReactElement,
+  type ReactNode,
+  type SyntheticEvent,
+} from 'react';
 
 import {
+  ACK_DURATION_LABELS,
+  ACK_NOTE_MAX,
+  ackDurationSchema,
   exceeds,
+  OPS_METRIC_SUBJECTS,
   OPS_THRESHOLDS,
+  type AckDuration,
   type AiModelUsage,
+  type AlertAcknowledgement,
   type JobStatus,
+  type OpsAlertState,
+  type OpsMetricName,
   type OpsStatus,
 } from '@formsache/shared';
 
-import { useOpsStatus } from '../api/ops-status';
+import {
+  useAcknowledgeAlert,
+  useOpsStatus,
+  useReleaseAlert,
+} from '../api/ops-status';
 
 import './ops-view.css';
 
@@ -17,12 +35,14 @@ import './ops-view.css';
  * then a page of its own named „Betrieb" under `/verwaltung/betrieb` —
  * damals, als die Pfade noch deutsch waren (ADR-0030).
  *
- * **The name is the finding.** „Betrieb" promised an action; there is no
- * button here. Five groups of numbers, each with a signal against the **same**
- * threshold the alarm in the server helps itself to (`OPS_THRESHOLDS` in
- * `@formsache/shared`). Were the number in both places, this signal would
- * at some point be green while the alarm had long since fired — and nobody would know
- * which of the two is right.
+ * **The name is the finding.** „Betrieb" promised an action the page did not
+ * have. Five groups of numbers, each with a signal that comes **from the
+ * server** (`alerts[].breaching`) — the very evaluation that sends the mail,
+ * so a green card beside a firing alert is no longer constructible.
+ *
+ * Since the acknowledgement (ADR-0016, continuation 2026-09-16) there *is* one
+ * action here, and it is deliberately the only one: it silences a metric, it
+ * does not fix it, and the card stays red while it holds.
  *
  * The page title stands in the frame (`SystemAdminView`); what stands here is the
  * heading of this one tab, and the panels below it are one step
@@ -65,12 +85,18 @@ function OpsPanels({ status }: { readonly status: OpsStatus }): ReactElement {
       ? null
       : observedAt.getTime() -
         new Date(status.mailQueue.oldestQueuedAt).getTime();
+  const alerts = new Map(status.alerts.map((state) => [state.metric, state]));
+  const states = (...metrics: readonly OpsMetricName[]): OpsAlertState[] =>
+    metrics.flatMap((metric) => {
+      const state = alerts.get(metric);
+      return state === undefined ? [] : [state];
+    });
 
   return (
     <div className="ops-view__panels">
       <Panel
         title="Warteschlange"
-        alert={exceeds(queueAgeMs, OPS_THRESHOLDS.mailQueueAgeMs)}
+        alerts={states('mail_queue_age', 'mail_failures')}
       >
         <Figure label="Wartend" value={String(status.mailQueue.queued)} />
         <Figure label="Gescheitert" value={String(status.mailQueue.failed)} />
@@ -93,13 +119,7 @@ function OpsPanels({ status }: { readonly status: OpsStatus }): ReactElement {
         />
       </Panel>
 
-      <Panel
-        title="Ablage"
-        alert={exceeds(
-          status.storage.usedFraction,
-          OPS_THRESHOLDS.storageUsedFraction,
-        )}
-      >
+      <Panel title="Ablage" alerts={states('storage_full')}>
         <Figure
           label="Dateien"
           value={
@@ -124,10 +144,7 @@ function OpsPanels({ status }: { readonly status: OpsStatus }): ReactElement {
         />
       </Panel>
 
-      <Panel
-        title="KI"
-        alert={exceeds(status.ai.failureRate, OPS_THRESHOLDS.aiFailureRate)}
-      >
+      <Panel title="KI" alerts={states('ai_failure_rate')}>
         <Figure label="Aufrufe im Monat" value={String(status.ai.calls)} />
         <Figure label="Gescheitert" value={String(status.ai.failed)} />
         <Figure
@@ -170,6 +187,7 @@ function OpsPanels({ status }: { readonly status: OpsStatus }): ReactElement {
             ))}
           </tbody>
         </table>
+        <AlertControls alerts={states('job_stale')} />
       </section>
 
       <p className="ops-view__foot">
@@ -344,15 +362,24 @@ const JOB_LABELS: Record<JobStatus['job'], string> = {
   ops_alert: 'Betriebsüberwachung',
 };
 
+/**
+ * One card of figures, with the alert states of the metrics it shows.
+ *
+ * **The signal comes from the server** (`alerts[].breaching`), not from a
+ * threshold compared again here. That closes a gap this card had: „Nachrichten
+ * scheitern" fires on `failedRecently`, which the traffic light never looked
+ * at — a card could stand green beside a mail about it.
+ */
 function Panel({
   title,
-  alert,
+  alerts,
   children,
 }: {
   readonly title: string;
-  readonly alert: boolean;
+  readonly alerts: readonly OpsAlertState[];
   readonly children: ReactNode;
 }): ReactElement {
+  const alert = alerts.some((state) => state.breaching);
   return (
     <section
       className={
@@ -371,6 +398,7 @@ function Panel({
         ) : null}
       </h3>
       <dl className="ops-view__figures">{children}</dl>
+      <AlertControls alerts={alerts} />
     </section>
   );
 }
@@ -425,4 +453,176 @@ function describeError(error: unknown): string {
     return 'Diese Seite gehört der Installation, nicht einer Organisation — sie ist Superadmins vorbehalten.';
   }
   return 'Der Betriebsstatus konnte nicht geladen werden.';
+}
+
+/**
+ * **Quittieren** (ADR-0016, Fortschreibung 2026-09-16).
+ *
+ * Shown for a metric that is over its threshold or already acknowledged, and
+ * for nothing else: a quiet installation offers no buttons at all.
+ */
+function AlertControls({
+  alerts,
+}: {
+  readonly alerts: readonly OpsAlertState[];
+}): ReactElement | null {
+  const shown = alerts.filter(
+    (state) => state.breaching || state.acknowledgement !== null,
+  );
+  if (shown.length === 0) return null;
+  return (
+    <div className="ops-view__alerts">
+      {shown.map((state) => (
+        <AlertControl key={state.metric} state={state} />
+      ))}
+    </div>
+  );
+}
+
+function AlertControl({
+  state,
+}: {
+  readonly state: OpsAlertState;
+}): ReactElement {
+  const acknowledge = useAcknowledgeAlert();
+  const release = useReleaseAlert();
+  const [open, setOpen] = useState(false);
+  const [duration, setDuration] = useState<AckDuration>('day');
+  const [note, setNote] = useState('');
+  const fieldId = useId();
+
+  function submit(event: SyntheticEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    acknowledge.mutate(
+      { metric: state.metric, duration, note },
+      {
+        onSuccess: () => {
+          setOpen(false);
+          setNote('');
+        },
+      },
+    );
+  }
+
+  const busy = acknowledge.isPending || release.isPending;
+  const subject = OPS_METRIC_SUBJECTS[state.metric];
+
+  return (
+    <div className="ops-view__alert">
+      <p className="ops-view__alert-subject">
+        {subject}
+        {/*
+          The acknowledgement says „die Mail schweigt", never „alles gut" — so
+          the card keeps its badge and this line says which of the two it is.
+        */}
+        {state.acknowledgement === null ? null : (
+          <span className="ops-view__badge">quittiert</span>
+        )}
+      </p>
+
+      {state.acknowledgement === null ? (
+        open ? (
+          <form className="ops-view__ack-form" onSubmit={submit}>
+            <label htmlFor={`${fieldId}-duration`}>Ruhe für</label>
+            <select
+              id={`${fieldId}-duration`}
+              value={duration}
+              onChange={(event) => {
+                setDuration(readDuration(event.target.value));
+              }}
+            >
+              {ackDurationSchema.options.map((option) => (
+                <option key={option} value={option}>
+                  {ACK_DURATION_LABELS[option]}
+                </option>
+              ))}
+            </select>
+            <label htmlFor={`${fieldId}-note`}>Begründung (wahlfrei)</label>
+            <input
+              id={`${fieldId}-note`}
+              type="text"
+              value={note}
+              maxLength={ACK_NOTE_MAX}
+              placeholder="Platte wird Freitag vergrößert"
+              onChange={(event) => {
+                setNote(event.target.value);
+              }}
+            />
+            <div className="ops-view__ack-actions">
+              <button type="submit" disabled={busy}>
+                Stillstellen
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  // Also clears a failed attempt: the sentence below belongs to
+                  // the form, and it must not outlive it.
+                  acknowledge.reset();
+                }}
+              >
+                Abbrechen
+              </button>
+            </div>
+          </form>
+        ) : (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              setOpen(true);
+            }}
+          >
+            Quittieren
+          </button>
+        )
+      ) : (
+        <>
+          <p className="ops-view__ack-state">
+            {describeAcknowledgement(state.acknowledgement)}
+          </p>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              release.mutate(state.metric);
+            }}
+          >
+            Quittierung aufheben
+          </button>
+        </>
+      )}
+
+      {acknowledge.isError || release.isError ? (
+        <p role="alert" className="ops-view__ack-error">
+          Die Quittierung konnte nicht gespeichert werden.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Who silenced this metric, until when, and why.
+ *
+ * The name is in it because a second superadmin (ADR-0029) otherwise only
+ * learns that *somebody* stopped the mails.
+ */
+function describeAcknowledgement(ack: AlertAcknowledgement): string {
+  const by = ack.by ?? 'unbekannt';
+  const until =
+    ack.until === null
+      ? 'bis auf Weiteres'
+      : `bis ${new Date(ack.until).toLocaleString('de-DE')}`;
+  const reason = ack.note === null ? '' : ` — „${ack.note}"`;
+  return `Quittiert von ${by} am ${new Date(ack.at).toLocaleString('de-DE')}, ${until}${reason}`;
+}
+
+/**
+ * A `<select>` hands back a `string`; this is where it becomes one of the four
+ * spans again — parse, never cast.
+ */
+function readDuration(value: string): AckDuration {
+  const parsed = ackDurationSchema.safeParse(value);
+  return parsed.success ? parsed.data : 'day';
 }

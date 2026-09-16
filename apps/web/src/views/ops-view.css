@@ -238,3 +238,107 @@
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+/* --- Quittieren (ADR-0016, Fortschreibung 2026-09-16) ---------------------- */
+
+/*
+ * The acknowledgement block sits below the figures of its card, separated by a
+ * hairline rather than by a heading: it belongs to the card and is not a group
+ * of its own.
+ */
+.ops-view__alerts {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-hairline-faint);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.ops-view__alert {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.ops-view__alert-subject {
+  margin: 0;
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-strong);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/*
+ * An outline button, geometry and colour as in the trash: an action that
+ * silences an alert is not a primary action, and it never looks like one that
+ * fixes something.
+ */
+.ops-view__alert button {
+  flex: none;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+  font-size: var(--font-size-body-sm);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ops-view__alert button:disabled {
+  cursor: progress;
+  color: var(--color-text-muted);
+}
+
+.ops-view__ack-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+  min-width: 0;
+}
+
+.ops-view__ack-form label {
+  font-size: var(--font-size-label);
+  color: var(--color-text-muted);
+}
+
+.ops-view__ack-form select,
+.ops-view__ack-form input {
+  font: inherit;
+  font-size: var(--font-size-body-sm);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.ops-view__ack-actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-top: var(--space-2);
+}
+
+.ops-view__ack-state {
+  margin: 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text);
+}
+
+.ops-view__ack-error {
+  margin: 0;
+  font-size: var(--font-size-body-sm);
+  color: var(--color-danger-strong);
+  font-weight: var(--font-weight-bold);
+}

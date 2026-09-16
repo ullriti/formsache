@@ -191,7 +191,8 @@ Vorgabe.
 ### Betrieb
 
 `job_run` (eine Zeile je Hintergrundlauf, bei Erfolg **und** Fehlschlag),
-`ops_alert` (wann zuletzt über eine Kennzahl alarmiert wurde) und `ai_usage`
+`ops_alert` (wann zuletzt über eine Kennzahl alarmiert wurde und ob sie
+quittiert ist — von wem, bis wann, warum) und `ai_usage`
 (ein KI-Aufruf, mit **zwei** Lebensdauern — Freitext 30 Tage, Personenbezug
 12 Monate).
 

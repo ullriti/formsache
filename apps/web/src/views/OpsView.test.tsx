@@ -1,9 +1,15 @@
-import type { OpsStatus } from '@formsache/shared';
-import { screen, waitFor, within } from '@testing-library/react';
+import {
+  opsMetricSchema,
+  type AlertAcknowledgement,
+  type OpsAlertState,
+  type OpsMetricName,
+  type OpsStatus,
+} from '@formsache/shared';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Cascade } from '../test/css-cascade';
-import { jsonResponse, stubFetch } from '../test/fetch-mock';
+import { jsonResponse, requestUrl, stubFetch } from '../test/fetch-mock';
 import { renderWithQuery } from '../test/render-with-query';
 import { OpsView } from './OpsView';
 
@@ -19,6 +25,27 @@ import { OpsView } from './OpsView';
  */
 
 const OBSERVED_AT = '2026-08-11T12:00:00.000Z';
+
+/**
+ * The alert rows the server sends — **all five**, quiet unless named.
+ *
+ * Since the acknowledgement the traffic light no longer hangs on a threshold
+ * this view compares itself; it hangs on `breaching`, which the server decides
+ * with the same function that sends the mail. What the thresholds themselves
+ * mean is therefore measured in `apps/api/test/observability/ops-alert.spec.ts`
+ * and here no longer.
+ */
+function alerts(
+  breaching: readonly OpsMetricName[] = [],
+  acknowledged: Partial<Record<OpsMetricName, AlertAcknowledgement>> = {},
+): OpsAlertState[] {
+  return opsMetricSchema.options.map((metric) => ({
+    metric,
+    breaching: breaching.includes(metric),
+    lastSentAt: null,
+    acknowledgement: acknowledged[metric] ?? null,
+  }));
+}
 
 function status(overrides: Partial<OpsStatus> = {}): OpsStatus {
   return {
@@ -42,6 +69,7 @@ function status(overrides: Partial<OpsStatus> = {}): OpsStatus {
     ],
     storage: { usedBytes: 2048, files: 2, usedFraction: 0.5 },
     ai: { calls: 0, failed: 0, failureRate: null, byModel: [] },
+    alerts: alerts(),
     ...overrides,
   };
 }
@@ -270,7 +298,8 @@ describe('OpsView', () => {
   });
 
   it('meldet eine Warteschlange über der Schwelle — als **Wort**, nicht nur farbig', async () => {
-    // 45 minutes: above the 30 that `OPS_THRESHOLDS.mailQueueAgeMs` allows.
+    // 45 minutes waiting, and the server calls the metric breaching — the two
+    // belong together, and the server decides which.
     serve(
       jsonResponse(
         200,
@@ -281,6 +310,7 @@ describe('OpsView', () => {
             failedRecently: 0,
             oldestQueuedAt: '2026-08-11T11:15:00.000Z',
           },
+          alerts: alerts(['mail_queue_age']),
         }),
       ),
     );
@@ -293,8 +323,8 @@ describe('OpsView', () => {
   });
 
   it('schweigt, solange die Schwelle nicht überschritten ist', async () => {
-    // 20 minutes: **below** the 30. Without this case the test above would
-    // only prove that a warning is always given.
+    // Nothing breaching. Without this case the one above would only prove that
+    // a warning is always given.
     serve(
       jsonResponse(
         200,
@@ -353,5 +383,169 @@ describe('OpsView', () => {
         'Superadmins vorbehalten',
       );
     });
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Quittieren (ADR-0016, Fortschreibung 2026-09-16)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * **Ohne Alarm kein Knopf.** Eine ruhige Installation bietet nichts an, was
+   * man stillstellen könnte — sonst stünde unter jeder Karte eine Schaltfläche
+   * ohne Anlass.
+   */
+  it('bietet das Quittieren nur bei einer gerissenen Schwelle an', async () => {
+    serve(jsonResponse(200, status()));
+    renderWithQuery(<OpsView />);
+
+    await screen.findByRole('heading', { name: 'Warteschlange' });
+    expect(screen.queryByRole('button', { name: 'Quittieren' })).toBeNull();
+  });
+
+  it('quittiert eine Kennzahl mit Frist und Begründung', async () => {
+    const acknowledged = status({
+      alerts: alerts(['mail_queue_age'], {
+        mail_queue_age: {
+          at: '2026-08-11T12:00:00.000Z',
+          until: '2026-08-12T12:00:00.000Z',
+          by: 'Betriebsleitung',
+          note: 'Mailserver zieht am Freitag um',
+        },
+      }),
+    });
+    const calls: { url: string; method: string; body: unknown }[] = [];
+    stubFetch().mockImplementation((input, init) => {
+      const url = requestUrl(input);
+      const method = init?.method ?? 'GET';
+      calls.push({
+        url,
+        method,
+        body:
+          typeof init?.body === 'string'
+            ? (JSON.parse(init.body) as unknown)
+            : null,
+      });
+      return Promise.resolve(
+        jsonResponse(
+          200,
+          method === 'GET'
+            ? status({ alerts: alerts(['mail_queue_age']) })
+            : acknowledged,
+        ),
+      );
+    });
+    renderWithQuery(<OpsView />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Quittieren' }));
+    fireEvent.change(screen.getByLabelText('Ruhe für'), {
+      target: { value: 'week' },
+    });
+    fireEvent.change(screen.getByLabelText('Begründung (wahlfrei)'), {
+      target: { value: 'Mailserver zieht am Freitag um' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Stillstellen' }));
+
+    // Und die Antwort steht sofort auf der Seite — mit Person und Grund, damit
+    // ein zweiter Superadmin nicht nur sieht, *dass* jemand still gestellt hat.
+    expect(
+      await screen.findByText(/Quittiert von Betriebsleitung/),
+    ).toBeDefined();
+    expect(screen.getByText(/Mailserver zieht am Freitag um/)).toBeDefined();
+
+    // ⚠️ Der Weg, den die Frist nimmt: der Browser schickt **die Wahl**, nicht
+    // ihren Endzeitpunkt — sonst könnte er sich seine eigene Dauer ausdenken.
+    const post = calls.find((call) => call.method === 'POST');
+    expect(post?.url).toContain(
+      '/admin/ops/alerts/mail_queue_age/acknowledgement',
+    );
+    expect(post?.body).toStrictEqual({
+      duration: 'week',
+      note: 'Mailserver zieht am Freitag um',
+    });
+  });
+
+  /**
+   * **Quittiert heißt nicht behoben.** Die Ampel bleibt rot, und das Wort
+   * „quittiert" steht daneben — eine Karte, die beim Stillstellen grün würde,
+   * wäre die Unwahrheit, gegen die diese Ansicht gebaut ist.
+   */
+  it('lässt die Ampel rot, solange die Quittierung gilt', async () => {
+    serve(
+      jsonResponse(
+        200,
+        status({
+          alerts: alerts(['storage_full'], {
+            storage_full: {
+              at: '2026-08-11T12:00:00.000Z',
+              until: null,
+              by: 'Betriebsleitung',
+              note: null,
+            },
+          }),
+        }),
+      ),
+    );
+    renderWithQuery(<OpsView />);
+
+    expect(await screen.findByText('quittiert')).toBeDefined();
+    expect(screen.getByText('über der Schwelle')).toBeDefined();
+    expect(screen.getByText(/bis auf Weiteres/)).toBeDefined();
+    // Solange sie gilt, wird nicht ein zweites Mal quittiert.
+    expect(screen.queryByRole('button', { name: 'Quittieren' })).toBeNull();
+  });
+
+  it('nimmt eine Quittierung wieder zurück', async () => {
+    const methods: string[] = [];
+    stubFetch().mockImplementation((_input, init) => {
+      const method = init?.method ?? 'GET';
+      methods.push(method);
+      return Promise.resolve(
+        jsonResponse(
+          200,
+          method === 'DELETE'
+            ? status({ alerts: alerts(['storage_full']) })
+            : status({
+                alerts: alerts(['storage_full'], {
+                  storage_full: {
+                    at: '2026-08-11T12:00:00.000Z',
+                    until: null,
+                    by: 'Betriebsleitung',
+                    note: null,
+                  },
+                }),
+              }),
+        ),
+      );
+    });
+    renderWithQuery(<OpsView />);
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Quittierung aufheben' }),
+    );
+
+    expect(
+      await screen.findByRole('button', { name: 'Quittieren' }),
+    ).toBeDefined();
+    expect(methods).toContain('DELETE');
+  });
+
+  it('sagt es, wenn das Quittieren scheitert', async () => {
+    stubFetch().mockImplementation((_input, init) =>
+      Promise.resolve(
+        (init?.method ?? 'GET') === 'GET'
+          ? jsonResponse(200, status({ alerts: alerts(['mail_queue_age']) }))
+          : jsonResponse(500, { message: 'kaputt' }),
+      ),
+    );
+    renderWithQuery(<OpsView />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Quittieren' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Stillstellen' }));
+
+    expect(
+      await screen.findByText(
+        'Die Quittierung konnte nicht gespeichert werden.',
+      ),
+    ).toBeDefined();
   });
 });

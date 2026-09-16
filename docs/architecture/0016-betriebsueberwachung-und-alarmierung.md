@@ -172,6 +172,57 @@ Schlüssel. Das ist keine Stilfrage — druckte `MISTRAL_DEBUG` den
 API-Schlüssel im Klartext und `ANTHROPIC_LOG=debug` den Freitext des
 Bearbeiters. Beide fand ein Review, kein Test; hier bekommen sie einen.
 
+### 4a. Eine Kennzahl lässt sich quittieren (Fortschreibung 2026-09-16)
+
+Die Wiederholungssperre aus Punkt 4 kappt den Lärm auf **vier Mails am Tag je
+Kennzahl** — und zwar so lange, bis die Ursache weg ist. Für den Fall, für den
+sie gebaut ist (ein unbemerkter Ausfall), ist das richtig. Für den häufigeren
+Fall ist es genau die Alarmmüdigkeit, gegen die sie steht: der Betreiber
+**kennt** die Ursache, die Behebung ist terminiert („die Platte wird Freitag
+vergrößert"), und bis dahin kommen zwölf Mails, die nichts Neues sagen. Wer sie
+wegklickt, klickt irgendwann auch die weg, die etwas sagt.
+
+Deshalb kann ein Superadmin eine Kennzahl in *Systemverwaltung → Überwachung*
+**quittieren**. Vier Eigenschaften, und jede einzelne ist eine Entscheidung
+gegen die bequemere Bauform:
+
+1. **Quittiert heißt nicht behoben.** Die Ampel bleibt rot, die Zahl bleibt
+   über der Schwelle, und neben der Karte steht „quittiert". Ein Knopf, der die
+   Ansicht grün macht, wäre ein Knopf, der die Überwachung belügt.
+2. **Mit Frist, und „bis auf Weiteres" ist nur eine der Wahlmöglichkeiten** —
+   24 Stunden, 7 Tage, 30 Tage oder ohne Ende. Eine vergessene befristete
+   Quittierung verfällt von selbst; eine unbefristete bleibt, bis jemand sie
+   zurücknimmt oder die Kennzahl sich erholt. Die Frist rechnet der **Server**
+   aus der gewählten Dauer aus; der Aufrufer schickt die Wahl, nie einen
+   Endzeitpunkt.
+3. ⚠️ **Die Erholung beendet die Quittierung.** Fällt die Kennzahl wieder unter
+   ihre Schwelle, wird die Quittierung gelöscht — ein späterer Ausbruch ist ein
+   **neuer Vorfall** und meldet sich. Ohne das wäre „bis auf Weiteres" ein
+   dauerhaft blinder Fleck, und genau der ist die Lücke, gegen die dieser ADR
+   überhaupt geschrieben ist. Was die Erholung **nicht** zurücksetzt, ist die
+   Wiederholungssperre: eine um ihre Schwelle pendelnde Kennzahl meldete sonst
+   alle fünf Minuten.
+4. **Wer und warum steht dabei.** Person und eine kurze Begründung (200
+   Zeichen) hängen an der Quittierung, weil eine Installation seit ADR-0029
+   zwei Superadmins haben kann — und der zweite sonst nur sähe, *dass* jemand
+   den Alarm stillgelegt hat.
+
+**Keine Eskalation bei Verschlechterung.** 86 % und 95 % Füllstand sind
+dieselbe Kennzahl, und eine zweite, höhere Schwelle je Zahl wäre ein zweiter
+Satz Zahlen, den niemand pflegt. Wer Ruhe bestellt hat, bekommt Ruhe.
+
+⚠️ **Eine Quittierung gilt der Kennzahl, nicht der Ursache.** `job_stale`
+deckt alle Hintergrundläufe ab: wer ihn wegen `retention_purge` quittiert,
+hört auch von einem später ausfallenden `file_purge` nichts mehr. Das ist der
+Preis von fünf Kennzahlen statt einer je Lauf — und der Grund, warum die
+befristeten Wahlmöglichkeiten überhaupt angeboten werden und nicht nur ein
+Schalter.
+
+**Kein Ein-Klick-Link in der Alarmmail.** Er wäre um drei Uhr nachts bequem und
+ist die einzige Stelle, an der die Überwachung ohne Anmeldung stillzulegen
+wäre — ein weitergeleitetes Postfach genügte. Die Mail verweist stattdessen auf
+die Ansicht; der Weg dorthin ist der Anmeldeweg, den es ohnehin gibt.
+
 ## Was dieser ADR **nicht** entscheidet
 
 - **Wer nachts aufsteht.** Der Empfänger steht in den systemweiten

@@ -186,6 +186,135 @@ export const aiStatusSchema = z.object({
 });
 export type AiStatus = z.infer<typeof aiStatusSchema>;
 
+/**
+ * **The five metrics that raise an alert** — the same set as `OpsMetric` in the
+ * database, here as the wire contract.
+ *
+ * Held together by `apps/api/test/observability/ops-metrics.spec.ts`, in the
+ * same way `jobKindSchema` and `JobKind` are.
+ */
+export const opsMetricSchema = z.enum([
+  'mail_queue_age',
+  'mail_failures',
+  'job_stale',
+  'storage_full',
+  'ai_failure_rate',
+]);
+export type OpsMetricName = z.infer<typeof opsMetricSchema>;
+
+/**
+ * The heading per metric — **one line, two readers**: the subject of the alert
+ * mail and the caption in the monitoring view. Kept apart, the same metric
+ * would be called two different things.
+ */
+export const OPS_METRIC_SUBJECTS: Readonly<Record<OpsMetricName, string>> =
+  Object.freeze({
+    mail_queue_age: 'Post bleibt liegen',
+    mail_failures: 'Nachrichten scheitern',
+    job_stale: 'Ein Aufräumlauf bleibt aus',
+    storage_full: 'Der Datenträger füllt sich',
+    ai_failure_rate: 'Die KI antwortet unzuverlässig',
+  });
+
+/**
+ * How long an acknowledgement keeps a metric silent.
+ *
+ * `open` is "until further notice" and therefore has no end — the only choice
+ * that does not expire on its own. It still ends when the metric recovers.
+ */
+export const ackDurationSchema = z.enum(['day', 'week', 'month', 'open']);
+export type AckDuration = z.infer<typeof ackDurationSchema>;
+
+/**
+ * The span per choice in milliseconds; `null` means "without an end".
+ *
+ * `satisfies` rather than an annotation: the completeness is checked, and
+ * `ACK_DURATION_MS.day` still reads as a `number` instead of `number | null`.
+ */
+export const ACK_DURATION_MS = Object.freeze({
+  day: 24 * 60 * 60 * 1000,
+  week: 7 * 24 * 60 * 60 * 1000,
+  month: 30 * 24 * 60 * 60 * 1000,
+  open: null,
+}) satisfies Readonly<Record<AckDuration, number | null>>;
+
+/** The captions of the selection — surface text, hence German. */
+export const ACK_DURATION_LABELS: Readonly<Record<AckDuration, string>> =
+  Object.freeze({
+    day: '24 Stunden',
+    week: '7 Tage',
+    month: '30 Tage',
+    open: 'Bis auf Weiteres',
+  });
+
+/**
+ * How long the reason may be.
+ *
+ * Short on purpose: it stands next to a figure and is not an incident report.
+ * „Platte wird Freitag vergrößert" is the whole point of it.
+ */
+export const ACK_NOTE_MAX = 200;
+
+export const acknowledgeAlertRequestSchema = z.object({
+  duration: ackDurationSchema,
+  /**
+   * Why it was acknowledged. Optional, but the actual value of the feature: a
+   * second superadmin would otherwise only see *that* somebody silenced an
+   * alert.
+   */
+  note: z.string().trim().max(ACK_NOTE_MAX).optional(),
+});
+export type AcknowledgeAlertRequest = z.infer<
+  typeof acknowledgeAlertRequestSchema
+>;
+
+/** An acknowledgement in force, as the view gets to see it. */
+export const alertAcknowledgementSchema = z.object({
+  at: z.iso.datetime(),
+  /** End of the span; `null` means "until further notice". */
+  until: z.iso.datetime().nullable(),
+  /**
+   * The name of the superadmin who acknowledged — `null` once that account is
+   * deleted.
+   *
+   * ⚠️ **The only name in this payload, and it belongs to the operation
+   * itself.** The "sums, no names" rule at the top of this file protects
+   * *other organisations*; who silenced an alert is precisely what the second
+   * superadmin needs to know (ADR-0029).
+   */
+  by: z.string().min(1).nullable(),
+  note: z.string().min(1).nullable(),
+});
+export type AlertAcknowledgement = z.infer<typeof alertAcknowledgementSchema>;
+
+/** Where one metric currently stands in relation to the alert. */
+export const opsAlertStateSchema = z.object({
+  metric: opsMetricSchema,
+  /**
+   * Whether the metric is **now** above its threshold.
+   *
+   * Decided by the server, not recomputed in the browser: the alert and the
+   * traffic light have to mean the same thing, and two evaluations of the same
+   * thresholds are how they stop meaning it.
+   */
+  breaching: z.boolean(),
+  /** When this metric last reported; `null`: never yet. */
+  lastSentAt: z.iso.datetime().nullable(),
+  /** Only an acknowledgement **in force** stands here; expired ones are `null`. */
+  acknowledgement: alertAcknowledgementSchema.nullable(),
+});
+export type OpsAlertState = z.infer<typeof opsAlertStateSchema>;
+
+/**
+ * Whether an acknowledgement still holds at `now`.
+ *
+ * `>` and not `>=`, like {@link exceeds}: the deadline itself is still silent.
+ */
+export function acknowledgementHolds(until: string | null, now: Date): boolean {
+  if (until === null) return true;
+  return new Date(until).getTime() > now.getTime();
+}
+
 export const opsStatusSchema = z.object({
   /** The version that **this process** carries. */
   version: z.string().min(1),
@@ -193,6 +322,14 @@ export const opsStatusSchema = z.object({
   jobs: z.array(jobStatusSchema),
   storage: storageStatusSchema,
   ai: aiStatusSchema,
+  /**
+   * One row per metric — **always all five**, in the order of
+   * {@link opsMetricSchema}, whether or not anything is wrong with them.
+   *
+   * A list that carried only the metrics currently in trouble would leave the
+   * view unable to tell "quiet" from "not reported".
+   */
+  alerts: z.array(opsAlertStateSchema),
   /** Time of collection — so that a displayed number has an age. */
   observedAt: z.iso.datetime(),
 });

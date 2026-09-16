@@ -1,6 +1,11 @@
-import { parseOpsStatus, type OpsStatus } from '@formsache/shared';
-import type { UseQueryResult } from '@tanstack/react-query';
-import { useQuery } from '@tanstack/react-query';
+import {
+  parseOpsStatus,
+  type AckDuration,
+  type OpsMetricName,
+  type OpsStatus,
+} from '@formsache/shared';
+import type { UseMutationResult, UseQueryResult } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { requestJson } from './http';
 
@@ -33,5 +38,60 @@ export function useOpsStatus(): UseQueryResult<OpsStatus> {
     refetchInterval: REFETCH_MS,
     // A tab that lies in the background measures nothing anybody reads.
     refetchIntervalInBackground: false,
+  });
+}
+
+/**
+ * **Quittieren und Aufheben** (ADR-0016, Fortschreibung 2026-09-16).
+ *
+ * Both routes answer with the whole operations status, which is written
+ * straight into the cache: a redraw from the reply is one round trip shorter
+ * than an invalidation, and the reply is the same document the query holds.
+ */
+export interface AcknowledgeVariables {
+  readonly metric: OpsMetricName;
+  readonly duration: AckDuration;
+  /** An empty reason is not sent at all — see `useAcknowledgeAlert`. */
+  readonly note: string;
+}
+
+function acknowledgementPath(metric: OpsMetricName): string {
+  return `/admin/ops/alerts/${metric}/acknowledgement`;
+}
+
+export function useAcknowledgeAlert(): UseMutationResult<
+  OpsStatus,
+  Error,
+  AcknowledgeVariables
+> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ metric, duration, note }: AcknowledgeVariables) =>
+      parseOpsStatus(
+        await requestJson(acknowledgementPath(metric), {
+          method: 'POST',
+          body: { duration, ...(note === '' ? {} : { note }) },
+        }),
+      ),
+    onSuccess: (status) => {
+      queryClient.setQueryData(OPS_STATUS_QUERY_KEY, status);
+    },
+  });
+}
+
+export function useReleaseAlert(): UseMutationResult<
+  OpsStatus,
+  Error,
+  OpsMetricName
+> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (metric: OpsMetricName) =>
+      parseOpsStatus(
+        await requestJson(acknowledgementPath(metric), { method: 'DELETE' }),
+      ),
+    onSuccess: (status) => {
+      queryClient.setQueryData(OPS_STATUS_QUERY_KEY, status);
+    },
   });
 }
