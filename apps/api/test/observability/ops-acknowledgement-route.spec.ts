@@ -16,7 +16,7 @@ import {
   createUser,
   type TenantFixture,
 } from '../support/fixtures';
-import { authedMutation, openSession } from '../support/http';
+import { authedMutation, cookieHeader, openSession } from '../support/http';
 
 /**
  * **Quittieren gehört der Systemverwaltung** (ADR-0016, Fortschreibung
@@ -98,6 +98,39 @@ describe('die Quittierung eines Betriebsalarms', () => {
       (state) => state.metric === 'mail_queue_age',
     );
   }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Zuerst die Fixture selbst — sonst misst das Paar darunter nichts
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /**
+   * **Der Abgewiesene trägt jedes Gruppenrecht, das es gibt.**
+   *
+   * Ohne diesen Fall belegten die beiden 403 darunter nur, dass *irgendein*
+   * Wächter feuert — eine Fixture, die still aufhörte, Rechte zu vergeben,
+   * machte sie bedeutungslos, ohne dass etwas rot würde. Dieselbe Vorsorge wie
+   * in `test/system-settings/permissions.spec.ts`.
+   */
+  it('gibt dem abgewiesenen Aufrufer jedes Gruppenrecht', async () => {
+    const me = await request(app().server)
+      .get(apiPath('/auth/me'))
+      .set('Cookie', cookieHeader(tenantAdmin));
+
+    expect(me.status).toBe(200);
+    const body = me.body as {
+      isSuperadmin: boolean;
+      memberships: { permissions: Record<string, boolean> }[];
+    };
+    expect(body.isSuperadmin).toBe(false);
+    expect(body.memberships[0]?.permissions).toEqual({
+      canBuild: true,
+      canViewResponses: true,
+      canExport: true,
+      canManageSettings: true,
+      canManageFormSettings: true,
+      canManageUsers: true,
+    });
+  });
 
   // ═══════════════════════════════════════════════════════════════════════
   // Der unerlaubte Zugriff — beide Richtungen
