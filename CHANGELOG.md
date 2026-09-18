@@ -13,6 +13,18 @@ Kategorien je Eintrag: **Added** · **Changed** · **Deprecated** · **Removed**
 
 ### Added
 
+- **Betriebsalarme lassen sich quittieren.** Eine Kennzahl, deren Ursache
+  bekannt ist, meldete bisher bis zu ihrer Behebung alle sechs Stunden weiter —
+  bei einer Platte, die erst am Freitag wächst, sind das zwölf Mails, die
+  nichts Neues sagen. In *Systemverwaltung → Überwachung* steht neben jeder
+  gerissenen Schwelle jetzt „Quittieren", mit einer Frist (24 Stunden, 7 oder
+  30 Tage oder bis auf Weiteres) und einer kurzen Begründung. Die Ampel bleibt
+  dabei rot: quittiert heißt stillgestellt, nicht behoben. Erholt sich die
+  Kennzahl, verfällt die Quittierung — ein späterer Ausbruch ist ein neuer
+  Vorfall und meldet sich wieder
+  ([ADR-0016](docs/architecture/0016-betriebsueberwachung-und-alarmierung.md),
+  Fortschreibung).
+
 - **Bei Auswahl-Fragen lässt sich die Position von „Sonstiges" umschalten.**
   Die Option stand bisher immer am Ende der Liste. Ein neuer Schalter in den
   Fragen-Eigenschaften zeigt sie standardmäßig zuerst an, mit der Möglichkeit,
@@ -20,6 +32,13 @@ Kategorien je Eintrag: **Added** · **Changed** · **Deprecated** · **Removed**
   erlaubt ist.
 
 ### Changed
+
+- **Die Warteschlangen-Karte der Überwachung meldet jetzt auch gescheiterte
+  Nachrichten.** Ihre Ampel hing allein am Alter der ältesten wartenden Zeile;
+  über „Nachrichten scheitern" kam eine Mail, während die Karte grün blieb. Alle
+  Ampeln der Ansicht kommen jetzt aus derselben Auswertung, die den Alarm
+  verschickt. Die Alarmmail verweist außerdem auf „Überwachung" statt auf den
+  Reiter „Betrieb", den es seit der Zusammenlegung nicht mehr gibt.
 
 - **Benachrichtigungs-Vorlagen gehören jetzt der Organisation, nicht mehr der
   Installation.** Sie werden in den Organisationseinstellungen unter

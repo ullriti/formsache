@@ -6,10 +6,10 @@ import { describe, expect, it } from 'vitest';
 
 import {
   ALERT_REPEAT_SUPPRESSION_MS,
-  findBreaches,
   opsAlertBody,
   opsAlertSubject,
 } from '../../src/observability/ops-alert.service';
+import { findBreaches } from '../../src/observability/ops-breaches';
 import { MAIL_FAILURE_WINDOW_MS } from '@formsache/shared';
 
 /**
@@ -41,6 +41,9 @@ function status(overrides: Partial<OpsStatus> = {}): OpsStatus {
     jobs: [],
     storage: { usedBytes: 0, files: 0, usedFraction: 0.1 },
     ai: { calls: 0, failed: 0, failureRate: null, byModel: [] },
+    // `findBreaches` reads figures only; the acknowledgement rows beside them
+    // are the reader's business, not the threshold's.
+    alerts: [],
     ...overrides,
   };
 }

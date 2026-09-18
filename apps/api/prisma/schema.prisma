@@ -381,6 +381,10 @@ model User {
   /// und überlebt das Konto, verliert dabei aber ihren Personenbezug.
   aiUsage AiUsage[]
 
+  /// Die Betriebsalarme, die diese Person quittiert hat — ebenfalls
+  /// `ON DELETE SET NULL`, aus demselben Grund.
+  acknowledgedOpsAlerts OpsAlert[]
+
   /// A subject is unique per issuer, not globally: two providers may well
   /// hand out the same `sub`.
   @@unique([oidcIssuer, oidcSubject])
@@ -2491,7 +2495,28 @@ model OpsAlert {
   metric OpsMetric @id
 
   /// Beginn der Sperre. Vor Ablauf wird dieselbe Kennzahl nicht erneut gemeldet.
-  lastSentAt DateTime @map("last_sent_at") @db.Timestamptz(3)
+  ///
+  /// `null`, seit eine Quittierung eine Zeile anlegen kann, bevor je über die
+  /// Kennzahl gemeldet wurde: „noch nie gemeldet", nicht „vor langer Zeit".
+  lastSentAt DateTime? @map("last_sent_at") @db.Timestamptz(3)
+
+  /// Wann quittiert wurde; `null` heißt „nicht quittiert" und ist der
+  /// Normalfall. Die drei Spalten darunter sind nur zusammen mit dieser
+  /// bedeutsam.
+  acknowledgedAt DateTime? @map("acknowledged_at") @db.Timestamptz(3)
+
+  /// Ende der Quittierung. `null` bei gesetztem `acknowledged_at` heißt
+  /// **bis auf Weiteres** — die einzige Wahl, die nicht von selbst abläuft.
+  acknowledgedUntil DateTime? @map("acknowledged_until") @db.Timestamptz(3)
+
+  /// Wer quittiert hat. `ON DELETE SET NULL`: die Quittierung überlebt das
+  /// Konto, verliert dabei aber ihren Personenbezug — dieselbe Abwägung wie
+  /// bei `ai_usage`.
+  acknowledgedById String? @map("acknowledged_by_id") @db.Uuid
+  acknowledgedBy   User?   @relation(fields: [acknowledgedById], references: [id], onDelete: SetNull)
+
+  /// Die Begründung des Betreibers, höchstens `ACK_NOTE_MAX` Zeichen.
+  acknowledgedNote String? @map("acknowledged_note") @db.VarChar(200)
 
   @@map("ops_alert")
 }

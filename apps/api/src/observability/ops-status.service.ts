@@ -3,12 +3,24 @@ import { join } from 'node:path';
 
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { JobKind } from '@prisma/client';
-import { berlinMonthStart, MAIL_FAILURE_WINDOW_MS } from '@formsache/shared';
-import type { ApiEnv, JobStatus, OpsStatus } from '@formsache/shared';
+import {
+  acknowledgementHolds,
+  berlinMonthStart,
+  MAIL_FAILURE_WINDOW_MS,
+  opsMetricSchema,
+} from '@formsache/shared';
+import type {
+  ApiEnv,
+  JobStatus,
+  OpsAlertState,
+  OpsMetricName,
+  OpsStatus,
+} from '@formsache/shared';
 
 import { API_ENV } from '../config/env';
 import { MailClock } from '../mail/mail-clock';
 import { PrismaService } from '../prisma/prisma.service';
+import { findBreaches } from './ops-breaches';
 
 /**
  * **The operational status** (ADR-0016).
@@ -49,13 +61,14 @@ export class OpsStatusService {
     inventory = true,
   }: { inventory?: boolean } = {}): Promise<OpsStatus> {
     const observedAt = this.clock.now();
-    const [mailQueue, jobs, storage, ai] = await Promise.all([
+    const [mailQueue, jobs, storage, ai, rows] = await Promise.all([
       this.mailQueue(observedAt),
       this.jobs(),
       this.storage(inventory),
       this.ai(observedAt),
+      this.alertRows(),
     ]);
-    return {
+    const figures = {
       version: this.env.APP_VERSION,
       mailQueue,
       jobs,
@@ -63,6 +76,25 @@ export class OpsStatusService {
       ai,
       observedAt: observedAt.toISOString(),
     };
+    return { ...figures, alerts: alertStates(rows, figures, observedAt) };
+  }
+
+  /**
+   * The five acknowledgement rows — at most five, keyed by the metric, so the
+   * alarm guard's extra query per tick is a primary-key scan over a table that
+   * cannot grow.
+   */
+  private alertRows(): Promise<AlertRow[]> {
+    return this.prisma.opsAlert.findMany({
+      select: {
+        metric: true,
+        lastSentAt: true,
+        acknowledgedAt: true,
+        acknowledgedUntil: true,
+        acknowledgedNote: true,
+        acknowledgedBy: { select: { name: true } },
+      },
+    });
   }
 
   /**
@@ -276,4 +308,57 @@ export class OpsStatusService {
 
 function classOf(error: unknown): string {
   return error instanceof Error ? error.constructor.name : typeof error;
+}
+
+/** What {@link OpsStatusService.alertRows} selects. */
+interface AlertRow {
+  readonly metric: OpsMetricName;
+  readonly lastSentAt: Date | null;
+  readonly acknowledgedAt: Date | null;
+  readonly acknowledgedUntil: Date | null;
+  readonly acknowledgedNote: string | null;
+  readonly acknowledgedBy: { readonly name: string } | null;
+}
+
+/**
+ * One row per metric, **always all five** and in the order of the enum.
+ *
+ * `breaching` comes out of {@link findBreaches} — the very function that sends
+ * the mail. The view therefore no longer compares any threshold itself, and a
+ * green traffic light beside a firing alert is no longer constructible.
+ *
+ * An acknowledgement whose span has run out is reported as `null`: the
+ * watchman clears such a row on its next tick, and until then the status must
+ * not claim a silence that no longer holds.
+ */
+function alertStates(
+  rows: readonly AlertRow[],
+  figures: Omit<OpsStatus, 'alerts'>,
+  observedAt: Date,
+): OpsAlertState[] {
+  const breaching = new Set(
+    findBreaches(figures).map((breach) => breach.metric),
+  );
+  const byMetric = new Map(rows.map((row) => [row.metric, row]));
+  return opsMetricSchema.options.map((metric): OpsAlertState => {
+    const row = byMetric.get(metric);
+    const until = row?.acknowledgedUntil?.toISOString() ?? null;
+    const at = row?.acknowledgedAt ?? null;
+    const acknowledged = at !== null && acknowledgementHolds(until, observedAt);
+    return {
+      metric,
+      breaching: breaching.has(metric),
+      lastSentAt: row?.lastSentAt?.toISOString() ?? null,
+      // `acknowledged` narrows `at` — TypeScript infers the type predicate from
+      // its definition above.
+      acknowledgement: acknowledged
+        ? {
+            at: at.toISOString(),
+            until,
+            by: row?.acknowledgedBy?.name ?? null,
+            note: row?.acknowledgedNote ?? null,
+          }
+        : null,
+    };
+  });
 }

@@ -58,6 +58,7 @@ describe('Der Wächter verschickt ', () => {
     jobs: [],
     storage: { usedBytes: 0, files: 0, usedFraction: 0.1 },
     ai: { calls: 0, failed: 0, failureRate: null, byModel: [] },
+    alerts: [],
   });
 
   beforeAll(async () => {
