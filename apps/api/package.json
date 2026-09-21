@@ -42,7 +42,7 @@
   },
   "devDependencies": {
     "@formsache/test-idp": "workspace:*",
-    "@nestjs/testing": "12.0.2",
+    "@nestjs/testing": "12.0.3",
     "@swc-node/register": "1.12.1",
     "@swc/core": "1.16.2",
     "@testcontainers/postgresql": "12.1.0",
@@ -54,7 +54,7 @@
     "exceljs": "4.4.0",
     "pg": "8.23.0",
     "prisma": "7.10.0",
-    "smtp-server": "3.19.10",
+    "smtp-server": "3.19.13",
     "supertest": "7.2.2",
     "testcontainers": "12.1.0",
     "typescript": "catalog:",
