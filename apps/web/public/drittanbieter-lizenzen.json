@@ -2467,6 +2467,14 @@
       "text": "14d069c68fe75baa"
     },
     {
+      "name": "qs",
+      "version": "6.16.0",
+      "spdx": "BSD-3-Clause",
+      "author": null,
+      "homepage": "https://github.com/ljharb/qs",
+      "text": "14d069c68fe75baa"
+    },
+    {
       "name": "range-parser",
       "version": "1.3.0",
       "spdx": "MIT",
