@@ -3,8 +3,9 @@ import type { ReactNode } from 'react';
 import { useFocusTrap } from '../../shell/use-focus-trap';
 
 /**
- * **The off-canvas sheet of the builder below 1180 px** — „Seiten" or
- * „Eigenschaften", depending on which trigger opened it.
+ * **The off-canvas sheet of the builder below 1180 px** — „Seiten", or the
+ * panel („Frage hinzufügen" without a selection, „Eigenschaften" with one),
+ * depending on which trigger opened it.
  *
  * ## Why it is a component of its own, and not a `<div>` in `BuilderView`
  *
@@ -37,20 +38,23 @@ import { useFocusTrap } from '../../shell/use-focus-trap';
  *
  * ## No `openerRef`
  *
- * The two triggers („Seiten", „Eigenschaften") stay active while the sheet
+ * The two triggers („Seiten" and the panel trigger) stay active while the sheet
  * stands, so the element with the focus at the moment of mounting *is* the
  * trigger — the same situation as with the hamburger in `MobileMenuSheet`, and
  * the detailed reasoning stands there.
  */
 export interface BuilderSheetProps {
-  /** Which of the two contents — determines the accessible name alone. */
-  readonly kind: 'pages' | 'panel';
+  /**
+   * The accessible name — the same text as the trigger that opened it, so the
+   * dialog is announced as what was pressed.
+   */
+  readonly label: string;
   readonly onClose: () => void;
   readonly children: ReactNode;
 }
 
 export function BuilderSheet({
-  kind,
+  label,
   onClose,
   children,
 }: BuilderSheetProps): React.JSX.Element {
@@ -61,7 +65,7 @@ export function BuilderSheet({
       className="builder__sheet"
       role="dialog"
       aria-modal="true"
-      aria-label={kind === 'pages' ? 'Seiten' : 'Eigenschaften'}
+      aria-label={label}
       tabIndex={-1}
       ref={panelRef}
       onKeyDown={onKeyDown}

@@ -607,11 +607,16 @@ test.describe('the builder on a small screen ', () => {
     await newForm(page, 'Mobil');
 
     // The three columns are gone; both panels are behind their own trigger.
+    // Without a selection the panel holds the type palette, and its trigger
+    // says so instead of promising „Eigenschaften".
     await expect(page.getByRole('button', { name: 'Seiten' })).toBeVisible();
-    await page.getByRole('button', { name: 'Eigenschaften' }).click();
     await expect(
-      page.getByRole('dialog', { name: 'Eigenschaften' }),
-    ).toBeVisible();
+      page.getByRole('button', { name: 'Eigenschaften' }),
+    ).toHaveCount(0);
+    await page.getByRole('button', { name: 'Frage hinzufügen' }).click();
+    const palette = page.getByRole('dialog', { name: 'Frage hinzufügen' });
+    await expect(palette).toBeVisible();
+    await expect(palette.getByText('Fragetyp hinzufügen')).toBeVisible();
     await page.getByRole('button', { name: 'Schließen' }).click();
 
     await page.getByRole('button', { name: 'Seiten' }).click();

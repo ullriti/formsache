@@ -30,6 +30,7 @@ import {
   sessionUser,
   UMBRELLA_TENANT_ID,
 } from '../test/fixtures';
+import { setViewportWidth } from '../test/match-media';
 import { renderWithQuery } from '../test/render-with-query';
 import { BuilderView } from './BuilderView';
 
@@ -385,6 +386,49 @@ describe('BuilderView', () => {
       expect(
         screen.getByRole('button', { name: 'Seite 1 löschen' }),
       ).toHaveProperty('disabled', false);
+    });
+  });
+
+  /**
+   * Below 1180 px the right column is a sheet behind one trigger. Without a
+   * selection that sheet holds the type palette — the trigger used to say
+   * „Eigenschaften" regardless and promised settings where „Fragetyp
+   * hinzufügen" opened.
+   */
+  describe('the panel sheet on a narrow screen', () => {
+    it('is named after what it shows — palette first, properties after inserting', async () => {
+      setViewportWidth(360);
+      await renderLoaded();
+
+      expect(screen.queryByRole('button', { name: 'Eigenschaften' })).toBe(
+        null,
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Frage hinzufügen' }));
+
+      const palette = screen.getByRole('dialog', { name: 'Frage hinzufügen' });
+      expect(within(palette).getByText('Fragetyp hinzufügen')).toBeDefined();
+
+      fireEvent.click(within(palette).getByRole('button', { name: 'Text' }));
+
+      expect(
+        screen.getByRole('dialog', { name: 'Eigenschaften' }),
+      ).toBeDefined();
+      expect(
+        screen
+          .getByRole('button', { name: 'Eigenschaften' })
+          .getAttribute('aria-expanded'),
+      ).toBe('true');
+
+      // And back: „+ Weitere Frage" drops the selection, so the open sheet
+      // holds the palette again and is named after it.
+      fireEvent.click(screen.getByRole('button', { name: '+ Weitere Frage' }));
+
+      expect(
+        screen.getByRole('dialog', { name: 'Frage hinzufügen' }),
+      ).toBeDefined();
+      expect(screen.queryByRole('button', { name: 'Eigenschaften' })).toBe(
+        null,
+      );
     });
   });
 

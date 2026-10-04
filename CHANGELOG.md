@@ -78,6 +78,12 @@ Kategorien je Eintrag: **Added** · **Changed** · **Deprecated** · **Removed**
 
 ### Fixed
 
+- **Der Panel-Knopf des Builders auf schmalen Bildschirmen heißt nach seinem
+  Inhalt.** Unterhalb von 1180 px stand dort immer „Eigenschaften", auch wenn
+  keine Frage ausgewählt war und das Sheet die Fragetyp-Auswahl zeigte. Ohne
+  Auswahl heißen Knopf und Sheet jetzt „Frage hinzufügen", mit Auswahl weiter
+  „Eigenschaften".
+
 - **Bei „Veranstaltung"-Fragen lässt sich die Teilnehmerzahl wieder auf leer
   zurücksetzen.** Der Zahlen-Stepper und die Pfeiltasten konnten wegen der
   unteren Grenze des Eingabefelds nicht bis 0 herunter — wer aus Versehen

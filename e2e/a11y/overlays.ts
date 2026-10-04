@@ -300,15 +300,17 @@ export const A11Y_OVERLAYS: readonly A11yOverlay[] = [
     },
   },
   {
-    name: 'Dialog · Eigenschaften (Off-Canvas)',
+    name: 'Dialog · Frage hinzufügen (Off-Canvas)',
     audience: 'signed-in',
     width: 'mobile',
     source: 'views/builder/BuilderSheet.tsx',
     open: async (page, fixture) => {
       await openBuilder(page, fixture);
-      await page.getByRole('button', { name: 'Eigenschaften' }).click();
+      // Nothing is selected after loading, so the panel sheet holds the
+      // type palette and is named after it.
+      await page.getByRole('button', { name: 'Frage hinzufügen' }).click();
       await expect(
-        page.getByRole('dialog', { name: 'Eigenschaften' }),
+        page.getByRole('dialog', { name: 'Frage hinzufügen' }),
       ).toBeVisible();
     },
   },
@@ -316,7 +318,7 @@ export const A11Y_OVERLAYS: readonly A11yOverlay[] = [
     name: 'Dialog · Seiten (Off-Canvas)',
     audience: 'signed-in',
     width: 'mobile',
-    // The same component as „Eigenschaften" next door — `BuilderSheet` carries
+    // The same component as the panel sheet next door — `BuilderSheet` carries
     // both shapes and distinguishes them only by the `aria-label`. The entry
     // needs the real source, not `source: null`: a `role="dialog"`
     // would otherwise contradict the contract of `source`, and the lower bound of the

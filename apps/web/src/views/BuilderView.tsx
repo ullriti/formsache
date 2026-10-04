@@ -314,6 +314,8 @@ export function BuilderView({
   const currentPage = useBuilderStore(activePage);
 
   const [sheet, setSheet] = useState<'pages' | 'panel' | null>(null);
+  const panelSheetLabel =
+    selected === undefined ? 'Frage hinzufügen' : 'Eigenschaften';
   /**
    * Whether the confirmation before „Änderungen verwerfen" is up (review
    * finding 18).
@@ -1024,6 +1026,13 @@ export function BuilderView({
               >
                 Seiten
               </button>
+              {/*
+                Named after what the sheet shows *now*: without a selection it
+                holds the type palette, not properties. A fixed
+                „Eigenschaften" promised settings and opened „Fragetyp
+                hinzufügen" — the label and the content have to come from the
+                same `selected`.
+              */}
               <button
                 type="button"
                 className="builder__sheet-trigger"
@@ -1032,7 +1041,7 @@ export function BuilderView({
                   setSheet(sheet === 'panel' ? null : 'panel');
                 }}
               >
-                Eigenschaften
+                {panelSheetLabel}
               </button>
             </>
           )}
@@ -1293,7 +1302,7 @@ export function BuilderView({
 
       {!isDesktop && sheet !== null ? (
         <BuilderSheet
-          kind={sheet}
+          label={sheet === 'pages' ? 'Seiten' : panelSheetLabel}
           onClose={() => {
             setSheet(null);
           }}
