@@ -1221,7 +1221,7 @@ steht:
 |---|---|
 | **Ob und wie eine Anlage in der Oberfläche als Vorschau gezeigt wird.** Sie ist der Weg, auf dem der Download-Schutz umgangen würde — wer sie baut, entscheidet das SVG-Verbot **nicht** neu, sondern die Frage, wie eine Vorschau ohne Origin-Bezug entsteht | eigenes Arbeitspaket, mit `security`-Review |
 | **Ein zweiter Storage-Adapter** (S3/objektbasiert). Die Naht macht ihn möglich; verworfen ist er als *Vorgabe*, nicht als Möglichkeit. Ein Adapter, der vorsignierte URLs ausgäbe, bräche Nr. 1 und Nr. 11 und wäre eine eigene Entscheidung | wer ihn braucht, mit ADR |
-| **Upload-Fortschritt in der Oberfläche** (`fetch` kennt keinen, `XMLHttpRequest` schon). Nr. 14 ändert daran nichts — Multipart hätte dasselbe Problem | eigenes Frontend-Paket |
+| **Echter Upload-Fortschritt in der Oberfläche** (`fetch` kennt keinen, `XMLHttpRequest` schon). Nr. 14 ändert daran nichts — Multipart hätte dasselbe Problem. Seit Oktober 2026 nennt die Ausfüllmaske während der Übertragung Dateiname und Größe („Lebenslauf.pdf" (8,1 MB) wird übertragen…); ein Prozentbalken samt Abbrechen-Knopf und zweitem Transportweg bleibt offen | eigenes Frontend-Paket, falls doppelte Anlagen im Betrieb auftauchen |
 | **Deduplizierung, Thumbnails, Konvertierung.** Nichts davon ist entschieden — sie sind Bequemlichkeit, nicht Datenschutz | wer sie braucht |
 | **PDF-Metadaten.** Sie bleiben unangetastet; sie zu entfernen hieße, die Struktur des Dokuments zu deuten, also genau die verworfene Inhaltsprüfung | benannter Rest |
 

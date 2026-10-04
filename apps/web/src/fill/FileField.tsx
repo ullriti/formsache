@@ -92,6 +92,9 @@ export function FileField({
 }): ReactElement {
   const files = attachmentsOf(value);
   const [busy, setBusy] = useState(false);
+  /** The file whose bytes are on the wire right now — what the working
+   * indicator names, so a slow upload is recognisably *this* file. */
+  const [sending, setSending] = useState<File | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   /**
    * The picker is cleared after every pick.
@@ -178,6 +181,7 @@ export function FileField({
           setFailure(`„${file.name}" ist zu groß. ${ATTACHMENT_HINT}.`);
           break;
         }
+        setSending(file);
         const stored = await uploadAttachment(target, file);
         carried = [...carried, { ref: stored.ref, name: stored.fileName }];
         // Published per file rather than once at the end: an upload that fails
@@ -187,6 +191,7 @@ export function FileField({
     } catch (error) {
       setFailure(uploadFailureMessage(error));
     } finally {
+      setSending(null);
       setBusy(false);
     }
   };
@@ -309,7 +314,9 @@ export function FileField({
         </span>
         <span className="field__dropzone-label" id={stateId} aria-hidden="true">
           {busy
-            ? 'Wird hochgeladen…'
+            ? sending === null
+              ? 'Wird hochgeladen…'
+              : `„${sending.name}" (${formatFileSize(sending.size)}) wird übertragen…`
             : target === undefined
               ? 'Datei-Upload steht hier nicht zur Verfügung'
               : remaining <= 0
@@ -330,6 +337,26 @@ export function FileField({
       )}
     </div>
   );
+}
+
+/**
+ * A file size a participant can read: decimal units like the „max. 10 MB" rule
+ * next to it, German decimal comma („8,1 MB").
+ *
+ * Decimal rather than KiB/MiB on purpose — the limit this is read against is
+ * written in MB, and two units on one screen would make „8,1" and „10" look
+ * like they cannot be compared.
+ */
+export function formatFileSize(bytes: number): string {
+  const number = (value: number): string =>
+    new Intl.NumberFormat('de-DE', { maximumFractionDigits: 1 }).format(value);
+  if (bytes < 1000) {
+    return `${String(bytes)} B`;
+  }
+  if (bytes < 1_000_000) {
+    return `${number(bytes / 1000)} kB`;
+  }
+  return `${number(bytes / 1_000_000)} MB`;
 }
 
 /**
