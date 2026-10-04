@@ -148,7 +148,10 @@ const server = http.createServer((req, res) => {
     }
   }
   if (path === '/api/forms' && req.method === 'POST') {
-    return json(res, 201, { id: FORM_ID, revision: 1, publicSlug: SLUG });
+    return req.on('end', () => {
+      state.title = JSON.parse(Buffer.concat(chunks).toString()).title;
+      json(res, 201, { id: FORM_ID, revision: 1, publicSlug: SLUG });
+    });
   }
   if (path === `/api/forms/${FORM_ID}` && req.method === 'PUT') {
     return json(res, 200, { id: FORM_ID, revision: 2 });
@@ -171,6 +174,13 @@ const server = http.createServer((req, res) => {
     return BREAK === 'public'
       ? json(res, 404, {})
       : json(res, 200, { slug: SLUG, locked: false });
+  }
+  // The front door's document for the public address (ADR-0033). `preview`
+  // is a stack whose SSI went missing: the page is there, its title is not.
+  if (path === `/f/${SLUG}`) {
+    const title = BREAK === 'preview' ? 'Formsache' : state.title;
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    return res.end(`<!doctype html><head><title>${title}</title></head>`);
   }
   if (path === `/api/public/forms/${SLUG}/files`) {
     return req.on('end', () => {
@@ -300,7 +310,8 @@ printf '\n== Eine heile Installation: alle Zusagen ==\n'
 start_double none
 run_smoke
 if [ "$code" -eq 0 ]; then ok 'smoke.sh meldet Erfolg'; else bad "smoke.sh scheiterte ($code): $(grep '✗' "$work/out" | head -n 2)"; fi
-for promise in 'Bereitschaft' 'Anmeldung' 'öffentlich abrufbar' 'mail_log-Zeile steht auf sent' \
+for promise in 'Bereitschaft' 'Anmeldung' 'öffentlich abrufbar' 'nennt den Formulartitel' \
+  'mail_log-Zeile steht auf sent' \
   'gleicher Prüfsumme' 'Arbeitsmappe (Signatur PK'; do
   if grep -qF "$promise" "$work/out"; then ok "geprüft: $promise"; else bad "nicht geprüft: $promise"; fi
 done
@@ -396,6 +407,17 @@ if grep -qF 'die Installation läuft auf Fassung' "$work/out"; then
 else
   ok 'der Lauf endet vor den übrigen Zusagen'
 fi
+
+printf '\n== Die Link-Vorschau trägt nur „Formsache" (SSI fehlt an der Haustür) ==\n'
+start_double preview
+run_smoke
+if [ "$code" -ne 0 ]; then ok "smoke.sh wird rot ($code)"; else bad 'eine Link-Vorschau ohne Formulartitel blieb unbemerkt'; fi
+if grep -qF 'nennt nicht den Formulartitel: <title>Formsache</title>' "$work/out"; then
+  ok 'und zeigt, welcher Titel stattdessen kam'
+else
+  bad "die Meldung nennt die Link-Vorschau nicht: $(grep '✗' "$work/out" | head -n 1)"
+fi
+stop_double
 
 printf '\n== Der Mail-Worker arbeitet nicht: die Zeile bleibt in der Warteschlange ==\n'
 start_double mail

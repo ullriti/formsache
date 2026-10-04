@@ -104,6 +104,7 @@ import {
   budgetWindowStart,
   capMails,
 } from './mail-suppression';
+import type { LinkPreview } from './link-preview';
 import { isPublicSlug } from './public-slug';
 import { StartTokenService } from './start-token.service';
 import {
@@ -858,6 +859,69 @@ export class PublicFormsService {
       id: form.tenantId,
       replyTo: form.tenant.replyTo,
     });
+  }
+
+  /**
+   * What a messenger may show for a shared public address (ADR-0033) — or
+   * `null`, which renders the plain product title.
+   *
+   * `null` for everything that cannot be filled in: unknown, never published,
+   * deleted, in a deleted organisation (all four through {@link load}, so the
+   * rules stay the ones of the fill-in path), and past its closing instant or
+   * its response limit. A form that is **not yet open** keeps its title: such
+   * links are shared ahead of the start on purpose.
+   *
+   * Behind an access word the answer is the locked stub's, and decided
+   * **before** availability: title and organisation, no intro — and no word
+   * about being closed or full, which the stub of `bySlug` does not say
+   * either. Otherwise a stranger could watch a protected form fill up by
+   * polling its preview.
+   */
+  async linkPreview(slug: string): Promise<LinkPreview | null> {
+    let form: Awaited<ReturnType<PublicFormsService['load']>>;
+    try {
+      form = await this.load(slug);
+    } catch (cause) {
+      if (cause instanceof NotFoundException) {
+        return null;
+      }
+      throw cause;
+    }
+
+    const version = form.publishedVersion;
+    const definition =
+      version === null ? null : formDefinitionSchema.safeParse(version.schema);
+    if (definition?.success !== true) {
+      return null;
+    }
+
+    if (this.isLocked(form)) {
+      return {
+        title: form.title,
+        description: null,
+        organisation: form.tenant.name,
+      };
+    }
+
+    const settings = this.settingsOf(form);
+    const { state } = availabilityOf({
+      settings,
+      now: new Date(),
+      responseCount: await this.countIfLimited(
+        form.id,
+        form.tenantId,
+        settings,
+      ),
+    });
+    if (state === 'closed' || state === 'limit_reached') {
+      return null;
+    }
+
+    return {
+      title: form.title,
+      description: definition.data.pages[0]?.description ?? null,
+      organisation: form.tenant.name,
+    };
   }
 
   /**

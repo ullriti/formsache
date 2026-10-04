@@ -41,7 +41,21 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'"
     />
+    <!-- Der Titel — und für `/f/<Adresse>` der des Formulars (ADR-0033).
+         Messenger lesen `<title>` und Open Graph, ohne JavaScript auszuführen.
+         Die Vorlage `docker/default.conf.template` schaltet für genau diese
+         Adressen SSI ein: die SSI-Kommentare unten holen den Kopf-Ausschnitt
+         der API, und ist er leer (Fehler, Grenze, API weg), bleibt es beim
+         schlichten Titel. Überall sonst — jede andere Adresse, `vite dev`,
+         `vite preview` — sind es gewöhnliche Kommentare, und übrig bleibt der
+         Titel im else-Zweig. Nicht verschachteln: nginx-SSI kennt kein
+         if im if. -->
+    <!--# include virtual="/_link-preview/$link_preview_slug" set="link_preview_head" -->
+    <!--# if expr="$link_preview_head" -->
+    <!--# echo var="link_preview_head" encoding="none" -->
+    <!--# else -->
     <title>Formsache</title>
+    <!--# endif -->
     <!-- Das Produktzeichen (ADR-0019). Nur SVG, kein `.ico`: der Reiter ist
          der eine Ort, an dem das Zeichen in jeder Größe zwischen 16 und 64 px
          auftauchen kann, und eine Vektorfassung bedient sie alle. Browser ohne

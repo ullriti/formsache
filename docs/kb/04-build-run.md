@@ -58,6 +58,11 @@ Anwendung: <http://127.0.0.1:8080>, Anmeldung mit `SEED_ADMIN_EMAIL` und
 - **`web` ist der Frontdoor, `api` hat keinen veröffentlichten Port.** nginx
   liefert die Oberfläche aus und reicht `/api` **ohne Rewrite** weiter; damit
   sind Browser und API unter einer Herkunft, was das Session-Cookie verlangt.
+- **Für `/f/<Adresse>` schaltet nginx SSI ein.** Das setzt den
+  Formulartitel und die Open-Graph-Angaben ins ausgelieferte Dokument, damit
+  Messenger sie in der Link-Vorschau zeigen. Unter `vite dev` und
+  `vite preview` passiert das nicht, dort bleibt „Formsache" stehen
+  ([ADR-0033](../architecture/0033-link-vorschau-per-ssi.md)).
 - **`NODE_ENV` kommt aus der `.env`.** `.env.example` setzt `development`, und
   nur deshalb funktioniert die Anmeldung über plain http: mit `production`
   bekommt das Session-Cookie `Secure` und heißt `__Host-formsache_session`.

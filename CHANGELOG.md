@@ -13,6 +13,15 @@ Kategorien je Eintrag: **Added** · **Changed** · **Deprecated** · **Removed**
 
 ### Added
 
+- **Geteilte Umfrage-Links zeigen den Formulartitel.** WhatsApp, Signal,
+  Teams und andere Messenger zeigten für jede öffentliche Adresse nur
+  „Formsache". Jetzt erscheinen der Formulartitel, die Organisation und die
+  Einleitung der ersten Seite. Das gilt nur für ausfüllbare Formulare.
+  Entwürfe, gelöschte, abgelaufene und volle Formulare bleiben bei
+  „Formsache"; hinter einem Zugangswort erscheint nur der Titel. Wirkt mit der
+  mitgelieferten nginx-Haustür
+  ([ADR-0033](docs/architecture/0033-link-vorschau-per-ssi.md)).
+
 - **Betriebsalarme lassen sich quittieren.** Eine Kennzahl, deren Ursache
   bekannt ist, meldete bisher bis zu ihrer Behebung alle sechs Stunden weiter —
   bei einer Platte, die erst am Freitag wächst, sind das zwölf Mails, die

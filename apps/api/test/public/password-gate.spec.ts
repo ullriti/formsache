@@ -768,6 +768,10 @@ describe('the password gate ', () => {
           // hands back is a **new** capability rather than anything the caller
           // put into the URL.
           'POST public/forms/:slug/drafts',
+          // The messenger link preview (ADR-0033). `:slug` only, and it takes
+          // no word at all: behind one it shows the title and withholds the
+          // intro.
+          'GET public/forms/:slug/link-preview',
         ].sort(),
       );
     });

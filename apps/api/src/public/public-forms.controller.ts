@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   Headers,
   HttpCode,
   HttpStatus,
@@ -28,6 +29,7 @@ import {
   PUBLIC_READ_RATE_LIMIT,
   PUBLIC_SUBMIT_RATE_LIMIT,
 } from './public-forms.rate-limit';
+import { renderLinkPreview } from './link-preview';
 import {
   PublicFormsService,
   type PublicFormReadPayload,
@@ -112,6 +114,23 @@ export class PublicFormsController {
     @Headers(ACCESS_PROOF_HEADER) proof?: string,
   ): Promise<PublicFormReadPayload> {
     return this.forms.bySlug(slug, offeredProof(proof));
+  }
+
+  /**
+   * The `<head>` lines for a shared public address (ADR-0033) — fetched by the
+   * front door's server-side include when it serves `/f/<Adresse>`, not by the
+   * application.
+   *
+   * Always 200: the include falls back to the plain title on any error, and an
+   * address that names nothing fillable answers with exactly that plain title,
+   * so a 404 here would add nothing but a second way of saying it.
+   */
+  @Get(':slug/link-preview')
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: PUBLIC_READ_RATE_LIMIT })
+  @Header('Content-Type', 'text/html; charset=utf-8')
+  async linkPreview(@Param('slug') slug: string): Promise<string> {
+    return renderLinkPreview(await this.forms.linkPreview(slug));
   }
 
   /**

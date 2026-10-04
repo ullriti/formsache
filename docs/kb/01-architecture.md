@@ -94,6 +94,12 @@ sonst zum Orakel würden.
 `apps/api/src/public/` ist der Ort dafür; die Grenzen stehen als Konstanten in
 `packages/shared/src/file-limits.ts` und `packages/shared/src/file-types.ts`.
 
+`/f/<slug>` ist außerdem die eine Seitenadresse, deren Auslieferung die API
+fragt: Per SSI holt nginx `GET /api/public/forms/<slug>/link-preview` und setzt
+Formulartitel und Open-Graph-Angaben für Messenger in den `<head>`. Nur
+ausfüllbare Formulare nennen dort ihren Titel; jeder Fehler endet bei
+„Formsache" ([ADR-0033](../architecture/0033-link-vorschau-per-ssi.md)).
+
 Ohne Sitzung schreibt außerdem `POST /api/setup` — **nur**, solange `user` leer
 ist, und die Bedingung steht in derselben Transaktion wie der Schreibvorgang
 (ADR-0022). Es bleibt bei dieser einen: der Einrichtungsassistent meldet sich
