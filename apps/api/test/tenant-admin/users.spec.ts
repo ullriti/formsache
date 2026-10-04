@@ -171,8 +171,8 @@ describe('tenant users ', () => {
    * that happens to run eleventh. The limit itself is measured by
    * `account-invitation.spec.ts`, there in **one** case.
    */
-  beforeEach(() => {
-    resetRateLimit(testApp);
+  beforeEach(async () => {
+    await resetRateLimit(testApp);
   });
 
   function listMembers(token: string): request.Test {

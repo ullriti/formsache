@@ -176,13 +176,13 @@ describe('authentication', () => {
    * and no longer here: the invitation routes now carry a limit as well, and
    * the reach into the library's private storage belongs in **one** place.
    */
-  function resetLoginRateLimit(): void {
-    resetRateLimit(app());
+  async function resetLoginRateLimit(): Promise<void> {
+    await resetRateLimit(app());
   }
 
-  beforeEach(() => {
+  beforeEach(async () => {
     if (testApp !== undefined) {
-      resetLoginRateLimit();
+      await resetLoginRateLimit();
     }
   });
 

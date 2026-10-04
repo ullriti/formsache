@@ -243,7 +243,7 @@ describe('ein Issuer-Wechsel und die offenen Einladungen', () => {
     });
     betaSession = await openSession(app(), betaAdmin.id, beta.id);
 
-    resetRateLimit(app());
+    await resetRateLimit(app());
     // Die offene Einladung, um die es geht — über die Route, damit der Stempel
     // der ist, den die Anwendung setzt, und nicht einer aus diesem Test.
     await invite(alphaSession, alpha, 'oidc', ALPHA_INVITED);
@@ -327,8 +327,8 @@ describe('ein Issuer-Wechsel und die offenen Einladungen', () => {
     await database?.release();
   });
 
-  beforeEach(() => {
-    resetRateLimit(app());
+  beforeEach(async () => {
+    await resetRateLimit(app());
   });
 
   describe('vor dem Wechsel', () => {
@@ -343,7 +343,7 @@ describe('ein Issuer-Wechsel und die offenen Einladungen', () => {
 
   describe('nach dem Wechsel', () => {
     beforeAll(async () => {
-      resetRateLimit(app());
+      await resetRateLimit(app());
       const response = await saveOidc(alphaSession, newProvider().issuer);
       expect(response.status).toBe(200);
       // Der Wert in der Spalte ist der normalisierte des Schreibwegs; der
@@ -591,7 +591,7 @@ describe('ein Issuer-Wechsel und die offenen Einladungen', () => {
    */
   describe('eine unnormalisierte Spalte', () => {
     beforeAll(async () => {
-      resetRateLimit(app());
+      await resetRateLimit(app());
       await app().prisma.tenant.update({
         where: { id: beta.id },
         data: { oidcIssuer: `${oldProvider().issuer}/` },

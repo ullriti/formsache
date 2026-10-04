@@ -2,7 +2,7 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "module": "CommonJS",
-    "moduleResolution": "Node",
+    "moduleResolution": "Bundler",
     "types": ["node"],
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
@@ -14,10 +14,9 @@
     // below resets this and resolves the built artifact instead.
     "paths": {
       "@formsache/shared": ["../../packages/shared/src/index.ts"],
-      // The one OpenID provider of the suite. `moduleResolution:
-      // "Node"` here ignores package `exports`, so the mapping is what makes
-      // `@formsache/test-idp` resolve for `test/auth/*` — and it resolves to the
-      // source, like everything else this workspace shares.
+      // The one OpenID provider of the suite, for `test/auth/*`. Mapped to
+      // the source like everything else this workspace shares, so it needs
+      // no build of its own before a typecheck.
       "@formsache/test-idp": ["../../packages/test-idp/src/index.ts"]
     }
   },
