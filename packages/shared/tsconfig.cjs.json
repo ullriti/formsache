@@ -2,10 +2,7 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "module": "CommonJS",
-    "moduleResolution": "Node",
-    // TypeScript 6 deprecates `node10` resolution; see apps/api/tsconfig.json
-    // for why the move to `node16` is deferred and not part of the bump.
-    "ignoreDeprecations": "6.0",
+    "moduleResolution": "Bundler",
     "noEmit": false,
     "declaration": false,
     "declarationMap": false,

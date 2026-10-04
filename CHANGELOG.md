@@ -49,11 +49,6 @@ Kategorien je Eintrag: **Added** · **Changed** · **Deprecated** · **Removed**
 
 ### Changed
 
-- **TypeScript 6.0.3** (zuvor 5.9.3). Die Auflösung `moduleResolution: Node`
-  (`node10`) ist dort veraltet; `apps/api` und `packages/shared` (CJS-Build)
-  setzen dafür `ignoreDeprecations: "6.0"`. Der Wechsel auf `node16` ist eine
-  Modulsystem-Umstellung und bleibt vor TypeScript 7 offen.
-
 - **Die Warteschlangen-Karte der Überwachung meldet jetzt auch gescheiterte
   Nachrichten.** Ihre Ampel hing allein am Alter der ältesten wartenden Zeile;
   über „Nachrichten scheitern" kam eine Mail, während die Karte grün blieb. Alle

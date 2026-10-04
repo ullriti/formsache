@@ -2,13 +2,7 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "module": "CommonJS",
-    "moduleResolution": "Node",
-    // TypeScript 6 deprecates `node10` resolution (removed in 7). The move to
-    // `node16` is a module-system migration (`module: Node16`, file extensions
-    // in imports), not a version bump — so it is deferred on purpose and this
-    // switch is the one place that has to go with it. Applies to
-    // tsconfig.build.json too, which extends this file.
-    "ignoreDeprecations": "6.0",
+    "moduleResolution": "Bundler",
     "types": ["node"],
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
@@ -20,10 +14,9 @@
     // below resets this and resolves the built artifact instead.
     "paths": {
       "@formsache/shared": ["../../packages/shared/src/index.ts"],
-      // The one OpenID provider of the suite. `moduleResolution:
-      // "Node"` here ignores package `exports`, so the mapping is what makes
-      // `@formsache/test-idp` resolve for `test/auth/*` — and it resolves to the
-      // source, like everything else this workspace shares.
+      // The one OpenID provider of the suite, for `test/auth/*`. Mapped to
+      // the source like everything else this workspace shares, so it needs
+      // no build of its own before a typecheck.
       "@formsache/test-idp": ["../../packages/test-idp/src/index.ts"]
     }
   },

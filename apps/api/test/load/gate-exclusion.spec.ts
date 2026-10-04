@@ -32,11 +32,9 @@ const packageSchema = z.looseObject({
 /**
  * The one part of the Vitest configuration this file reasons about.
  *
- * Parsed rather than trusted: the config module is a `defineConfig(...)` value
- * whose type this workspace's `moduleResolution: "Node"` cannot see through, so
- * reading `.test.include` off it directly would be reading `any` — and an
- * assertion against `any` is the assertion that stays green when the shape
- * changes.
+ * Parsed rather than trusted: the config module is read as a foreign value,
+ * and an assertion against a shape that is merely assumed is the assertion
+ * that stays green when the shape changes.
  */
 const includeSchema = z.looseObject({
   test: z.looseObject({ include: z.array(z.string()) }),
@@ -80,7 +78,7 @@ describe('the load test is a script, not part of the gate ', () => {
    * would stay green if the load script were renamed to one.
    */
   it('is not collected by the Vitest patterns of this workspace', () => {
-    const { include } = includeSchema.parse(vitestConfig as unknown).test;
+    const { include } = includeSchema.parse(vitestConfig).test;
     expect(include.length).toBeGreaterThan(0);
     for (const pattern of include) {
       expect(pattern.endsWith('*.spec.ts')).toBe(true);
