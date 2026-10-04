@@ -6,6 +6,7 @@ import {
   newForm,
   publishAndReadPath,
   saveForm,
+  newGuestContext,
 } from './app-flows';
 import { authStateFile } from './seed-account';
 
@@ -315,7 +316,7 @@ test.describe('Antwort-Detail „Löschen" ', () => {
 
     // The answer comes from a stranger's browser, without a session — the only
     // honest way to produce one (no participant accounts).
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     try {
       const guest = await guestContext.newPage();
       await guest.goto(publicPath);

@@ -7,6 +7,7 @@ import {
   publishAndReadPath,
   saveForm,
   openFormSettings,
+  newGuestContext,
 } from './app-flows';
 import { authStateFile } from './seed-account';
 
@@ -102,7 +103,7 @@ test.describe('Passwortschutz beim Ausfüllen', () => {
     const publicPath = await publishedForm(page, 'Mit Zugangswort');
     await protectWith(page, WORD);
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -148,7 +149,7 @@ test.describe('Passwortschutz beim Ausfüllen', () => {
     const publicPath = await publishedForm(page, 'Falsches Wort');
     await protectWith(page, WORD);
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -180,7 +181,7 @@ test.describe('Passwortschutz beim Ausfüllen', () => {
     const publicPath = await publishedForm(page, 'Wort nie in der URL');
     await protectWith(page, WORD);
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     const urls: string[] = [];
     guest.on('request', (requested) => {
@@ -217,7 +218,7 @@ test.describe('Passwortschutz beim Ausfüllen', () => {
     const publicPath = await publishedForm(page, 'Antwort hinter dem Wort');
     await protectWith(page, WORD);
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -254,7 +255,7 @@ test.describe('Passwortschutz beim Ausfüllen', () => {
     const publicPath = await publishedForm(page, 'Nach dem Neuladen');
     await protectWith(page, WORD);
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);

@@ -7,6 +7,7 @@ import {
   newForm,
   publishAndReadPath,
   saveForm,
+  newGuestContext,
 } from './app-flows';
 import { authStateFile } from './seed-account';
 
@@ -195,7 +196,7 @@ test.describe('Auskunft und Löschung einer betroffenen Person ', () => {
     */
 
     // --- putting in: filling in publicly, without a cookie --------------------
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);

@@ -8,6 +8,7 @@ import {
   newForm,
   publishAndReadPath,
   saveForm,
+  newGuestContext,
 } from './app-flows';
 import { authStateFile } from './seed-account';
 
@@ -88,7 +89,7 @@ test.describe('Kern-Flow: bauen → veröffentlichen → ausfüllen → Export',
     // --- öffentlich ausfüllen ---------------------------------------------
     // A fresh context: no cookies, no session, nothing inherited from the
     // editor. This is the requirement's actual claim.
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
 
     try {
@@ -182,4 +183,37 @@ test.describe('Kern-Flow: bauen → veröffentlichen → ausfüllen → Export',
     expect(csv).toContain(`${TRAVEL_OTHER_LABEL}: ${TRAVEL_OTHER_VALUE}`);
     expect(csv).toContain('\r\n');
   });
+});
+
+/**
+ * **The guest context really is one** (issue 32).
+ *
+ * `browser.newContext()` inherits the test's `storageState`, so in this file a
+ * bare call is the editor. Measured against `GET /api/auth/me` behind the
+ * `SessionGuard`: the bare context answers 200, `newGuestContext` answers 401.
+ * Both halves are asserted — the 200 is what makes the 401 mean something, and
+ * it is the early warning should Playwright ever stop inheriting (then the
+ * helper is merely redundant, and this case says so instead of passing blind).
+ */
+test('newGuestContext carries no session, a bare newContext does', async ({
+  browser,
+}) => {
+  const inherited = await browser.newContext();
+  const guest = await newGuestContext(browser);
+  try {
+    expect(
+      (await inherited.request.get('/api/auth/me')).status(),
+      'Ein nackter newContext() erbt den storageState dieser Datei und ist ' +
+        'angemeldet. Antwortet er mit 401, erbt Playwright nicht mehr — dann ' +
+        'ist newGuestContext nur noch überflüssig, nicht mehr nötig.',
+    ).toBe(200);
+    expect(
+      (await guest.request.get('/api/auth/me')).status(),
+      'Der Gast-Kontext darf keine Sitzung tragen — sonst misst jede ' +
+        '„ohne Anmeldung"-Zusicherung eine angemeldete Person.',
+    ).toBe(401);
+  } finally {
+    await inherited.close();
+    await guest.close();
+  }
 });

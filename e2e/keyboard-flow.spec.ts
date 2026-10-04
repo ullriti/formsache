@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
-import { expectSaved, saveState } from './app-flows';
+import { expectSaved, saveState, newGuestContext } from './app-flows';
 import { authStateFile } from './seed-account';
 
 /**
@@ -410,7 +410,7 @@ test.describe('Der Kern-Flow ohne Maus ', () => {
       const publicPath = new URL(address ?? '').pathname;
 
       /* 5 — Filling in publicly, without a session and without a mouse. */
-      const guestContext = await browser.newContext();
+      const guestContext = await newGuestContext(browser);
       const guest = await guestContext.newPage();
       try {
         await guest.goto(publicPath);

@@ -5,6 +5,7 @@ import {
   expectNoHorizontalScroll,
   newForm,
   saveForm,
+  newGuestContext,
 } from './app-flows';
 import { authStateFile } from './seed-account';
 
@@ -191,7 +192,7 @@ test.describe('Rundlauf: bauen → Kennzeichnung → veröffentlichen → ausfü
     const publicPath = new URL(address ?? '').pathname;
 
     // --- filling in publicly: appears, disappears again ---------------------
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);

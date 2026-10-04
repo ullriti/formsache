@@ -5,6 +5,7 @@ import {
   newForm,
   publishAndReadPath,
   saveForm,
+  newGuestContext,
 } from './app-flows';
 import { authStateFile } from './seed-account';
 
@@ -253,7 +254,7 @@ test.describe('Versandprotokoll (Rechte- und Mandantengrenze)', () => {
     ).toHaveCount(0);
 
     // --- fill in publicly, in a context without a cookie --------------------
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
