@@ -15,8 +15,8 @@ import type { TestApp } from './create-test-app';
  * the first limited route. Since the invitation routes carry a limit
  * (`INVITATION_MAIL_RATE_LIMIT`, security finding 2), it needs a second
  * suite — and two versions of it would be exactly the duplication the docblock
- * below warns about: the reach for `timeoutIds` is an assumption about a
- * foreign library, and that one wants to stand in **one** place, so that it
+ * below warns about: how the storage forgets its hits is an assumption about
+ * a foreign library, and that one wants to stand in **one** place, so that it
  * fails loudly in one place.
  *
  * ## What the caller needs to know
@@ -31,48 +31,53 @@ import type { TestApp } from './create-test-app';
  * the boundary within one case — that way its number does not depend on what
  * the cases before it used up.
  */
-export function resetRateLimit(app: TestApp): void {
+export async function resetRateLimit(app: TestApp): Promise<void> {
   const storage = app.app.get<ThrottlerStorageService>(ThrottlerStorage);
-  for (const record of storage.storage.values()) {
-    record.isBlocked = false;
-    record.blockExpiresAt = 0;
-    for (const throttler of record.totalHits.keys()) {
-      record.totalHits.set(throttler, 0);
-    }
-  }
-  cancelExpirationTimers(storage);
+  await forgetEveryHit(storage);
 }
 
 /**
- * Cancels the pending decrement timers of the in-memory throttler storage.
+ * Empties the in-memory throttler storage through its one public way to do so.
  *
- * `timeoutIds` is private to `ThrottlerStorageService` and reached through a
- * cast, which is a liberty a test may take and production code may not. The
- * shape is asserted rather than assumed: if a future version of the library
- * renames or drops the field, this fails loudly here instead of quietly
- * reintroducing the drift it exists to prevent.
+ * Zeroing `totalHits` on the records is **not** enough since
+ * `@nestjs/throttler` 6.7: the storage keeps the expiry time of every hit in a
+ * private `hitExpirations` map and recounts `totalHits` from it on the next
+ * request, so a zeroed counter would spring back to where it stood.
+ * `onApplicationShutdown()` clears both maps — and it is public, so no cast
+ * into the library's internals is needed. It also stops the eviction sweep;
+ * the storage restarts that on its next `increment`.
  *
- * Why at all: the storage schedules one timer per hit that counts down exactly
- * the record it belongs to. A hit from an early case whose sixty seconds
- * expire **after** a later reset would count down a counter that already
- * stands at zero — the number would go negative, the suite would stop
- * limiting, and the cases over the limit would turn red for a timing reason
- * without anything being wrong on the server. This is the library's
- * `clearExpirationTimes`, which it does not hand out.
+ * The reset is **measured** rather than assumed, and measured by behaviour,
+ * not by the public `storage` map alone — that map could be empty while the
+ * private hits survive, which is exactly the failure above. Every counter that
+ * held hits before the reset is hit once more, and each must count that hit as
+ * its first: if a future version keeps state across the shutdown, this fails
+ * loudly here instead of turning the case that happens to run eleventh red
+ * for no reason on the server. The probe hits are cleared again afterwards.
+ *
+ * (Up to 6.5 the storage scheduled one decrement timer per hit instead, which
+ * a reset had to cancel by reaching into the private `timeoutIds`. 6.7 has no
+ * such timers, so a hit from an early case can no longer count down a counter
+ * that a later reset has already zeroed.)
  */
-function cancelExpirationTimers(storage: ThrottlerStorageService): void {
-  const { timeoutIds } = storage as unknown as {
-    timeoutIds: Map<string, NodeJS.Timeout[]> | undefined;
-  };
-  if (!(timeoutIds instanceof Map)) {
-    throw new Error(
-      'ThrottlerStorageService no longer keeps its expiration timers in `timeoutIds` — the reset in this suite has to be rewritten',
-    );
-  }
-  for (const [throttler, timers] of timeoutIds) {
-    for (const timer of timers) {
-      clearTimeout(timer);
+async function forgetEveryHit(storage: ThrottlerStorageService): Promise<void> {
+  const counters = [...storage.storage].flatMap(([key, record]) =>
+    [...record.totalHits.keys()].map((throttler) => ({ key, throttler })),
+  );
+  storage.onApplicationShutdown();
+
+  const kept: string[] = [];
+  for (const { key, throttler } of counters) {
+    const probe = await storage.increment(key, 60_000, 2, 0, throttler);
+    if (probe.totalHits !== 1) {
+      kept.push(`${throttler}:${key}`);
     }
-    timeoutIds.set(throttler, []);
+  }
+  storage.onApplicationShutdown();
+
+  if (kept.length > 0 || storage.storage.size !== 0) {
+    throw new Error(
+      `ThrottlerStorageService kept hits across onApplicationShutdown() (${kept.join(', ')}) — the reset in this suite has to be rewritten`,
+    );
   }
 }

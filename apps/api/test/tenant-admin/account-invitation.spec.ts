@@ -198,8 +198,8 @@ describe('Einladung eines neu angelegten Kontos ', () => {
    * about the matter. The case that **measures** the limit therefore pushes
    * past it within a single case.
    */
-  beforeEach(() => {
-    resetRateLimit(testApp);
+  beforeEach(async () => {
+    await resetRateLimit(testApp);
   });
 
   async function addLocalMember(

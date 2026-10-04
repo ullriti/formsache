@@ -23,7 +23,9 @@ import { parseModelJson } from './model-json';
  * SDK from reaching for the global console object; the constructor below says
  * why that matters. It satisfies the SDK's `Logger` shape structurally
  * (`group`, `groupEnd`, `log`) — the type itself is not imported, because its
- * subpath does not resolve under the API's `moduleResolution`.
+ * subpath did not resolve under the API's former `moduleResolution: "Node"`.
+ * Since the switch to `"Bundler"` (TypeScript 6) it would; importing it is a
+ * separate change, not part of that dependency update.
  */
 const SILENT_LOGGER = {
   group: (): void => undefined,
@@ -313,9 +315,10 @@ function sample(
  *
  * **Read off the error's public fields rather than off its class**, and that
  * is a deliberate trade: this SDK exports its error classes only through the
- * subpath `@mistralai/mistralai/models/errors`, which the API's
- * `moduleResolution: "Node"` does not resolve — an `instanceof` here would
- * cost a resolution mode change for the whole workspace. `statusCode` on
+ * subpath `@mistralai/mistralai/models/errors`, which the API's former
+ * `moduleResolution: "Node"` did not resolve. Since the switch to `"Bundler"`
+ * (TypeScript 6) it would; moving to `instanceof` is a separate change, not
+ * part of that dependency update. `statusCode` on
  * `MistralError` and `name` on `HTTPClientError` are both public, documented
  * fields of this SDK's generated code.
  *
