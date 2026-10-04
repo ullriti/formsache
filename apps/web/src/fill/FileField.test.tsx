@@ -246,8 +246,11 @@ describe('FieldInput – Datei-Upload', () => {
   });
 
   it('formats sizes with a German decimal comma', () => {
+    expect(formatFileSize(0)).toBe('0 B');
     expect(formatFileSize(512)).toBe('512 B');
+    expect(formatFileSize(1_000)).toBe('1 kB');
     expect(formatFileSize(2_500)).toBe('2,5 kB');
+    expect(formatFileSize(999_999)).toBe('1 MB');
     expect(formatFileSize(8_100_000)).toBe('8,1 MB');
   });
 

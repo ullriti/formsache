@@ -7,10 +7,10 @@ import {
   expectNoHorizontalScroll,
   expectSaved,
   newForm,
+  newGuestContext,
+  openFormSettings,
   publishAndReadPath,
   saveForm,
-  openFormSettings,
-  newGuestContext,
 } from './app-flows';
 import { authStateFile } from './seed-account';
 

@@ -91,10 +91,11 @@ export function FileField({
   readonly invalid: boolean;
 }): ReactElement {
   const files = attachmentsOf(value);
-  const [busy, setBusy] = useState(false);
   /** The file whose bytes are on the wire right now — what the working
-   * indicator names, so a slow upload is recognisably *this* file. */
+   * indicator names, so a slow upload is recognisably *this* file. Being busy
+   * *is* having a file in flight, so there is no second flag to keep in step. */
   const [sending, setSending] = useState<File | null>(null);
+  const busy = sending !== null;
   const [failure, setFailure] = useState<string | null>(null);
   /**
    * The picker is cleared after every pick.
@@ -156,7 +157,6 @@ export function FileField({
       return;
     }
     setFailure(null);
-    setBusy(true);
     // Named rather than dropped: picking five scans for a question that takes
     // two used to upload two and let the other three disappear without a word,
     // which reads as „the browser lost them". A later refusal overwrites this —
@@ -192,7 +192,6 @@ export function FileField({
       setFailure(uploadFailureMessage(error));
     } finally {
       setSending(null);
-      setBusy(false);
     }
   };
 
@@ -314,9 +313,7 @@ export function FileField({
         </span>
         <span className="field__dropzone-label" id={stateId} aria-hidden="true">
           {busy
-            ? sending === null
-              ? 'Wird hochgeladen…'
-              : `„${sending.name}" (${formatFileSize(sending.size)}) wird übertragen…`
+            ? `„${sending.name}" (${formatFileSize(sending.size)}) wird übertragen…`
             : target === undefined
               ? 'Datei-Upload steht hier nicht zur Verfügung'
               : remaining <= 0
@@ -339,6 +336,10 @@ export function FileField({
   );
 }
 
+const SIZE_NUMBER = new Intl.NumberFormat('de-DE', {
+  maximumFractionDigits: 1,
+});
+
 /**
  * A file size a participant can read: decimal units like the „max. 10 MB" rule
  * next to it, German decimal comma („8,1 MB").
@@ -348,15 +349,14 @@ export function FileField({
  * like they cannot be compared.
  */
 export function formatFileSize(bytes: number): string {
-  const number = (value: number): string =>
-    new Intl.NumberFormat('de-DE', { maximumFractionDigits: 1 }).format(value);
   if (bytes < 1000) {
     return `${String(bytes)} B`;
   }
-  if (bytes < 1_000_000) {
-    return `${number(bytes / 1000)} kB`;
+  // 999 950 and up would round to „1.000 kB"; it reads as 1 MB instead.
+  if (bytes < 999_950) {
+    return `${SIZE_NUMBER.format(bytes / 1000)} kB`;
   }
-  return `${number(bytes / 1_000_000)} MB`;
+  return `${SIZE_NUMBER.format(bytes / 1_000_000)} MB`;
 }
 
 /**
