@@ -3,6 +3,12 @@
   "compilerOptions": {
     "module": "CommonJS",
     "moduleResolution": "Node",
+    // TypeScript 6 deprecates `node10` resolution (removed in 7). The move to
+    // `node16` is a module-system migration (`module: Node16`, file extensions
+    // in imports), not a version bump — so it is deferred on purpose and this
+    // switch is the one place that has to go with it. Applies to
+    // tsconfig.build.json too, which extends this file.
+    "ignoreDeprecations": "6.0",
     "types": ["node"],
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
