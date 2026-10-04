@@ -81,3 +81,4 @@ prüft Ablage und Benennung.
 | 0030 | [Englische URL-Pfade — ein harter Schnitt ohne Weiterleitung](0030-englische-url-pfade.md) | accepted |
 | 0031 | [Lizenzliste nach Dependabot-PRs — ein privilegierter Workflow, eng gezäumt](0031-dependabot-lizenz-fixup.md) | accepted |
 | 0032 | [Benachrichtigungs-Vorlagen gehören jeder Organisation, nicht der Installation](0032-benachrichtigungs-vorlagen-je-organisation.md) | accepted |
+| 0033 | [Link-Vorschau öffentlicher Adressen per SSI an der Haustür](0033-link-vorschau-per-ssi.md) | accepted |

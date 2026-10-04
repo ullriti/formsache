@@ -136,6 +136,65 @@ server {
         add_header X-Content-Type-Options "nosniff" always;
     }
 
+    # A public address, served with its form's title (ADR-0033). Messengers
+    # read `<title>` and Open Graph without running JavaScript, so the
+    # document gets them here: SSI includes the API's `<head>` fragment where
+    # `index.html` asks for it. Only the bare address — the slug alphabet of
+    # `apps/api/src/public/public-slug.ts`; anything else falls to `/` below.
+    #
+    # `rewrite … break` and not `try_files`: an internal redirect to
+    # `/index.html` would leave this location, and SSI with it.
+    location ~ "^/f/(?<link_preview_slug>[A-Za-z0-9_-]{1,200})/?$" {
+        ssi on;
+        # nginx's „[an error occurred …]" never lands in the middle of `<head>`.
+        ssi_silent_errors on;
+        rewrite ^ /index.html break;
+        add_header Cache-Control "no-cache";
+        add_header Referrer-Policy "no-referrer" always;
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'" always;
+        add_header X-Content-Type-Options "nosniff" always;
+    }
+
+    # The include's way to the API — reachable by subrequest only. (From
+    # outside, `internal` answers 404, which the `error_page` below turns into
+    # the same empty 204; nothing is forwarded.)
+    #
+    # Every failure (429 of the rate limit, an API that is down) becomes an
+    # empty 204, and `index.html` turns an empty answer into the plain title.
+    # Without this the include would hand the error body to `<head>`: the
+    # SSI `stub` parameter does not help, nginx emits a stub block verbatim,
+    # without running the SSI commands inside it (measured, 2026-10-03).
+    #
+    # `rewrite` and a `proxy_pass` without a path, as for `/api` above: a
+    # variable in `proxy_pass` would make nginx resolve the host per request,
+    # and that needs a `resolver` this file does not have.
+    location ~ "^/_link-preview/(?<link_preview_api_slug>[A-Za-z0-9_-]{1,200})$" {
+        internal;
+        rewrite ^ /api/public/forms/$link_preview_api_slug/link-preview break;
+        proxy_pass ${API_UPSTREAM};
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # A subrequest inherits every header of the page request. The session
+        # cookie has no business at a public route, and a compressed answer
+        # would be echoed into `<head>` as gzip bytes.
+        proxy_set_header Cookie            "";
+        proxy_set_header Accept-Encoding   "";
+        # `set=` holds the answer in memory, and an answer above this buffer
+        # cuts the whole page off mid-`<head>` with a 200 — measured. Twice
+        # `LINK_PREVIEW_MAX_BYTES` of `apps/api/src/public/link-preview.ts`,
+        # which the API never exceeds.
+        subrequest_output_buffer_size 16k;
+        proxy_intercept_errors on;
+        error_page 400 403 404 429 500 502 503 504 = @link_preview_none;
+    }
+
+    location @link_preview_none {
+        return 204;
+    }
+
     # Single-page application: every unknown path is a client-side route and
     # has to be answered with the shell, not with a 404.
     location / {

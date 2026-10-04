@@ -592,7 +592,11 @@ export async function addQuestion(
   type: string,
   label?: string,
 ): Promise<void> {
-  const sheetTrigger = page.getByRole('button', { name: 'Eigenschaften' });
+  // The panel trigger is named after its content: „Frage hinzufügen" without
+  // a selection, „Eigenschaften" with one.
+  const sheetTrigger = page.getByRole('button', {
+    name: /^(Frage hinzufügen|Eigenschaften)$/u,
+  });
   const onSmallScreen = (await sheetTrigger.count()) > 0;
   if (onSmallScreen) {
     await sheetTrigger.click();

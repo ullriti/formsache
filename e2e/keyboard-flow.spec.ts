@@ -704,7 +704,7 @@ test.describe('Mobil-Sheets ohne Maus ', () => {
     ).toBeFocused();
   });
 
-  test('das Eigenschaften-Sheet des Builders ist mit der Tastatur zu öffnen und zu schließen', async ({
+  test('das Panel-Sheet des Builders ist mit der Tastatur zu öffnen und zu schließen', async ({
     page,
   }) => {
     const title = `Tastatur-Sheet ${Date.now().toString(36)}`;
@@ -726,24 +726,34 @@ test.describe('Mobil-Sheets ohne Maus ', () => {
     const formId = /\/forms\/([^/?#]+)/u.exec(page.url())?.[1];
 
     try {
-      const trigger = page.getByRole('button', { name: 'Eigenschaften' });
-      await tabTo(page, trigger, '„Eigenschaften"');
+      // Without a selection the panel sheet holds the type palette, and
+      // trigger and dialog are named after that.
+      const trigger = page.getByRole('button', { name: 'Frage hinzufügen' });
+      await tabTo(page, trigger, '„Frage hinzufügen"');
       await page.keyboard.press('Enter');
 
-      const sheet = page.getByRole('dialog', { name: 'Eigenschaften' });
+      const palette = page.getByRole('dialog', { name: 'Frage hinzufügen' });
       await expect(
-        sheet,
-        'Unterhalb von 1180 px ist die Eigenschaften-Spalte ein Sheet ' +
+        palette,
+        'Unterhalb von 1180 px ist die rechte Spalte ein Sheet ' +
           ' — und es muss über die Tastatur aufgehen.',
       ).toBeVisible();
 
       // Create a question, without a mouse, out of the sheet.
       await tabTo(
         page,
-        sheet.getByRole('button', { name: 'Text', exact: true }),
+        palette.getByRole('button', { name: 'Text', exact: true }),
         'Fragetyp „Text" im Sheet',
       );
       await page.keyboard.press('Enter');
+
+      // The new question is selected, so the same sheet now shows its
+      // properties — and says so.
+      const sheet = page.getByRole('dialog', { name: 'Eigenschaften' });
+      await expect(sheet).toBeVisible();
+      await expect(
+        page.getByRole('button', { name: 'Eigenschaften' }),
+      ).toBeVisible();
       await tabTo(page, page.getByLabel('Fragetext'), 'Fragetext im Sheet');
       await page.keyboard.type('Name des Mitglieds');
 

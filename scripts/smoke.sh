@@ -21,6 +21,8 @@
 #   3. Form           — a public form is retrievable **and
 #                       submittable**. „Retrievable" alone would be a page, not
 #                       a path.
+#                       And its address carries the form's title for a
+#                       messenger's link preview (ADR-0033).
 #   4. Mail           — the submission creates a `mail_log` row, and that row
 #                       goes to `sent`. A row that stays on `queued` is a mail
 #                       worker that is not running — a case that no container
@@ -269,6 +271,17 @@ if [ "$public_status" = '200' ]; then
   ok "öffentlich abrufbar (ohne Anmeldung): /public/forms/$slug"
 else
   bad "das öffentliche Formular antwortet $public_status"
+fi
+
+# The address a participant is sent, as a messenger fetches it: without
+# JavaScript, so the form's title has to be in the document itself (ADR-0033).
+# Only the front door's SSI puts it there — a stack whose nginx template lost
+# the SSI location still answers 200 here, with „Formsache" as the title.
+curl "${CURL_OPTS[@]}" -o "$work/address.html" "$BASE/f/$slug" || true
+if grep -qF "<title>Rauchtest $stamp</title>" "$work/address.html"; then
+  ok "die Link-Vorschau von /f/$slug nennt den Formulartitel"
+else
+  bad "die Link-Vorschau von /f/$slug nennt nicht den Formulartitel: $(grep -o '<title>[^<]*</title>' "$work/address.html" | head -n 1)"
 fi
 
 # ---------------------------------------------------------------------------

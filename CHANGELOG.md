@@ -13,6 +13,15 @@ Kategorien je Eintrag: **Added** · **Changed** · **Deprecated** · **Removed**
 
 ### Added
 
+- **Geteilte Umfrage-Links zeigen den Formulartitel.** WhatsApp, Signal,
+  Teams und andere Messenger zeigten für jede öffentliche Adresse nur
+  „Formsache". Jetzt erscheinen der Formulartitel, die Organisation und die
+  Einleitung der ersten Seite. Das gilt nur für ausfüllbare Formulare.
+  Entwürfe, gelöschte, abgelaufene und volle Formulare bleiben bei
+  „Formsache"; hinter einem Zugangswort erscheint nur der Titel. Wirkt mit der
+  mitgelieferten nginx-Haustür
+  ([ADR-0033](docs/architecture/0033-link-vorschau-per-ssi.md)).
+
 - **Betriebsalarme lassen sich quittieren.** Eine Kennzahl, deren Ursache
   bekannt ist, meldete bisher bis zu ihrer Behebung alle sechs Stunden weiter —
   bei einer Platte, die erst am Freitag wächst, sind das zwölf Mails, die
@@ -77,6 +86,12 @@ Kategorien je Eintrag: **Added** · **Changed** · **Deprecated** · **Removed**
   [Betrieb](docs/kb/09-betrieb.md#woher-eine-fassung-kommt)).
 
 ### Fixed
+
+- **Der Panel-Knopf des Builders auf schmalen Bildschirmen heißt nach seinem
+  Inhalt.** Unterhalb von 1180 px stand dort immer „Eigenschaften", auch wenn
+  keine Frage ausgewählt war und das Sheet die Fragetyp-Auswahl zeigte. Ohne
+  Auswahl heißen Knopf und Sheet jetzt „Frage hinzufügen", mit Auswahl weiter
+  „Eigenschaften".
 
 - **Bei „Veranstaltung"-Fragen lässt sich die Teilnehmerzahl wieder auf leer
   zurücksetzen.** Der Zahlen-Stepper und die Pfeiltasten konnten wegen der
