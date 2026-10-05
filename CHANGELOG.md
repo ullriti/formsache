@@ -17,8 +17,9 @@ Kategorien je Eintrag: **Added** · **Changed** · **Deprecated** · **Removed**
   hochgeladen…" steht in der Ausfüllmaske jetzt „„Lebenslauf.pdf" (8,1 MB)
   wird übertragen…". Bei einer schlechten Mobilverbindung ist damit erkennbar,
   *welche* Datei unterwegs ist — der Moment, in dem sonst zweimal getippt oder
-  neu geladen wird. Ein echter Fortschrittsbalken ist das nicht; er würde einen
-  zweiten Transportweg neben `fetch` brauchen und bleibt in ADR-0014 offen.
+  neu geladen wird. Ein echter Fortschrittsbalken ist das nicht und wird auch
+  nicht nachgereicht: er würde einen zweiten Transportweg neben `fetch`
+  brauchen. Die Entscheidung steht in ADR-0014.
 
 - **Geteilte Umfrage-Links zeigen den Formulartitel.** WhatsApp, Signal,
   Teams und andere Messenger zeigten für jede öffentliche Adresse nur
