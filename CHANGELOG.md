@@ -13,6 +13,14 @@ Kategorien je Eintrag: **Added** · **Changed** · **Deprecated** · **Removed**
 
 ### Added
 
+- **Datei-Upload nennt Datei und Größe, solange er läuft.** Statt „Wird
+  hochgeladen…" steht in der Ausfüllmaske jetzt „„Lebenslauf.pdf" (8,1 MB)
+  wird übertragen…". Bei einer schlechten Mobilverbindung ist damit erkennbar,
+  *welche* Datei unterwegs ist — der Moment, in dem sonst zweimal getippt oder
+  neu geladen wird. Ein echter Fortschrittsbalken ist das nicht und wird auch
+  nicht nachgereicht: er würde einen zweiten Transportweg neben `fetch`
+  brauchen. Die Entscheidung steht in ADR-0014.
+
 - **Geteilte Umfrage-Links zeigen den Formulartitel.** WhatsApp, Signal,
   Teams und andere Messenger zeigten für jede öffentliche Adresse nur
   „Formsache". Jetzt erscheinen der Formulartitel, die Organisation und die
@@ -86,6 +94,14 @@ Kategorien je Eintrag: **Added** · **Changed** · **Deprecated** · **Removed**
   [Betrieb](docs/kb/09-betrieb.md#woher-eine-fassung-kommt)).
 
 ### Fixed
+
+- **e2e: „ohne Anmeldung"-Zusicherungen wurden von einer angemeldeten Person
+  gemessen.** `browser.newContext()` ohne Argument übernimmt den
+  `storageState` der Datei; der „Gast" war damit der Bearbeiter. 53 Stellen
+  in 14 Dateien und der geteilte Helfer `redeemInvitation` nutzen jetzt
+  `newGuestContext(browser)`, der den leeren Zustand ausdrücklich übergibt; ein
+  Fall in `core-flow.spec.ts` misst über `/api/auth/me` (200 geerbt, 401 Gast).
+  Betrifft nur die Testsuite, nicht die Anwendung.
 
 - **Der Panel-Knopf des Builders auf schmalen Bildschirmen heißt nach seinem
   Inhalt.** Unterhalb von 1180 px stand dort immer „Eigenschaften", auch wenn

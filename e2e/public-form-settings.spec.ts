@@ -4,9 +4,10 @@ import {
   addQuestion,
   expectSaved,
   newForm,
+  newGuestContext,
+  openFormSettings,
   publishAndReadPath,
   saveForm,
-  openFormSettings,
 } from './app-flows';
 import { webBaseUrl } from './env';
 import { authStateFile } from './seed-account';
@@ -140,7 +141,7 @@ test.describe('Darstellung wirkt beim Ausfüllen', () => {
       requiredHint: true,
     });
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -163,7 +164,7 @@ test.describe('Darstellung wirkt beim Ausfüllen', () => {
       requiredHint: true,
     });
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -191,7 +192,7 @@ test.describe('Darstellung wirkt beim Ausfüllen', () => {
       requiredHint: false,
     });
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -219,7 +220,7 @@ test.describe('Darstellung wirkt beim Ausfüllen', () => {
       requiredHint: true,
     });
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -272,7 +273,7 @@ test.describe('Frist und Zeitlimit beim Ausfüllen', () => {
   }) => {
     const publicPath = await publishedForm(page, 'Ohne Frist');
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -328,7 +329,7 @@ test.describe('Frist und Zeitlimit beim Ausfüllen', () => {
       .fill('45');
     await save(page);
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -399,7 +400,7 @@ test.describe('Bestätigung und Weiterleitung (effektive Einstellungen)', () => 
     const publicPath = await publishedForm(page, 'Bestätigung ohne Ziel');
     await setConfirmation(page, null);
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -433,7 +434,7 @@ test.describe('Bestätigung und Weiterleitung (effektive Einstellungen)', () => 
     const target = new URL('/', webBaseUrl).href;
     await setConfirmation(page, { url: target, delaySec: 3 });
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -628,7 +629,7 @@ test.describe('Rechtliche Fußzeile und Rechtstextseiten ', () => {
   }) => {
     const publicPath = await publishedForm(page, 'Fußzeile beim Ausfüllen');
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -657,7 +658,7 @@ test.describe('Rechtliche Fußzeile und Rechtstextseiten ', () => {
   test('/imprint ist ohne Anmeldung erreichbar und sagt, dass nichts hinterlegt ist', async ({
     browser,
   }) => {
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto('/imprint');
@@ -700,7 +701,7 @@ test.describe('Rechtliche Fußzeile und Rechtstextseiten ', () => {
   }) => {
     const publicPath = await publishedForm(page, 'Fußzeile zur Organisation');
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -872,7 +873,7 @@ test.describe('Die übrigen Rechtstextseiten ', () => {
   }) => {
     const publicPath = await publishedForm(page, 'Fußzeile, alle Seiten');
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       for (const entry of PAGES) {

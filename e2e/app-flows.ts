@@ -1,6 +1,8 @@
 import {
   expect,
   type Browser,
+  type BrowserContext,
+  type BrowserContextOptions,
   type Locator,
   type Page,
 } from '@playwright/test';
@@ -1116,6 +1118,32 @@ function newestInvitationLink(
 }
 
 /**
+ * A browser context **without any session** — the guest.
+ *
+ * `browser.newContext()` with no argument is **not** empty: it takes over the
+ * `use` options of the running test, `storageState` included
+ * (`_setupContextOptions` → `_combinedContextOptions`, spread under the explicit
+ * options by `Browser._innerNewContext`). In a file with
+ * `test.use({ storageState })` a bare call therefore yields the signed-in
+ * editor, and every „öffentlich, ohne Anmeldung" claim measured in it is a
+ * sentence about a signed-in reader. Measured on 2026-08-20 against
+ * `GET /api/auth/me`: bare → 200, explicit empty state → 401 (issue 32).
+ *
+ * So the empty state is passed in **explicitly**, here, once. The bare call is
+ * the one that should stand out in a review — and where a test really wants the
+ * inherited state, it says so with `storageState` and a reason.
+ */
+export async function newGuestContext(
+  browser: Browser,
+  options: BrowserContextOptions = {},
+): Promise<BrowserContext> {
+  return browser.newContext({
+    ...options,
+    storageState: { cookies: [], origins: [] },
+  });
+}
+
+/**
  * Redeems an invitation link: set the password, in a context of its **own**.
  *
  * A context of its own, because that is the point — the invited person has no
@@ -1132,7 +1160,7 @@ export async function redeemInvitation(
   link: string,
   password: string,
 ): Promise<void> {
-  const context = await browser.newContext();
+  const context = await newGuestContext(browser);
   const page = await context.newPage();
   try {
     await page.goto(link);

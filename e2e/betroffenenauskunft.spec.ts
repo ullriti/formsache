@@ -5,6 +5,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import {
   addQuestion,
   newForm,
+  newGuestContext,
   publishAndReadPath,
   saveForm,
 } from './app-flows';
@@ -195,7 +196,7 @@ test.describe('Auskunft und Löschung einer betroffenen Person ', () => {
     */
 
     // --- putting in: filling in publicly, without a cookie --------------------
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);

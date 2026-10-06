@@ -4,6 +4,7 @@ import {
   addQuestion,
   expectNoHorizontalScroll,
   newForm,
+  newGuestContext,
   openMobileMenu,
   publishAndReadPath,
   saveForm,
@@ -279,7 +280,7 @@ test.describe('Testmodus über die Navigation', () => {
     // --- a real submission, without a session -------------------------------
     // It is the positive evidence for the two counters further down: only once
     // they each show 1 does „still 1" after the test run say anything.
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     try {
       const guest = await guestContext.newPage();
       await guest.goto(publicPath);

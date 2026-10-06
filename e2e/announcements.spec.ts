@@ -3,6 +3,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import {
   addQuestion,
   newForm,
+  newGuestContext,
   publishAndReadPath,
   saveForm,
 } from './app-flows';
@@ -133,7 +134,7 @@ test.describe('Fehlermeldung beim Absenden ', () => {
     await saveForm(page);
     const publicPath = await publishAndReadPath(page);
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -288,7 +289,7 @@ test.describe('Fortschritt beim Ausfüllen ', () => {
     await saveForm(page);
     const publicPath = await publishAndReadPath(page);
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -480,7 +481,7 @@ test.describe('Tabellenzeile ', () => {
     await saveForm(page);
     const publicPath = await publishAndReadPath(page);
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -577,7 +578,7 @@ test.describe('Seitenwechsel beim Ausfüllen — die Ansage ', () => {
     await newForm(page, 'Seitenwechsel angesagt');
     const { formId, publicPath } = await twoNamedPages(page);
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -644,7 +645,7 @@ test.describe('Seitenwechsel beim Ausfüllen — der Fokus ', () => {
     await newForm(page, 'Seitenwechsel fokussiert');
     const { formId, publicPath } = await twoNamedPages(page);
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);

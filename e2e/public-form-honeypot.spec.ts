@@ -4,6 +4,7 @@ import {
   addQuestion,
   expectSaved,
   newForm,
+  newGuestContext,
   publishAndReadPath,
   saveForm,
 } from './app-flows';
@@ -217,7 +218,7 @@ test.describe('Honeypot beim Ausfüllen', () => {
   }) => {
     const publicPath = await publishedForm(page, 'Honeypot unsichtbar');
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -257,7 +258,7 @@ test.describe('Honeypot beim Ausfüllen', () => {
     // at the function.
     await withoutDraftButton(page);
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -326,7 +327,7 @@ test.describe('Honeypot beim Ausfüllen', () => {
   test('für Bedienhilfen existiert er nicht', async ({ page, browser }) => {
     const publicPath = await publishedForm(page, 'Honeypot ohne Namen');
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -354,7 +355,7 @@ test.describe('Honeypot beim Ausfüllen', () => {
   }) => {
     const publicPath = await publishedForm(page, 'Honeypot gefüllt');
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);

@@ -4,9 +4,10 @@ import {
   addQuestion,
   expectSaved,
   newForm,
+  newGuestContext,
+  openFormSettings,
   publishAndReadPath,
   saveForm,
-  openFormSettings,
 } from './app-flows';
 import { authStateFile } from './seed-account';
 
@@ -107,7 +108,7 @@ test.describe('Bearbeiten nach Absenden', () => {
       true,
     );
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -154,7 +155,7 @@ test.describe('Bearbeiten nach Absenden', () => {
       true,
     );
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -223,7 +224,7 @@ test.describe('Bearbeiten nach Absenden', () => {
       true,
     );
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -277,7 +278,7 @@ test.describe('Bearbeiten nach Absenden', () => {
       false,
     );
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -299,7 +300,7 @@ test.describe('Bearbeiten nach Absenden', () => {
   test('says nothing useful about a token that leads nowhere', async ({
     browser,
   }) => {
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto('/a/AAAAAAAAAAAAAAAAAAAAAA');
@@ -329,7 +330,7 @@ test.describe('Bearbeiten nach Absenden', () => {
   }) => {
     const { publicPath } = await publishedEditableForm(page, 'Widerruf', true);
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);

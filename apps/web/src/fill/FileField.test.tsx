@@ -13,6 +13,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../api/http';
 import * as api from '../api/public-form';
 import { FieldInput } from './FieldInput';
+import { formatFileSize } from './FileField';
 
 /**
  * **The round trip the requirement asks for, in a browser-shaped test**:
@@ -205,6 +206,52 @@ describe('FieldInput – Datei-Upload', () => {
     await waitFor(() => {
       expect((remove as HTMLButtonElement).disabled).toBe(false);
     });
+  });
+
+  /**
+   * The working indicator names the file and its size: on a slow mobile
+   * connection „Wird hochgeladen…" alone is the silence in which people tap
+   * twice or reload (issue 15).
+   */
+  it('names the file and its size while it is being uploaded', async () => {
+    let release: (() => void) | undefined;
+    vi.spyOn(api, 'uploadAttachment').mockImplementationOnce(
+      async () =>
+        new Promise((resolve) => {
+          release = () => {
+            resolve({
+              ref: 'AbCdEfGhIjKlMnOpQrStUv',
+              fileName: 'Lebenslauf.pdf',
+              contentType: 'application/pdf',
+              byteSize: 8_100_000,
+            });
+          };
+        }),
+    );
+    render(<Harness question={fileQuestion(1)} onValue={vi.fn()} />);
+
+    const file = new File([new Uint8Array(8_100_000)], 'Lebenslauf.pdf', {
+      type: 'application/pdf',
+    });
+    pick(file);
+
+    expect(
+      await screen.findByText('„Lebenslauf.pdf" (8,1 MB) wird übertragen…'),
+    ).toBeTruthy();
+
+    release?.();
+    await waitFor(() => {
+      expect(screen.queryByText(/wird übertragen/)).toBeNull();
+    });
+  });
+
+  it('formats sizes with a German decimal comma', () => {
+    expect(formatFileSize(0)).toBe('0 B');
+    expect(formatFileSize(512)).toBe('512 B');
+    expect(formatFileSize(1_000)).toBe('1 kB');
+    expect(formatFileSize(2_500)).toBe('2,5 kB');
+    expect(formatFileSize(999_999)).toBe('1 MB');
+    expect(formatFileSize(8_100_000)).toBe('8,1 MB');
   });
 
   /**

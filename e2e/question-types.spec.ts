@@ -7,9 +7,10 @@ import {
   expectNoHorizontalScroll,
   expectSaved,
   newForm,
+  newGuestContext,
+  openFormSettings,
   publishAndReadPath,
   saveForm,
-  openFormSettings,
 } from './app-flows';
 import { authStateFile } from './seed-account';
 
@@ -250,7 +251,7 @@ test.describe('Bewertung', () => {
     await saveForm(page);
     const publicPath = await publishAndReadPath(page);
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -289,7 +290,7 @@ test.describe('Bewertung', () => {
     await saveForm(page);
     const publicPath = await publishAndReadPath(page);
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -338,7 +339,7 @@ test.describe('Adresse', () => {
     await saveForm(page);
     const publicPath = await publishAndReadPath(page);
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -408,7 +409,7 @@ test.describe('Infotext', () => {
     await saveForm(page);
     const publicPath = await publishAndReadPath(page);
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -458,7 +459,7 @@ test.describe('Matrix ausfüllen mit der Maus', () => {
     await saveForm(page);
     const publicPath = await publishAndReadPath(page);
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -578,7 +579,7 @@ test.describe('Tabelle ausfüllen mit der Maus', () => {
     await saveForm(page);
     const publicPath = await publishAndReadPath(page);
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -668,7 +669,7 @@ test.describe('Seitentitel und Seitenbeschreibung', () => {
     await page.getByRole('button', { name: 'Speichern', exact: true }).click();
     await expectSaved(page);
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -716,7 +717,7 @@ test.describe('Datei-Upload', () => {
     await saveForm(page);
     const publicPath = await publishAndReadPath(page);
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -915,7 +916,7 @@ test.describe('Veranstaltung', () => {
     await saveForm(page);
     const publicPath = await publishAndReadPath(page);
 
-    const firstContext = await browser.newContext();
+    const firstContext = await newGuestContext(browser);
     const first = await firstContext.newPage();
     try {
       await first.goto(publicPath);
@@ -936,7 +937,7 @@ test.describe('Veranstaltung', () => {
       await firstContext.close();
     }
 
-    const secondContext = await browser.newContext();
+    const secondContext = await newGuestContext(browser);
     const second = await secondContext.newPage();
     try {
       await second.goto(publicPath);

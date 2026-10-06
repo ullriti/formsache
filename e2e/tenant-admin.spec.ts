@@ -10,6 +10,7 @@ import {
   mailPlainText,
   mailQueueTestTimeout,
   newForm,
+  newGuestContext,
   publishAndReadPath,
   redeemInvitation,
   saveForm,
@@ -548,7 +549,7 @@ test.describe('Erscheinungsbild & Login', () => {
       .getByRole('radio', { name: /Eigenes Logo/u });
     await expect(own).toBeChecked({ timeout: 15_000 });
 
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
@@ -927,7 +928,7 @@ test.describe('Gruppen, Personen und Formularrechte', () => {
       storageState: tenantAdminStateFile,
     });
     const adminPage = await adminContext.newPage();
-    const personContext = await browser.newContext();
+    const personContext = await newGuestContext(browser);
     const personPage = await personContext.newPage();
 
     /** Collected, not thrown — the reasoning stands at the `finally` below. */
@@ -1379,7 +1380,7 @@ test.describe('Gruppen, Personen und Formularrechte', () => {
       storageState: tenantAdminStateFile,
     });
     const adminPage = await adminContext.newPage();
-    const personContext = await browser.newContext();
+    const personContext = await newGuestContext(browser);
     const personPage = await personContext.newPage();
 
     try {
@@ -1674,7 +1675,7 @@ test.describe('Gruppen, Personen und Formularrechte', () => {
       ).not.toBe(firstLink);
 
       // --- (2) and the first one is invalidated ----------------------------
-      const staleContext = await browser.newContext();
+      const staleContext = await newGuestContext(browser);
       const stale = await staleContext.newPage();
       try {
         await stale.goto(firstLink);

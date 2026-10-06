@@ -3,6 +3,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import {
   addQuestion,
   newForm,
+  newGuestContext,
   publishAndReadPath,
   saveForm,
 } from './app-flows';
@@ -253,7 +254,7 @@ test.describe('Versandprotokoll (Rechte- und Mandantengrenze)', () => {
     ).toHaveCount(0);
 
     // --- fill in publicly, in a context without a cookie --------------------
-    const guestContext = await browser.newContext();
+    const guestContext = await newGuestContext(browser);
     const guest = await guestContext.newPage();
     try {
       await guest.goto(publicPath);
