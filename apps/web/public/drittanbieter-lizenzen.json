@@ -937,7 +937,7 @@
     },
     {
       "name": "brace-expansion",
-      "version": "1.1.18",
+      "version": "1.1.21",
       "spdx": "MIT",
       "author": "Julian Gruber",
       "homepage": "https://github.com/juliangruber/brace-expansion",
@@ -945,7 +945,7 @@
     },
     {
       "name": "brace-expansion",
-      "version": "2.1.4",
+      "version": "2.1.7",
       "spdx": "MIT",
       "author": "Julian Gruber",
       "homepage": "https://github.com/juliangruber/brace-expansion",
@@ -2273,7 +2273,7 @@
     },
     {
       "name": "pg",
-      "version": "8.23.0",
+      "version": "8.23.1",
       "spdx": "MIT",
       "author": "Brian Carlson",
       "homepage": "https://github.com/brianc/node-postgres",
@@ -2281,7 +2281,7 @@
     },
     {
       "name": "pg-cloudflare",
-      "version": "1.4.0",
+      "version": "1.4.1",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/brianc/node-postgres#readme",
@@ -2289,7 +2289,7 @@
     },
     {
       "name": "pg-connection-string",
-      "version": "2.14.0",
+      "version": "2.14.1",
       "spdx": "MIT",
       "author": "Blaine Bublitz",
       "homepage": "https://github.com/brianc/node-postgres/tree/master/packages/pg-connection-string",
@@ -2321,7 +2321,7 @@
     },
     {
       "name": "pg-protocol",
-      "version": "1.16.0",
+      "version": "1.16.1",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/brianc/node-postgres#readme",
@@ -2442,6 +2442,14 @@
     {
       "name": "qs",
       "version": "6.15.3",
+      "spdx": "BSD-3-Clause",
+      "author": null,
+      "homepage": "https://github.com/ljharb/qs",
+      "text": "14d069c68fe75baa"
+    },
+    {
+      "name": "qs",
+      "version": "6.16.0",
       "spdx": "BSD-3-Clause",
       "author": null,
       "homepage": "https://github.com/ljharb/qs",
