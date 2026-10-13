@@ -217,7 +217,7 @@
   "packages": [
     {
       "name": "@anthropic-ai/sdk",
-      "version": "0.128.0",
+      "version": "0.133.0",
       "spdx": "MIT",
       "author": "Anthropic",
       "homepage": "https://github.com/anthropics/anthropic-sdk-typescript#readme",
@@ -225,7 +225,7 @@
     },
     {
       "name": "@babel/runtime",
-      "version": "7.29.7",
+      "version": "7.29.10",
       "spdx": "MIT",
       "author": "The Babel Team",
       "homepage": "https://babel.dev/docs/en/next/babel-runtime",
@@ -297,7 +297,7 @@
     },
     {
       "name": "@nestjs/common",
-      "version": "12.1.0",
+      "version": "12.1.2",
       "spdx": "MIT",
       "author": "Kamil Mysliwiec",
       "homepage": "https://nestjs.com",
@@ -305,7 +305,7 @@
     },
     {
       "name": "@nestjs/core",
-      "version": "12.1.0",
+      "version": "12.1.2",
       "spdx": "MIT",
       "author": "Kamil Mysliwiec",
       "homepage": "https://nestjs.com",
@@ -313,7 +313,7 @@
     },
     {
       "name": "@nestjs/platform-express",
-      "version": "12.1.0",
+      "version": "12.1.2",
       "spdx": "MIT",
       "author": "Kamil Mysliwiec",
       "homepage": "https://nestjs.com",
@@ -329,7 +329,7 @@
     },
     {
       "name": "@node-rs/argon2",
-      "version": "2.2.1",
+      "version": "2.2.2",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/napi-rs/node-rs",
@@ -337,7 +337,7 @@
     },
     {
       "name": "@node-rs/argon2-linux-x64-gnu",
-      "version": "2.2.1",
+      "version": "2.2.2",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/napi-rs/node-rs",
@@ -705,7 +705,7 @@
     },
     {
       "name": "@types/node",
-      "version": "26.6.2",
+      "version": "26.6.5",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/node",
@@ -2137,7 +2137,7 @@
     },
     {
       "name": "negotiator",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "spdx": "MIT",
       "author": null,
       "homepage": "https://github.com/jshttp/negotiator#readme",
@@ -2145,7 +2145,7 @@
     },
     {
       "name": "nodemailer",
-      "version": "10.0.10",
+      "version": "10.1.0",
       "spdx": "MIT-0",
       "author": "Andris Reinman",
       "homepage": "https://nodemailer.com/",
@@ -2425,7 +2425,7 @@
     },
     {
       "name": "proxy-addr",
-      "version": "2.0.7",
+      "version": "2.0.8",
       "spdx": "MIT",
       "author": "Douglas Christopher Wilson",
       "homepage": "https://github.com/jshttp/proxy-addr#readme",
@@ -2441,7 +2441,7 @@
     },
     {
       "name": "qs",
-      "version": "6.15.3",
+      "version": "6.16.0",
       "spdx": "BSD-3-Clause",
       "author": null,
       "homepage": "https://github.com/ljharb/qs",
@@ -2761,7 +2761,7 @@
     },
     {
       "name": "standardwebhooks",
-      "version": "1.0.0",
+      "version": "1.1.1",
       "spdx": "MIT",
       "author": "Standard Webhooks",
       "homepage": "https://github.com/standard-webhooks/standard-webhooks/tree/main/libraries/javascript",
@@ -2905,7 +2905,7 @@
     },
     {
       "name": "uint8array-extras",
-      "version": "1.5.0",
+      "version": "1.6.0",
       "spdx": "MIT",
       "author": "Sindre Sorhus",
       "homepage": "https://github.com/sindresorhus/uint8array-extras#readme",
