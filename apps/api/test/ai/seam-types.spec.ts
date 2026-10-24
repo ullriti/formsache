@@ -139,41 +139,48 @@ describe('the seam carries values of the shared type only', () => {
   const rows = CONTRACT_ROWS.map((row, index) => ({ name: row.name, index }));
 
   for (const provider of providers) {
-    it.each(rows)(`${provider}: $name`, async ({ index }) => {
-      const outcome = await outcomeFor(provider, index);
+    it.each(rows)(
+      `${provider}: $name`,
+      async ({ index }) => {
+        const outcome = await outcomeFor(provider, index);
 
-      // 1. The key set of the outcome is an **equality**. A `stopReason`
-      //    handed through beside `failure` fails here — the reproduction of
-      //    the requirement, run and confirmed red before this line was written.
-      expect(Object.keys(outcome).sort()).toEqual(
-        outcome.ok ? OUTCOME_KEYS.ok : OUTCOME_KEYS.failed,
-      );
+        // 1. The key set of the outcome is an **equality**. A `stopReason`
+        //    handed through beside `failure` fails here — the reproduction of
+        //    the requirement, run and confirmed red before this line was written.
+        expect(Object.keys(outcome).sort()).toEqual(
+          outcome.ok ? OUTCOME_KEYS.ok : OUTCOME_KEYS.failed,
+        );
 
-      // 2. `failure` is one of the six, never a provider string.
-      if (!outcome.ok) {
-        expect(AI_FAILURE_KINDS).toContain(outcome.failure);
-      }
+        // 2. `failure` is one of the six, never a provider string.
+        if (!outcome.ok) {
+          expect(AI_FAILURE_KINDS).toContain(outcome.failure);
+        }
 
-      // 3. The usage sample is the one place a provider *string* may travel —
-      //    the model identifier, which is data and not behaviour — and its
-      //    shape is an equality too.
-      if (outcome.usage !== null) {
-        expect(Object.keys(outcome.usage).sort()).toEqual(USAGE_KEYS);
-        expect(typeof outcome.usage.model).toBe('string');
-      }
+        // 3. The usage sample is the one place a provider *string* may travel —
+        //    the model identifier, which is data and not behaviour — and its
+        //    shape is an equality too.
+        if (outcome.usage !== null) {
+          expect(Object.keys(outcome.usage).sort()).toEqual(USAGE_KEYS);
+          expect(typeof outcome.usage.model).toBe('string');
+        }
 
-      // 4. Everything except `draft` is walked for a forbidden name.
-      //
-      //    Written as „the outcome, minus `draft`" rather than „the usage
-      //    sample": the earlier version walked `outcome.usage` alone, which
-      //    step 1 had already pinned to an exact key set — so for a failure
-      //    outcome this step asserted nothing at all.
-      const keys = new Set<string>();
-      collectKeys(outcome.ok ? { usage: outcome.usage } : outcome, keys);
-      for (const forbidden of FORBIDDEN_KEYS) {
-        expect([...keys]).not.toContain(forbidden);
-      }
-    });
+        // 4. Everything except `draft` is walked for a forbidden name.
+        //
+        //    Written as „the outcome, minus `draft`" rather than „the usage
+        //    sample": the earlier version walked `outcome.usage` alone, which
+        //    step 1 had already pinned to an exact key set — so for a failure
+        //    outcome this step asserted nothing at all.
+        const keys = new Set<string>();
+        collectKeys(outcome.ok ? { usage: outcome.usage } : outcome, keys);
+        for (const forbidden of FORBIDDEN_KEYS) {
+          expect([...keys]).not.toContain(forbidden);
+        }
+        // Same reasoning as the contract rows: the first row of a file also pays
+        // for loading the SDK, which exceeded vitest's default 5 s on a loaded CI
+        // runner and failed a run in which nothing about the seam had changed.
+      },
+      30_000,
+    );
   }
 });
 
