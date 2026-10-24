@@ -22,6 +22,7 @@
     "@axe-core/playwright": "^4.13.0",
     "@eslint/js": "catalog:",
     "@playwright/test": "1.63.0",
+    "playwright-core": "1.63.0",
     "@types/node": "catalog:",
     "eslint": "catalog:",
     "eslint-plugin-react-hooks": "7.1.1",
