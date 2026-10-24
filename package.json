@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "@formsache/test-idp": "workspace:*",
-    "@axe-core/playwright": "^4.13.0",
+    "@axe-core/playwright": "4.13.0",
     "@eslint/js": "catalog:",
     "@playwright/test": "1.63.0",
     "playwright-core": "1.63.0",
