@@ -248,6 +248,14 @@ const SAMPLES = {
     // them is `'number'`, which is asserted where the columns themselves are.
     guard: null,
   },
+  confirm: {
+    question: {
+      ...base,
+      type: 'confirm',
+      label: 'Ich habe die Hinweise gelesen',
+    },
+    guard: 'auto',
+  },
   numberlist: {
     question: {
       ...base,

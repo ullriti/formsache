@@ -166,10 +166,15 @@ function toStoredAnswers(
   const stored: Record<string, Prisma.InputJsonValue> = {};
 
   for (const [questionId, value] of Object.entries(answers)) {
-    if (value === undefined || value === null) {
+    // `false` is an unticked box — no answer, so no key (`confirm`).
+    if (value === undefined || value === null || value === false) {
       continue;
     }
-    if (typeof value === 'string' || typeof value === 'number') {
+    if (
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean'
+    ) {
       stored[questionId] = value;
       continue;
     }

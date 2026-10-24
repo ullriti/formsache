@@ -247,6 +247,10 @@ export function questionColumns(
   switch (question.type) {
     case 'phone':
       return [wholeAnswer(question, 'text')];
+    // „Ja" for a ticked box, an empty cell otherwise — produced here from the
+    // boolean, so it cannot be a formula, but it is text to a spreadsheet.
+    case 'confirm':
+      return [wholeAnswer(question, 'auto')];
     // The star count is a `number` answer (`response-validation.ts`), never a
     // formula: guarding it as text would make Excel sort „10" before „2" the
     // same way a phone number does not, which is exactly the defect this
@@ -561,6 +565,11 @@ function formatTableCell(column: TableColumn, cell: unknown): string {
     // number in the file.
     return String(cell).replace('.', ',');
   }
+  // Same notation as a Datum question's cell: `TT.MM.JJJJ`, never the stored
+  // ISO form, so two date columns of one file do not read two ways.
+  if (column.type === 'date' && typeof cell === 'string') {
+    return formatIsoDate(cell);
+  }
   if (column.type === 'select') {
     const option = column.options.find((candidate) => candidate.value === cell);
     // The label, falling back to the raw value for an option that has since
@@ -637,6 +646,12 @@ export function formatAnswerCell(
 ): string {
   if (value === undefined || value === null) {
     return '';
+  }
+
+  if (typeof value === 'boolean') {
+    // `true` is the only stored boolean; a `false` that got here anyway is not
+    // an answer and reads as an empty cell, never as „Nein".
+    return value ? 'Ja' : '';
   }
 
   if (typeof value === 'number') {

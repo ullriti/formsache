@@ -119,6 +119,7 @@ const SOURCE_QUESTIONS = {
       },
     ],
   },
+  confirm: base(SOURCE, 'confirm'),
   numberlist: {
     ...base(SOURCE, 'numberlist'),
     items: [{ key: 'fuexe', label: 'Füxe' }],
@@ -318,6 +319,12 @@ const CASES = {
     },
     filled: { hit: { seats: { stadtfest: 2 } }, miss: { seats: {} } },
     empty: { hit: { seats: {} }, miss: { seats: { stadtfest: 2 } } },
+  },
+  confirm: {
+    equals: { value: 'true', hit: true, miss: null },
+    notEquals: { value: 'true', hit: null, miss: true },
+    filled: { hit: true, miss: null },
+    empty: { hit: null, miss: true },
   },
   info: {},
   numberlist: {},

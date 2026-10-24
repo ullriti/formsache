@@ -649,6 +649,65 @@
   color: var(--color-text-muted);
 }
 
+.field__info-title {
+  margin: 0;
+  font-weight: var(--font-weight-bold);
+}
+
+/*
+ * The Infotext's body (`InfoContent`) — flows like a text, not like a form:
+ * paragraphs and lists keep the callout's colour and the spacing of the page
+ * rather than the browser's defaults, and a long unbroken string wraps instead
+ * of widening the card.
+ */
+.info-content {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: var(--line-height-body, 1.5);
+}
+
+.info-content > :first-child {
+  margin-top: 0;
+}
+
+.info-content > :last-child {
+  margin-bottom: 0;
+}
+
+.field__info-title + .info-content {
+  margin-top: var(--space-2);
+}
+
+.info-content p,
+.info-content ul,
+.info-content ol,
+.info-content blockquote {
+  margin: 0 0 var(--space-2);
+}
+
+.info-content ul,
+.info-content ol {
+  padding-left: var(--space-5);
+}
+
+.info-content h3,
+.info-content h4 {
+  margin: var(--space-3) 0 var(--space-1);
+  font-size: var(--font-size-body);
+  color: var(--color-text);
+}
+
+.info-content blockquote {
+  padding-left: var(--space-3);
+  border-left: 3px solid var(--color-hairline);
+}
+
+.info-content hr {
+  border: 0;
+  border-top: 1px solid var(--color-hairline);
+  margin: var(--space-3) 0;
+}
+
 .field__label {
   font-size: var(--font-size-body-sm);
   font-weight: var(--font-weight-bold);

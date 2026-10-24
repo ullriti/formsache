@@ -44,6 +44,7 @@ const NOTICE = '019ff100-0000-7000-8000-0000000000d1';
 const RATING = '019ff100-0000-7000-8000-0000000000d2';
 const ADDRESS = '019ff100-0000-7000-8000-0000000000d3';
 const COUNTS = '019ff100-0000-7000-8000-0000000000d4';
+const TICK = '019ff100-0000-7000-8000-0000000000d5';
 
 function typesDefinition() {
   return {
@@ -79,6 +80,16 @@ function typesDefinition() {
             // partly filled required address has to fail per field, not just
             // as a whole.
             required: true,
+            width: 'full',
+          },
+          // Optional for the same reason as the Zahlenliste below: no case above
+          // has to carry it.
+          {
+            id: TICK,
+            type: 'confirm',
+            label: 'Ich habe die Hinweise gelesen',
+            hint: null,
+            required: false,
             width: 'full',
           },
           // **Optional**, so that no case above has to carry it: a Zahlenliste
@@ -378,4 +389,42 @@ describe('Infotext, Bewertung und Adresse auf der öffentlichen Route', () => {
       expect(await app().prisma.response.count()).toBe(before);
     },
   );
+
+  it('stores a ticked Bestätigung as true and an unticked one not at all', async () => {
+    const ticked = await submitTypes({ [ADDRESS]: FULL_ADDRESS, [TICK]: true });
+    expect(ticked.status).toBe(200);
+    const first = await app().prisma.response.findFirst({
+      orderBy: { submittedAt: 'desc' },
+    });
+    expect(first?.answers).toStrictEqual({
+      [ADDRESS]: FULL_ADDRESS,
+      [TICK]: true,
+    });
+
+    const unticked = await submitTypes({
+      [ADDRESS]: FULL_ADDRESS,
+      [TICK]: false,
+    });
+    expect(unticked.status).toBe(200);
+    const second = await app().prisma.response.findFirst({
+      orderBy: { submittedAt: 'desc' },
+    });
+    expect(second?.answers).toStrictEqual({ [ADDRESS]: FULL_ADDRESS });
+  });
+
+  it.each([
+    ['den Text „ja"', 'ja'],
+    ['die Zahl 1', 1],
+  ])('refuses %s as a Bestätigung and stores nothing', async (_name, value) => {
+    const before = await app().prisma.response.count();
+
+    const response = await submitTypes({
+      [ADDRESS]: FULL_ADDRESS,
+      [TICK]: value,
+    });
+
+    expect(response.status).toBe(400);
+    expect(pathsOf(response)).toContain(TICK);
+    expect(await app().prisma.response.count()).toBe(before);
+  });
 });

@@ -11,7 +11,7 @@ eigenem Logo — aber einer gemeinsamen Installation.
 
 ## Was drin ist
 
-- **Formular-Builder** mit siebzehn Fragetypen, mehrseitigen Formularen,
+- **Formular-Builder** mit achtzehn Fragetypen, mehrseitigen Formularen,
   bedingter Anzeige von Fragen und Seiten, Vorschau und Testmodus.
   Drag & Drop mit Maus **und** Touch.
 - **Öffentliches Ausfüllen ohne Konto** — mit Zwischenspeichern und

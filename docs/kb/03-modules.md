@@ -84,7 +84,7 @@ Spalten, `public-url`), `config/` (Umgebung parsen und benennen, was fehlt),
 gleich sehen müssen. Typen werden per `z.infer` abgeleitet, nie parallel
 gepflegt:
 
-- **Formular und Antwort:** Schema der siebzehn Feldarten, bedingte Logik,
+- **Formular und Antwort:** Schema der achtzehn Feldarten, bedingte Logik,
   Antwort-Validierung, Sonderfälle (Adresse, Matrix, Tabelle, Veranstaltung)
 - **Einstellungen:** Vererbungs-Merge, Fristen, Entwurfs-Aufbewahrung
 - **Ausgabe:** CSV, Excel, HTML — Format und Spaltenwahl

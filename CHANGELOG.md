@@ -13,6 +13,29 @@ Kategorien je Eintrag: **Added** · **Changed** · **Deprecated** · **Removed**
 
 ### Added
 
+- **Neuer Fragetyp „Checkbox".** Eine einzelne Checkbox mit der Fragetext als
+  Beschriftung — für Einwilligungen und Kenntnisnahmen. Der Typ ist beim
+  Anlegen ein Pflichtfeld: Ohne Haken lässt sich das Formular nicht absenden;
+  „Pflichtfeld" abgeschaltet macht daraus einen freiwilligen Haken. Gespeichert
+  wird nur „angekreuzt" (der Export schreibt „Ja"), ein nicht gesetzter Haken
+  ist keine Antwort. Als Quelle einer bedingten Anzeige nutzbar.
+
+- **Tabelle: neue Spaltenart „Datum".** Die Zelle ist ein Datumsfeld (Auswahl
+  des Browsers), gespeichert als `JJJJ-MM-TT` und im Export als `TT.MM.JJJJ` —
+  wie bei der Frage „Datum". Ein unmögliches Datum (30. Februar) wird auch
+  serverseitig abgewiesen.
+
+- **Infotext: mehrzeilig, längere Texte, einfaches HTML.** Der Text steht jetzt
+  in einem mehrzeiligen Feld (bis 20.000 Zeichen); Zeilenumbrüche bleiben
+  erhalten. Erlaubt sind `<p>`, `<br>`, `<b>`/`<strong>`, `<i>`/`<em>`, `<u>`,
+  `<ul>`, `<ol>`, `<li>`, `<h3>`, `<h4>`, `<blockquote>`, `<hr>` und Links
+  (`http`, `https`, `mailto` oder eine eigene Adresse mit `/`). Alles andere
+  wird **nicht angezeigt**: Skripte, Formatvorlagen, eingebettete Seiten,
+  Bilder, Ereignis-Attribute und `javascript:`-Adressen kommen nie auf die
+  Seite, weil der Text in einen Baum zerlegt und daraus gerendert wird — es
+  gibt kein `innerHTML`. **Sichtbare Änderung:** Die Beschriftung des Infotexts
+  steht jetzt als Titel fett über dem Text, nicht mehr in einer Zeile mit ihm.
+
 - **Neuer Fragetyp „Zahlenliste".** Die abgespeckte Veranstaltung: je Zeile
   eine Bezeichnung und ein Zahlenfeld, sonst nichts — ohne Termin, Obergrenze,
   „Ausgebucht"-Hinweis und ohne Platzbuchung. Gedacht für Zähllisten wie

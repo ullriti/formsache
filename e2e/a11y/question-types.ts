@@ -55,4 +55,5 @@ export const FURTHER_QUESTION_TYPES = [
   'Datei-Upload',
   'Veranstaltung',
   'Zahlenliste',
+  'Checkbox',
 ] as const;

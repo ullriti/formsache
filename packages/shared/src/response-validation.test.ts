@@ -1664,8 +1664,8 @@ describe('answerValueSchema (the edit view)', () => {
   });
 
   it('refuses what is not an answer at all', () => {
+    // `true` is not in the list: it is the tick of a `confirm` question.
     for (const value of [
-      true,
       ['Anton'],
       { question: 'Name' },
       { values: [1, 2], other: null },

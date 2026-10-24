@@ -41,6 +41,14 @@ const LABEL_MAX = 300;
 const HINT_MAX = 1000;
 
 /**
+ * Longest text of an Infotext — its `hint`, which for this type is the body
+ * (several paragraphs, simple HTML, see `info-html.ts`) and not a one-line
+ * hint. A bound all the same: it travels with every save of the form and every
+ * public read of it.
+ */
+export const INFO_TEXT_MAX = 20_000;
+
+/**
  * Longest accepted validation pattern.
  *
  * A regular expression from the builder is executed on the server for every
@@ -88,6 +96,8 @@ export const questionTypeSchema = z.enum([
   'event',
   /** Zahlenliste — labelled lines, one whole number per line, no limit. */
   'numberlist',
+  /** Bestätigung — one checkbox that is either ticked or not. */
+  'confirm',
 ]);
 export type QuestionType = z.infer<typeof questionTypeSchema>;
 
@@ -189,6 +199,8 @@ const CONDITION_OPERATORS_BY_SOURCE = {
   // Structured like `table` and `matrix`: one number per line, and „ist gleich
   // <Text>" would have to pick a line behind the editor's back.
   numberlist: [],
+  // The one value is „angekreuzt" (`'true'`, see `readingOf`).
+  confirm: ALWAYS_AVAILABLE,
   info: [],
   file: [],
   table: [],
@@ -707,6 +719,10 @@ const ratingQuestionSchema = z.object({
  */
 const infoQuestionSchema = z.object({
   ...questionBaseShape,
+  // The body of the callout: multi-line, simple HTML allowed (`info-html.ts`).
+  // Overrides the base's one-line bound; existing documents stay valid, since
+  // the new maximum only widens the old one.
+  hint: z.string().max(INFO_TEXT_MAX).nullable(),
   type: z.literal('info'),
 });
 
@@ -777,6 +793,8 @@ export const tableCellTypeSchema = z.enum([
   'number',
   'select',
   'checkbox',
+  // A calendar date, stored as `YYYY-MM-DD` like the Datum question's answer.
+  'date',
 ]);
 export type TableCellType = z.infer<typeof tableCellTypeSchema>;
 
@@ -808,6 +826,7 @@ const tableColumnSchema = z.discriminatedUnion('type', [
     options: optionsSchema,
   }),
   z.object({ ...tableColumnBaseShape, type: z.literal('checkbox') }),
+  z.object({ ...tableColumnBaseShape, type: z.literal('date') }),
 ]);
 export type TableColumn = z.infer<typeof tableColumnSchema>;
 
@@ -1210,6 +1229,21 @@ const numberlistQuestionSchema = z.object({
 });
 
 /**
+ * Bestätigung (`confirm`) — a single checkbox, the question's `label` being the
+ * sentence next to it („Ich habe die Hinweise gelesen").
+ *
+ * No setting of its own. `required` decides the one thing there is to decide:
+ * with it, the box **must be ticked** to submit (the Einwilligung case); without
+ * it, an unticked box is simply no answer. The answer is `true` or nothing — a
+ * stored `false` does not exist, for the reason {@link TableCellValue} gives:
+ * „nein" and „leer" would be two spellings of one state.
+ */
+const confirmQuestionSchema = z.object({
+  ...questionBaseShape,
+  type: z.literal('confirm'),
+});
+
+/**
  * One question, of exactly one of the types `questionTypeSchema` lists.
  *
  * A discriminated union rather than a wide optional object: a document naming
@@ -1234,6 +1268,7 @@ export const questionSchema = z.discriminatedUnion('type', [
   fileQuestionSchema,
   eventQuestionSchema,
   numberlistQuestionSchema,
+  confirmQuestionSchema,
 ]);
 export type Question = z.infer<typeof questionSchema>;
 

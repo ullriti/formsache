@@ -640,12 +640,75 @@ describe('FieldInput – Infotext', () => {
     );
 
     // `getByText` throws when nothing matches, which is the assertion:
-    // label and hint appear concatenated, in one node.
-    screen.getByText('Bitte pünktlich erscheinen. Einlass ab 18 Uhr.');
+    // the label is the callout's title, the hint its body.
+    screen.getByText('Bitte pünktlich erscheinen.');
+    screen.getByText('Einlass ab 18 Uhr.');
     // No `.field` structure at all — an `info` has no label element to point
     // a control at and nothing to invalidate.
     expect(container.querySelector('.field')).toBeNull();
     expect(container.querySelector('input, textarea, select')).toBeNull();
+  });
+
+  it('keeps the lines of a multi-line text', () => {
+    const { container } = render(
+      <FieldInput
+        question={infoQuestion({ label: 'Hinweis', hint: 'Zeile 1\nZeile 2' })}
+        value={undefined}
+        error={undefined}
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(container.querySelectorAll('.info-content br')).toHaveLength(1);
+  });
+
+  it('renders the allowed HTML as elements', () => {
+    const { container } = render(
+      <FieldInput
+        question={infoQuestion({
+          label: 'Hinweis',
+          hint: '<p>Bitte <b>beachten</b></p><ul><li>eins</li><li>zwei</li></ul><a href="https://example.org">Link</a>',
+        })}
+        value={undefined}
+        error={undefined}
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(container.querySelector('.info-content strong')?.textContent).toBe(
+      'beachten',
+    );
+    expect(container.querySelectorAll('.info-content li')).toHaveLength(2);
+    const link = container.querySelector<HTMLAnchorElement>('.info-content a');
+    expect(link?.href).toBe('https://example.org/');
+    expect(link?.rel).toBe('noopener noreferrer');
+  });
+
+  /**
+   * **The refusing half**, and the one that matters on a page a stranger opens:
+   * nothing outside the allow-list reaches the DOM — not as an element, not as
+   * an attribute, not as a `javascript:` address.
+   */
+  it('never puts a script, an event handler or a javascript: address on the page', () => {
+    const { container } = render(
+      <FieldInput
+        question={infoQuestion({
+          label: 'Hinweis',
+          hint: '<script>window.pwned=1</script><img src=x onerror="window.pwned=1"><p onclick="window.pwned=1" style="x">Text</p><iframe src="https://evil.example"></iframe><a href="javascript:window.pwned=1">Klick</a>',
+        })}
+        value={undefined}
+        error={undefined}
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(
+      container.querySelector('script, img, iframe, [onclick], [style]'),
+    ).toBeNull();
+    expect(container.querySelector('a')).toBeNull();
+    expect(container.textContent).toContain('Text');
+    expect(container.textContent).toContain('Klick');
+    expect(container.innerHTML).not.toContain('javascript:');
   });
 
   it('renders just the label when there is no hint', () => {
@@ -1785,5 +1848,62 @@ describe('FieldInput – Zahlenliste', () => {
     expect(screen.getByLabelText<HTMLInputElement>('1. Füxe').disabled).toBe(
       false,
     );
+  });
+});
+
+/* --- Die Bestätigung (einzelne Checkbox) ------------------------------- */
+
+function confirmQuestion(required = true): Question {
+  return {
+    id: '019fe600-0000-7000-8000-0000000000f1',
+    type: 'confirm',
+    label: 'Ich habe die Hinweise gelesen',
+    hint: null,
+    required,
+    width: 'full',
+  };
+}
+
+function ConfirmHarness({
+  onValue,
+}: {
+  readonly onValue?: (value: AnswerValue) => void;
+}) {
+  const [value, setValue] = useState<AnswerValue | undefined>(undefined);
+  return (
+    <FieldInput
+      question={confirmQuestion()}
+      value={value}
+      error={undefined}
+      onChange={(next) => {
+        setValue(next);
+        onValue?.(next);
+      }}
+    />
+  );
+}
+
+describe('FieldInput – Bestätigung', () => {
+  it('is one checkbox named by the question text', () => {
+    render(<ConfirmHarness />);
+
+    const box = screen.getByRole<HTMLInputElement>('checkbox', {
+      name: /Ich habe die Hinweise gelesen/u,
+    });
+    expect(box.checked).toBe(false);
+  });
+
+  it('hands over true when ticked and null — never false — when untick', () => {
+    const onValue = vi.fn();
+    render(<ConfirmHarness onValue={onValue} />);
+
+    const box = screen.getByRole<HTMLInputElement>('checkbox');
+    fireEvent.click(box);
+    expect(onValue).toHaveBeenLastCalledWith(true);
+    expect(box.checked).toBe(true);
+
+    fireEvent.click(box);
+    expect(onValue).toHaveBeenLastCalledWith(null);
+    expect(box.checked).toBe(false);
   });
 });

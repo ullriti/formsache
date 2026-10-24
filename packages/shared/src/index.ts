@@ -300,6 +300,7 @@ export {
   tableCellTypeSchema,
   tableRowLimit,
   EVENT_CAPACITY_MAX,
+  INFO_TEXT_MAX,
   TABLE_COLUMNS_MAX,
   TABLE_ROWS_MAX,
   type AnswerableQuestion,
@@ -321,6 +322,13 @@ export {
   type TableColumn,
   type TableQuestion,
 } from './form-schema.ts';
+export {
+  INFO_MAX_DEPTH,
+  INFO_MAX_NODES,
+  parseInfoHtml,
+  type InfoNode,
+  type InfoTag,
+} from './info-html.ts';
 export { tableCanGrow } from './table-growth.ts';
 export {
   detachFormDefinition,

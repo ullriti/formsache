@@ -20,6 +20,7 @@ import type { UploadTarget } from '../api/public-form';
 import { asAddress } from './address-answer';
 import { rawSeatOf, withSeats } from './event-answer';
 import { FileField } from './FileField';
+import { InfoContent } from './InfoContent';
 import { numbersRecordOf, rawNumberOf, withNumber } from './numberlist-answer';
 import { asMatrix, pickedIn, toggleMatrixCell } from './matrix-answer';
 import { TableField } from './TableField';
@@ -126,9 +127,10 @@ export function FieldInput({
   if (question.type === 'info') {
     return (
       <div className="field__info">
-        {question.hint === null || question.hint === ''
-          ? question.label
-          : `${question.label} ${question.hint}`}
+        <p className="field__info-title">{question.label}</p>
+        {question.hint === null || question.hint === '' ? null : (
+          <InfoContent source={question.hint} />
+        )}
       </div>
     );
   }
@@ -310,6 +312,9 @@ function rendersAsGroup(question: Question): boolean {
     // The same for a Zahlenliste: one box per line, named once by the question.
     case 'numberlist':
       return true;
+    // One checkbox: the question's `<label htmlFor>` points straight at it.
+    case 'confirm':
+      return false;
     // `select` sits with the single controls: a dropdown is one control even
     // with the „Sonstiges" box next to it, because the `<select>` carries the
     // id the label points at.
@@ -802,6 +807,25 @@ function Control({
           refusedEventKey={refusedEventKey}
           controlId={controlId}
         />
+      );
+
+    // The Bestätigung — one native checkbox. The question text above it is its
+    // `<label htmlFor>`; „Ja" beside it is only the visible caption of the tick.
+    // `null` rather than `false` when unticked: „nicht beantwortet" has one
+    // spelling in the answers, and the server stores no `false`.
+    case 'confirm':
+      return (
+        <label className="field__choice">
+          <input
+            {...shared}
+            type="checkbox"
+            checked={value === true}
+            onChange={(event) => {
+              onChange(event.target.checked ? true : null);
+            }}
+          />
+          <span>Ja</span>
+        </label>
       );
 
     // The Zahlenliste — a plain function component, no state to remember

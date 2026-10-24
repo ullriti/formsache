@@ -409,6 +409,8 @@ export function isChoiceAnswer(value: unknown): value is ChoiceAnswer {
 export type AnswerValue =
   | string
   | number
+  // `true` only — the tick of a `confirm` question; `false` is no answer.
+  | boolean
   | ChoiceAnswer
   | AddressAnswer
   | MatrixAnswer
@@ -610,6 +612,7 @@ const numberListAnswerObjectSchema = z.object({
 export const answerValueSchema = z.union([
   z.string(),
   z.number(),
+  z.boolean(),
   choiceAnswerObjectSchema,
   addressAnswerObjectSchema,
   matrixAnswerObjectSchema,
@@ -972,6 +975,13 @@ function checkTableCell(
         !column.options.some((option) => option.value === value)
       ) {
         reject('Unbekannte Option.');
+      }
+      return;
+    // The format of the Datum question's answer, checked by the same Zod rule
+    // (`z.iso.date()`): `2026-02-30` is refused, not stored as text.
+    case 'date':
+      if (typeof value !== 'string' || !z.iso.date().safeParse(value).success) {
+        reject('Bitte ein gültiges Datum angeben.');
       }
       return;
     case 'checkbox':
@@ -1450,6 +1460,10 @@ export function isBlankAnswer(value: unknown): boolean {
   if (typeof value === 'number') {
     return false;
   }
+  // An unticked box is no answer: `false` is blank, `true` is the one answer.
+  if (typeof value === 'boolean') {
+    return !value;
+  }
   if (isAddressAnswer(value)) {
     // Blank means **all four** subfields are — Land included, even though it
     // is never required: a Land typed on its own (default overwritten, three
@@ -1772,6 +1786,11 @@ export function answerSchemaFor(
       return eventAnswerSchema(question, enforceRequired);
     case 'numberlist':
       return numberListAnswerSchema(question, enforceRequired);
+    // The tick is `true` or it is not an answer. A required box therefore never
+    // reaches here unticked — `isBlankAnswer` has already called it
+    // „Pflichtfeld" — and an optional one answers only with `true`.
+    case 'confirm':
+      return z.literal(true, { error: 'Bitte bestätigen.' });
     case 'info':
       // Never reached: `buildAnswersSchema` skips `info` questions before
       // either schema-builder function is called — an
@@ -1982,6 +2001,11 @@ function blankSchemaFor(question: Question): z.ZodType<AnswerValue> {
     case 'email':
     case 'phone':
       return z.union([z.literal(''), z.null()]);
+    // An unticked box: the fill-in view sends `null`, a client that models
+    // „nein" explicitly may send `false`. Both are „nicht beantwortet" and
+    // neither is stored (`toStoredAnswers`).
+    case 'confirm':
+      return z.union([z.literal(''), z.null(), z.literal(false)]);
   }
 
   // Unreachable while the switch is exhaustive; a new question type narrows to

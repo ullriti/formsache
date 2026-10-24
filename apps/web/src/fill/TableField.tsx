@@ -320,6 +320,21 @@ function TableCell({
         />
       );
 
+    case 'date':
+      return (
+        <input
+          className="field__control"
+          type="date"
+          aria-label={label}
+          value={typeof cell === 'string' ? cell : ''}
+          onChange={(event) => {
+            onChange(
+              event.target.value === '' ? undefined : event.target.value,
+            );
+          }}
+        />
+      );
+
     case 'number':
       return (
         <input

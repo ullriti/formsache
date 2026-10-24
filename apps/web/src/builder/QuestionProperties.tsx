@@ -181,19 +181,47 @@ export function QuestionProperties({
       </Field>
 
       <label className="props__field">
-        <span className="props__label">Hinweistext</span>
-        <input
-          value={question.hint ?? ''}
-          onChange={(event) => {
-            // Empty means "no hint", and the schema spells that `null`. Storing
-            // `''` instead would make an untouched field and a cleared one two
-            // different documents.
-            patch({
-              hint: event.target.value === '' ? null : event.target.value,
-            });
-          }}
-        />
+        <span className="props__label">
+          {question.type === 'info' ? 'Text' : 'Hinweistext'}
+        </span>
+        {question.type === 'info' ? (
+          // The body of an Infotext: several lines, simple HTML. A textarea,
+          // because a callout of three paragraphs does not fit one line.
+          <textarea
+            rows={8}
+            value={question.hint ?? ''}
+            aria-describedby={`${question.id}-info-html`}
+            onChange={(event) => {
+              patch({
+                hint: event.target.value === '' ? null : event.target.value,
+              });
+            }}
+          />
+        ) : (
+          <input
+            value={question.hint ?? ''}
+            onChange={(event) => {
+              // Empty means "no hint", and the schema spells that `null`. Storing
+              // `''` instead would make an untouched field and a cleared one two
+              // different documents.
+              patch({
+                hint: event.target.value === '' ? null : event.target.value,
+              });
+            }}
+          />
+        )}
       </label>
+
+      {question.type === 'info' ? (
+        <p className="props__note" id={`${question.id}-info-html`}>
+          Zeilenumbrüche bleiben erhalten. Einfaches HTML ist erlaubt:{' '}
+          {
+            '<p>, <br>, <b>, <i>, <u>, <ul>, <ol>, <li>, <h3>, <h4>, <blockquote>, <hr>'
+          }{' '}
+          und Links (<code>{'<a href="https://…">'}</code>). Alles andere —
+          Skripte, Formatvorlagen, eingebettete Seiten — wird nicht angezeigt.
+        </p>
+      ) : null}
 
       {/*
         Hidden for `info`: the field still parses — every
@@ -710,6 +738,11 @@ function TypeSpecific({
     case 'address':
       return null;
 
+    // No setting of its own — „Pflichtfeld" (above) is the whole decision:
+    // ticked to submit, or an optional tick.
+    case 'confirm':
+      return null;
+
     // Rows, scale and the one flag the handoff's inspector offers
     // (`inspectorExtra()`'s matrix branch: two list editors plus
     // „Mehrfachauswahl je Zeile") — the requirement.
@@ -944,6 +977,9 @@ function sourceChoiceOptions(
         value: entry.key,
         label: entry.label,
       }));
+    // The one value a tick has — the value `readingOf` gives a ticked box.
+    case 'confirm':
+      return [{ value: 'true', label: 'angekreuzt' }];
     // No picklist: these are compared against a typed number or text. The five
     // types that cannot be a source at all (`info`, `file`, `table`, `matrix`,
     // `address`) are listed too — they never reach this function, because
@@ -1900,6 +1936,7 @@ const TABLE_CELL_TYPE_LABELS: Readonly<Record<TableCellType, string>> = {
   number: 'Zahl',
   select: 'Liste',
   checkbox: 'Haken',
+  date: 'Datum',
 };
 
 /**
