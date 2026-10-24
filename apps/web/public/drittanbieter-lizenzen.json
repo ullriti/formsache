@@ -2143,7 +2143,7 @@
     },
     {
       "name": "nodemailer",
-      "version": "10.1.2",
+      "version": "10.1.4",
       "spdx": "MIT-0",
       "author": "Andris Reinman",
       "homepage": "https://nodemailer.com/",
