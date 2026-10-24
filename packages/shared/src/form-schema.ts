@@ -38,7 +38,7 @@ import { MAX_FILES_PER_RESPONSE } from './file-limits.ts';
  * subsequent save.
  */
 const LABEL_MAX = 300;
-const HINT_MAX = 1000;
+export const HINT_MAX = 1000;
 
 /**
  * Longest text of an Infotext — its `hint`, which for this type is the body

@@ -147,6 +147,17 @@ describe('Tabelle — Datumsspalte', () => {
     );
   });
 
+  it('gibt der Spalte den Datums-Schutz der Datumsfrage, nicht den Textschutz', () => {
+    const [, table] = allQuestions(definition(false));
+    if (table === undefined) {
+      throw new Error('fixture has no table');
+    }
+    const guards = questionColumns(table, []).map((column) => column.guard);
+
+    // Zwei Zeilen, zwei Spalten: je Spalte ein Schutz, je Zeile eine Zelle.
+    expect([...guards].sort()).toEqual(['auto', 'auto', 'date', 'date']);
+  });
+
   it('schreibt das Datum wie eine Datumsfrage: TT.MM.JJJJ', () => {
     const [, table] = allQuestions(definition(false));
     if (table === undefined) {

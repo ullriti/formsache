@@ -116,6 +116,13 @@ const BLOCK_TAGS = new Set<InfoTag>([
   'blockquote',
 ]);
 
+/**
+ * The longest tag the reader follows. A `<` whose `>` is farther away than this
+ * is text: without the bound every unterminated `<a ` re-scans to the end of the
+ * input, and a text of `INFO_TEXT_MAX` characters of them costs seconds.
+ */
+const TAG_MAX = 2100;
+
 const NAMED_ENTITIES: Readonly<Record<string, string>> = {
   amp: '&',
   lt: '<',
@@ -169,13 +176,19 @@ function readTag(source: string, start: number): RawTag | null {
   if (head === null) {
     return null;
   }
+  // Cheap rejection first, before any attribute is read: no `>` within reach
+  // means no tag, and the `<` is text.
+  const close = source.indexOf('>', start);
+  if (close === -1 || close - start > TAG_MAX) {
+    return null;
+  }
   const closing = head[1] === '/';
   const name = (head[2] ?? '').toLowerCase();
   let index = start + head[0].length;
   const attributes = new Map<string, string>();
   let selfClosing = false;
 
-  while (index < source.length) {
+  while (index < source.length && index - start <= TAG_MAX) {
     const char = source[index];
     if (char === '>') {
       return { name, closing, selfClosing, attributes, end: index + 1 };

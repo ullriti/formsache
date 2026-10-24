@@ -535,11 +535,17 @@ function cellRows(answer: TableAnswer): readonly unknown[] {
  * only thing that knows what its cells can contain.
  *
  * A Haken renders as „Ja" and a Liste as an option label an editor typed;
- * both are `'auto'` for the same reason free text is. Only a Zahl column is
+ * both are `'auto'` for the same reason free text is. A Datum column is
+ * `'date'`, like the question of that name. Only a Zahl column is
  * `'number'`, and only because its cells are produced from numeric answers by
  * {@link formatTableCell} — the same claim `number` and `rating` make above.
  */
 function tableColumnGuard(column: TableColumn): CellGuard {
+  // A Datum column gets the guard of the Datum question for the same reason
+  // (`CellGuard`): the spreadsheet writes a real date cell and sorts by it.
+  if (column.type === 'date') {
+    return 'date';
+  }
   return column.type === 'number' ? 'number' : 'auto';
 }
 

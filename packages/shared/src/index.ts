@@ -300,6 +300,7 @@ export {
   tableCellTypeSchema,
   tableRowLimit,
   EVENT_CAPACITY_MAX,
+  HINT_MAX,
   INFO_TEXT_MAX,
   TABLE_COLUMNS_MAX,
   TABLE_ROWS_MAX,

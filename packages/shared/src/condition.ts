@@ -130,8 +130,8 @@ function readingOf(question: Question, answer: unknown): SourceReading {
           .filter(([, seats]) => seats > 0)
           .map(([key]) => key),
       };
-    // „Angekreuzt" is the one value there is; `filled` / `empty` are the only
-    // operators the table offers for it, and both read this list.
+    // „Angekreuzt" is the one value there is (`'true'`); every operator the
+    // table offers for it reads this list.
     case 'confirm':
       return { kind: 'values', values: answer === true ? ['true'] : [] };
     case 'info':

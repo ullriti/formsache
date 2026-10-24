@@ -1,4 +1,5 @@
 import type { ReactElement, ReactNode } from 'react';
+import { useMemo } from 'react';
 import { parseInfoHtml, type InfoNode } from '@formsache/shared';
 
 /**
@@ -19,10 +20,11 @@ export function InfoContent({
   readonly source: string;
   readonly className?: string;
 }): ReactElement {
+  // Parsed once per text, not once per render: the fill-in view re-renders on
+  // every keystroke in any field of the page.
+  const nodes = useMemo(() => parseInfoHtml(source), [source]);
   return (
-    <div className={className ?? 'info-content'}>
-      {renderNodes(parseInfoHtml(source))}
-    </div>
+    <div className={className ?? 'info-content'}>{renderNodes(nodes)}</div>
   );
 }
 

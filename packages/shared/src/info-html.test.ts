@@ -133,6 +133,28 @@ describe('parseInfoHtml', () => {
       expect(nodes.length).toBeLessThanOrEqual(INFO_MAX_NODES);
     });
 
+    /**
+     * **Linear, not quadratic.** An unterminated tag used to make the reader
+     * scan to the end of the input for every `<` — measured at seconds for a
+     * text of `INFO_TEXT_MAX` characters, on a page every participant opens.
+     */
+    it.each(['<a ', '<a x', '<a b=', '<a b="', '</', '<!x'])(
+      'reads 20 000 characters of %j fast',
+      (piece) => {
+        const source = piece.repeat(Math.ceil(20_000 / piece.length));
+        const started = performance.now();
+        parseInfoHtml(source);
+        expect(performance.now() - started).toBeLessThan(500);
+      },
+    );
+
+    it('stays fast when a far `>` makes every tag look reachable', () => {
+      const source = `${'<a x '.repeat(3800)}>`;
+      const started = performance.now();
+      parseInfoHtml(source);
+      expect(performance.now() - started).toBeLessThan(500);
+    });
+
     it('never throws on broken input', () => {
       for (const source of [
         '<',

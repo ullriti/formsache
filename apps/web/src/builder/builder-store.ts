@@ -1,9 +1,10 @@
-import type {
-  FormDefinition,
-  FormPage,
-  Question,
-  QuestionType,
-  QuestionWidth,
+import {
+  HINT_MAX,
+  type FormDefinition,
+  type FormPage,
+  type Question,
+  type QuestionType,
+  type QuestionWidth,
 } from '@formsache/shared';
 /*
  * The row rule — **the invariant `withPairedPageWidths`, the two width
@@ -686,7 +687,13 @@ export const useBuilderStore = create<BuilderState>()((commit, get) => {
           const fresh: Question = {
             ...baseForType(type, resolvedId, origin),
             label: old.label,
-            hint: old.hint,
+            // An Infotext's body may be far longer than any other type's hint
+            // (`INFO_TEXT_MAX`); carrying it over would leave a document
+            // the schema refuses to save. Cut at the shared bound.
+            hint:
+              old.hint !== null && type !== 'info'
+                ? old.hint.slice(0, HINT_MAX)
+                : old.hint,
             required: old.required,
             width: old.width,
             // Spread rather than always assigning `replaces: replaces`: the
