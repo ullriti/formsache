@@ -132,6 +132,7 @@ function readingOf(question: Question, answer: unknown): SourceReading {
       };
     case 'info':
     case 'file':
+    case 'numberlist':
     case 'table':
     case 'matrix':
     case 'address':

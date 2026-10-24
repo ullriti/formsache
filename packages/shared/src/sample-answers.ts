@@ -447,6 +447,18 @@ function candidatesFor(question: AnswerableQuestion): AnswerValue[] {
             entry.capacity === null ? 2 : Math.min(2, entry.capacity),
         },
       }));
+    // Every line gets a number — a Zahlenliste has no bound to clamp to, and
+    // „mindestens eine Zeile" is its mandatory reading, so more than one line is
+    // simply a fuller sample. `1` rather than `0`: a zero is a valid answer
+    // here, but a sample that shows nothing would hide what the column holds.
+    case 'numberlist':
+      return [
+        {
+          numbers: Object.fromEntries(
+            question.items.map((item) => [item.key, 1]),
+          ),
+        },
+      ];
   }
 
   // Unreachable as long as the switch is complete; a new question type

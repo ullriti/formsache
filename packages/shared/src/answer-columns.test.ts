@@ -248,6 +248,20 @@ const SAMPLES = {
     // them is `'number'`, which is asserted where the columns themselves are.
     guard: null,
   },
+  numberlist: {
+    question: {
+      ...base,
+      type: 'numberlist',
+      label: 'Aktivitas',
+      items: [
+        { key: 'fuexe', label: '1. Füxe' },
+        { key: 'aktive', label: '2. Aktive Burschen' },
+      ],
+    },
+    // One column per line, like `event` — each of them `'number'`, asserted
+    // where the columns themselves are.
+    guard: null,
+  },
 } satisfies Record<
   QuestionType,
   { question: Record<string, unknown>; guard: CellGuard | null }
@@ -255,14 +269,15 @@ const SAMPLES = {
 
 /** Parsed rather than cast: the fixture has to be a document the schema accepts. */
 function questionOf(type: QuestionType): Question {
-  // Hex, not decimal: past the ninth type (`info` is the eleventh)
-  // `String(index)` produces two digits and the id stops being 36 characters
-  // long — `parseFormDefinition` then rejects it as "Invalid UUID" on a type
-  // that has nothing wrong with it. `toString(16)` keeps one digit through
-  // every type this schema can hold up to hex `f` (16 types).
-  const id = `019ff000-0000-7000-8000-0000000000d${questionTypeSchema.options
+  // Hex, two digits, zero-padded: a decimal index passes the ninth type
+  // (`info` is the eleventh) with two digits and the id stops being 36
+  // characters long — `parseFormDefinition` then rejects it as "Invalid UUID"
+  // on a type that has nothing wrong with it. Hex keeps two digits through
+  // 255 types, which is far more than this schema will hold.
+  const id = `019ff000-0000-7000-8000-000000000d${questionTypeSchema.options
     .indexOf(type)
-    .toString(16)}`;
+    .toString(16)
+    .padStart(2, '0')}`;
   const definition = parseFormDefinition({
     pages: [
       {
@@ -297,7 +312,8 @@ const SINGLE_COLUMN_TYPES = questionTypeSchema.options.filter(
     type !== 'address' &&
     type !== 'matrix' &&
     type !== 'table' &&
-    type !== 'event',
+    type !== 'event' &&
+    type !== 'numberlist',
 );
 
 /** The one question of a parsed document — a fixture the schema accepts. */

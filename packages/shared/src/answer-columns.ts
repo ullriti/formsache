@@ -10,6 +10,8 @@ import {
   attachmentsOf,
   isAddressAnswer,
   isEventAnswer,
+  isNumberListAnswer,
+  numbersOf,
   isFileAnswer,
   isMatrixAnswer,
   isTableAnswer,
@@ -360,6 +362,22 @@ export function questionColumns(
           return count === undefined ? '' : String(count);
         },
       }));
+    // **One column per line, and in it stands a number** — the Veranstaltung's
+    // shape (`'number'` guard, summable, one column per entry) with the one
+    // difference of the type: a line somebody answered with `0` writes `0`,
+    // because `NumberListAnswer` stores a zero as an answer. An untouched line
+    // is an empty cell, which is how a Geschäftsstelle tells „null" from „nicht
+    // beantwortet".
+    case 'numberlist':
+      return question.items.map((item) => ({
+        key: `${question.id}${COLUMN_KEY_SEPARATOR}${item.key}`,
+        label: `${question.label}${COLUMN_LABEL_SEPARATOR}${item.label}`,
+        guard: 'number' as const,
+        render: (value: AnswerValue | undefined) => {
+          const count = new Map(numbersOf(value)).get(item.key);
+          return count === undefined ? '' : String(count);
+        },
+      }));
     //
     // **The one branch that reads `answers`:** the row
     // count is the form's *and* the longest answer's, see {@link tableRowCount}.
@@ -700,6 +718,21 @@ export function formatAnswerCell(
   if (isEventAnswer(value)) {
     return eventChips(question, value)
       .map((chip) => `${chip.label}: ${String(chip.seats)}`)
+      .join('; ');
+  }
+
+  // The **folded** Zahlenliste answer — „Füxe: 2; Aktive Burschen: 0", in the
+  // order of the question's lines, answered lines only. Checked before the
+  // choice branch for the reason the Veranstaltung is: disjoint keys are what
+  // keep the plain objects apart.
+  if (isNumberListAnswer(value)) {
+    if (question.type !== 'numberlist') {
+      return '';
+    }
+    const numbers = new Map(numbersOf(value));
+    return question.items
+      .filter((item) => numbers.has(item.key))
+      .map((item) => `${item.label}: ${String(numbers.get(item.key))}`)
       .join('; ');
   }
 

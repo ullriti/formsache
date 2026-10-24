@@ -1690,3 +1690,100 @@ describe('FieldInput – Veranstaltung', () => {
     expect(festzug.value).toBe('0');
   });
 });
+
+/* --- Die Zahlenliste ------------------------------------------------- */
+
+const NUMBERLIST_ID = '019fe600-0000-7000-8000-0000000000e7';
+
+function numberlistQuestion(): Question {
+  return {
+    id: NUMBERLIST_ID,
+    type: 'numberlist',
+    label: 'Aktivitas',
+    hint: null,
+    required: false,
+    width: 'full',
+    items: [
+      { key: 'fuexe', label: '1. Füxe' },
+      {
+        key: 'doppel',
+        label:
+          '5. Davon (Burschen) Doppelbandträger mit Erstband in einem anderen ADB-Mitgliedsbund',
+      },
+    ],
+  };
+}
+
+function NumberListHarness({
+  onValue,
+}: {
+  readonly onValue?: (value: AnswerValue) => void;
+}) {
+  const [value, setValue] = useState<AnswerValue | undefined>(undefined);
+  return (
+    <FieldInput
+      question={numberlistQuestion()}
+      value={value}
+      error={undefined}
+      onChange={(next) => {
+        setValue(next);
+        onValue?.(next);
+      }}
+    />
+  );
+}
+
+describe('FieldInput – Zahlenliste', () => {
+  it('names the group with the question text and each box with its line', () => {
+    render(<NumberListHarness />);
+
+    expect(screen.getByRole('group', { name: 'Aktivitas' })).toBeDefined();
+    expect(screen.getByLabelText('1. Füxe')).toBeDefined();
+  });
+
+  it('keeps the box inside the line tile, so a long caption wraps instead of dropping it', () => {
+    render(<NumberListHarness />);
+
+    const box = screen.getByLabelText(
+      '5. Davon (Burschen) Doppelbandträger mit Erstband in einem anderen ADB-Mitgliedsbund',
+    );
+    // jsdom does no layout, so the wiring is what can be asserted: caption and
+    // box share one tile, and the caption is the element that wraps
+    // (`.field__numberlist-name`).
+    const tile = box.closest('.field__numberlist-row');
+    expect(tile?.querySelector('.field__numberlist-name')).not.toBeNull();
+  });
+
+  it('hands over a number per line and keeps a typed 0', () => {
+    const onValue = vi.fn();
+    render(<NumberListHarness onValue={onValue} />);
+
+    fireEvent.change(screen.getByLabelText('1. Füxe'), {
+      target: { value: '2' },
+    });
+    expect(onValue).toHaveBeenLastCalledWith({ numbers: { fuexe: 2 } });
+
+    const second = screen.getByLabelText<HTMLInputElement>(
+      '5. Davon (Burschen) Doppelbandträger mit Erstband in einem anderen ADB-Mitgliedsbund',
+    );
+    fireEvent.change(second, { target: { value: '0' } });
+    expect(onValue).toHaveBeenLastCalledWith({
+      numbers: { fuexe: 2, doppel: 0 },
+    });
+    expect(second.value).toBe('0');
+
+    fireEvent.change(screen.getByLabelText('1. Füxe'), {
+      target: { value: '' },
+    });
+    expect(onValue).toHaveBeenLastCalledWith({ numbers: { doppel: 0 } });
+  });
+
+  it('shows no Ausgebucht badge and no lock — it is not a Veranstaltung', () => {
+    render(<NumberListHarness />);
+
+    expect(screen.queryByText('Ausgebucht')).toBeNull();
+    expect(screen.getByLabelText<HTMLInputElement>('1. Füxe').disabled).toBe(
+      false,
+    );
+  });
+});

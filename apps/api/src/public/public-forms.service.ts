@@ -23,6 +23,7 @@ import {
   exhaustedPosition,
   formDefinitionSchema,
   needsResponseCount,
+  numbersOf,
   parseStoredFormPrivacyNotice,
   publicAvailability,
   publicEventSeats,
@@ -254,6 +255,18 @@ function toStoredAnswers(
           seats[key] = count;
         }
         stored[questionId] = { seats };
+        break;
+      }
+      // The numbers of a Zahlenliste — rebuilt line by line through
+      // `numbersOf`, the shared reader, for the reason the Veranstaltung above
+      // gives. A `0` is kept: it is an answer of this type, not the absence of
+      // one.
+      case 'numberlist': {
+        const numbers: Record<string, number> = {};
+        for (const [key, count] of numbersOf(shaped.value)) {
+          numbers[key] = count;
+        }
+        stored[questionId] = { numbers };
         break;
       }
       default: {

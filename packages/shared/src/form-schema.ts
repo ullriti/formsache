@@ -86,6 +86,8 @@ export const questionTypeSchema = z.enum([
   'file',
   /** Veranstaltung with a participant limit — several dates, one number per date. */
   'event',
+  /** Zahlenliste — labelled lines, one whole number per line, no limit. */
+  'numberlist',
 ]);
 export type QuestionType = z.infer<typeof questionTypeSchema>;
 
@@ -184,6 +186,9 @@ const CONDITION_OPERATORS_BY_SOURCE = {
   radio: ALWAYS_AVAILABLE,
   checkbox: ALWAYS_AVAILABLE,
   event: ALWAYS_AVAILABLE,
+  // Structured like `table` and `matrix`: one number per line, and „ist gleich
+  // <Text>" would have to pick a line behind the editor's back.
+  numberlist: [],
   info: [],
   file: [],
   table: [],
@@ -1137,6 +1142,74 @@ const eventQuestionSchema = z.object({
 });
 
 /**
+ * How many lines one Zahlenliste may carry — the Matrix's order of magnitude
+ * rather than the Veranstaltung's, because every line becomes its own export
+ * column all the same.
+ */
+const NUMBERLIST_ITEMS_MAX = 50;
+
+/**
+ * The largest number one line of a Zahlenliste accepts.
+ *
+ * A bound on what a stranger may post, not a statement about the domain: a
+ * Mitgliederzahl never gets near it, and an unbounded integer would let one
+ * submission put `1e308` into an export column that is meant to be summed.
+ */
+export const NUMBERLIST_VALUE_MAX = 1_000_000;
+
+/**
+ * One line of a `numberlist` question.
+ *
+ * **`key` and `label` are separate for the reason an event's are**
+ * ({@link eventEntrySchema}): a stored answer and the export column are keyed
+ * by `key`, so renaming „1. Füxe" into „Füxe" must not orphan the numbers
+ * already collected.
+ */
+export const numberlistItemSchema = z.object({
+  key: z.string().min(1).max(LABEL_MAX),
+  label: z.string().min(1).max(LABEL_MAX),
+});
+export type NumberlistItem = z.infer<typeof numberlistItemSchema>;
+
+/**
+ * Zahlenliste (`numberlist`) — the **reduced Veranstaltung**: labelled lines
+ * with one whole number each, and nothing else.
+ *
+ * Built for what the Veranstaltung was being used for without being one — a
+ * list of counts („Füxe", „Aktive Burschen", …) that has no Termin, no
+ * Obergrenze and no Restplatz badge, and above all **no seat bookkeeping**:
+ * this type never takes part in the participant-limit transaction
+ * (`event-seats.ts` only reads `event`), so a form with a Zahlenliste is not a
+ * form „with a limit".
+ *
+ * The answer is `{numbers: {<key>: n}}` (`NumberListAnswer`). Unlike the
+ * Veranstaltung's, **a `0` is an answer**: „Auswärtige Burschen: 0" says
+ * something „leer" does not, and the export writes the `0`. Only an empty box
+ * is the absence of a key.
+ */
+const numberlistQuestionSchema = z.object({
+  ...questionBaseShape,
+  type: z.literal('numberlist'),
+  items: z
+    .array(numberlistItemSchema)
+    .min(1, { error: 'Mindestens eine Zeile.' })
+    .max(NUMBERLIST_ITEMS_MAX)
+    .superRefine((items, ctx) => {
+      const seen = new Set<string>();
+      items.forEach((item, index) => {
+        if (seen.has(item.key)) {
+          ctx.addIssue({
+            code: 'custom',
+            path: [index, 'key'],
+            message: 'Doppelte Zeile.',
+          });
+        }
+        seen.add(item.key);
+      });
+    }),
+});
+
+/**
  * One question, of exactly one of the types `questionTypeSchema` lists.
  *
  * A discriminated union rather than a wide optional object: a document naming
@@ -1160,11 +1233,15 @@ export const questionSchema = z.discriminatedUnion('type', [
   tableQuestionWithBounds,
   fileQuestionSchema,
   eventQuestionSchema,
+  numberlistQuestionSchema,
 ]);
 export type Question = z.infer<typeof questionSchema>;
 
 /** A Veranstaltung question — narrowed once here rather than at every reader. */
 export type EventQuestion = Extract<Question, { type: 'event' }>;
+
+/** A Zahlenliste question — narrowed once here, like {@link EventQuestion}. */
+export type NumberlistQuestion = Extract<Question, { type: 'numberlist' }>;
 
 /** A Tabelle question — same reason, and what {@link tableRowLimit} reads. */
 export type TableQuestion = Extract<Question, { type: 'table' }>;

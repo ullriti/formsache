@@ -881,6 +881,33 @@ function TypeSpecific({
     // `event_registration` rows and can only be read (`eventEntrySchema`).
     case 'event':
       return <EventListEditor events={question.events} patch={patch} />;
+
+    // The Zeilen of a Zahlenliste — a label and a stable key each, which is
+    // exactly the `{ value, label }` pair {@link LabelledListEditor} edits, so
+    // the list is adapted rather than written a fourth time. The key travels
+    // as the pair's `value`: renaming a line must not orphan the numbers
+    // already collected.
+    case 'numberlist':
+      return (
+        <LabelledListEditor
+          caption="Zeilen"
+          addLabel="+ Zeile"
+          newItemLabel="Neue Zeile"
+          valuePrefix="zeile"
+          items={question.items.map((item) => ({
+            value: item.key,
+            label: item.label,
+          }))}
+          onChange={(options) => {
+            patch({
+              items: options.map((option) => ({
+                key: option.value,
+                label: option.label,
+              })),
+            });
+          }}
+        />
+      );
   }
 
   // Unreachable while the switch is exhaustive; a new question type narrows to
@@ -931,6 +958,7 @@ function sourceChoiceOptions(
     case 'rating':
     case 'info':
     case 'file':
+    case 'numberlist':
     case 'table':
     case 'matrix':
     case 'address':

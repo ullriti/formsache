@@ -43,6 +43,7 @@ const TYPES_PAGE = '019ff100-0000-7000-8000-0000000000d0';
 const NOTICE = '019ff100-0000-7000-8000-0000000000d1';
 const RATING = '019ff100-0000-7000-8000-0000000000d2';
 const ADDRESS = '019ff100-0000-7000-8000-0000000000d3';
+const COUNTS = '019ff100-0000-7000-8000-0000000000d4';
 
 function typesDefinition() {
   return {
@@ -79,6 +80,20 @@ function typesDefinition() {
             // as a whole.
             required: true,
             width: 'full',
+          },
+          // **Optional**, so that no case above has to carry it: a Zahlenliste
+          // left alone is simply not in the stored answers.
+          {
+            id: COUNTS,
+            type: 'numberlist',
+            label: 'Aktivitas',
+            hint: null,
+            required: false,
+            width: 'full',
+            items: [
+              { key: 'fuexe', label: '1. Füxe' },
+              { key: 'aktive', label: '2. Aktive Burschen' },
+            ],
           },
         ],
       },
@@ -299,4 +314,49 @@ describe('Infotext, Bewertung und Adresse auf der öffentlichen Route', () => {
       [ADDRESS]: FULL_ADDRESS,
     });
   });
+
+  /**
+   * The Zahlenliste, on the public route — **a `0` is stored, and nothing the
+   * form does not name is.** The Veranstaltung drops a zero as „nicht
+   * angemeldet"; here it is an answer, and the column has to carry it or the
+   * export could not tell „null" from „nicht beantwortet".
+   */
+  it('stores the numbers of a Zahlenliste, a 0 included, and no stray key', async () => {
+    const response = await submitTypes({
+      [ADDRESS]: FULL_ADDRESS,
+      [COUNTS]: { numbers: { fuexe: 0, aktive: 4 }, evil: '<script>' },
+    });
+
+    expect(response.status).toBe(200);
+
+    const stored = await app().prisma.response.findFirst({
+      orderBy: { submittedAt: 'desc' },
+    });
+    expect(stored?.answers).toStrictEqual({
+      [ADDRESS]: FULL_ADDRESS,
+      [COUNTS]: { numbers: { fuexe: 0, aktive: 4 } },
+    });
+  });
+
+  it.each([
+    ['eine unbekannte Zeile', { gibtsnicht: 1 }],
+    ['eine negative Zahl', { fuexe: -1 }],
+    ['eine Kommazahl', { fuexe: 1.5 }],
+  ])(
+    'refuses %s in a Zahlenliste and stores nothing',
+    async (_name, numbers) => {
+      const before = await app().prisma.response.count();
+
+      const response = await submitTypes({
+        [ADDRESS]: FULL_ADDRESS,
+        [COUNTS]: { numbers },
+      });
+
+      expect(response.status).toBe(400);
+      expect(pathsOf(response).some((path) => path.startsWith(COUNTS))).toBe(
+        true,
+      );
+      expect(await app().prisma.response.count()).toBe(before);
+    },
+  );
 });

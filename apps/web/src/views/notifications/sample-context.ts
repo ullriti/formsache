@@ -116,6 +116,10 @@ function sampleValue(question: Question): string {
     // „Sommerfest: 1" would read like a tick.
     case 'event':
       return question.events.map((entry) => `${entry.label}: 2`).join('; ');
+    // Folded the way `formatAnswerCell` folds a Zahlenliste, from **this**
+    // question's own lines, for the reason the Veranstaltung gives.
+    case 'numberlist':
+      return question.items.map((item) => `${item.label}: 2`).join('; ');
   }
 
   // Unreachable while the switch is exhaustive; a new question type narrows to

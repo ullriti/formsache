@@ -13,6 +13,16 @@ Kategorien je Eintrag: **Added** · **Changed** · **Deprecated** · **Removed**
 
 ### Added
 
+- **Neuer Fragetyp „Zahlenliste".** Die abgespeckte Veranstaltung: je Zeile
+  eine Bezeichnung und ein Zahlenfeld, sonst nichts — ohne Termin, Obergrenze,
+  „Ausgebucht"-Hinweis und ohne Platzbuchung. Gedacht für Zähllisten wie
+  „Füxe / Aktive Burschen / Inaktive Burschen", die bisher als Veranstaltung
+  zweckentfremdet wurden. Anders als bei der Veranstaltung ist eine
+  eingetragene **0** eine Antwort und wird gespeichert und exportiert; nur ein
+  leeres Feld zählt als „nicht ausgefüllt". Der Export legt je Zeile eine
+  Zahlenspalte an. Im Builder erscheint der Typ in der Palette als
+  „Zahlenliste". Bestehende Veranstaltungen bleiben unverändert.
+
 - **Datei-Upload nennt Datei und Größe, solange er läuft.** Statt „Wird
   hochgeladen…" steht in der Ausfüllmaske jetzt „„Lebenslauf.pdf" (8,1 MB)
   wird übertragen…". Bei einer schlechten Mobilverbindung ist damit erkennbar,
@@ -94,6 +104,12 @@ Kategorien je Eintrag: **Added** · **Changed** · **Deprecated** · **Removed**
   [Betrieb](docs/kb/09-betrieb.md#woher-eine-fassung-kommt)).
 
 ### Fixed
+
+- **Veranstaltung: langer Text bricht um, statt das Zahlenfeld zu verdrängen.**
+  Bei einem langen Namen rutschte das Eingabefeld in der Ausfüllmaske auf eine
+  eigene Zeile, auch auf breiten Bildschirmen. Jetzt wird der Text umbrochen
+  und das Feld bleibt neben ihm; erst auf sehr schmalen Bildschirmen rückt es
+  darunter.
 
 - **e2e: „ohne Anmeldung"-Zusicherungen wurden von einer angemeldeten Person
   gemessen.** `browser.newContext()` ohne Argument übernimmt den

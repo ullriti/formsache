@@ -1,6 +1,7 @@
 import {
   isAddressAnswer,
   isEventAnswer,
+  isNumberListAnswer,
   isFileAnswer,
   isMatrixAnswer,
   isTableAnswer,
@@ -80,7 +81,8 @@ export function asChoice(value: AnswerValue | undefined): ChoiceAnswer {
     isMatrixAnswer(value) ||
     isTableAnswer(value) ||
     isFileAnswer(value) ||
-    isEventAnswer(value)
+    isEventAnswer(value) ||
+    isNumberListAnswer(value)
     ? { values: [], other: null }
     : value;
 }

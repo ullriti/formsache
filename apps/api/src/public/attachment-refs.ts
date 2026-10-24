@@ -67,6 +67,7 @@ function carriesAttachments(question: Question): boolean {
     case 'matrix':
     case 'table':
     case 'event':
+    case 'numberlist':
       return false;
     // The one type that does. Its answer names the files by reference,
     // and those references are what the claim of ADR-0014 no. 13 turns into
