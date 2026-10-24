@@ -1262,6 +1262,19 @@ function numberListAnswerSchema(
       ),
     })
     .superRefine((answer, ctx) => {
+      // One issue instead of one per stray key: this runs on the public route,
+      // and a body of thousands of unknown keys must not turn into thousands of
+      // issues in the 400. The question has `items.length` lines, so more keys
+      // than that cannot all be known.
+      if (Object.keys(answer.numbers).length > known.size) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['numbers'],
+          message: 'Mehr Einträge als Zeilen.',
+        });
+        return;
+      }
+
       for (const key of Object.keys(answer.numbers)) {
         if (!known.has(key)) {
           ctx.addIssue({

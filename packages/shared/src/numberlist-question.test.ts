@@ -123,6 +123,16 @@ describe('Zahlenliste — Antwort', () => {
     expect(JSON.stringify(result.error?.issues)).toContain('Unbekannte Zeile');
   });
 
+  it('meldet zu viele Schlüssel als ein einziges Problem', () => {
+    const numbers = Object.fromEntries(
+      Array.from({ length: 500 }, (_, index) => [`x${String(index)}`, 1]),
+    );
+    const result = safeParseAnswers(definitionOf(), { [LIST]: { numbers } });
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues).toHaveLength(1);
+  });
+
   it('liest keine Sitzplatzform: {seats} ist keine Zahlenliste', () => {
     expect(
       safeParseAnswers(definitionOf(), { [LIST]: { seats: { fuexe: 2 } } })

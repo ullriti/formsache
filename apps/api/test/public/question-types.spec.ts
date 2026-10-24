@@ -338,10 +338,29 @@ describe('Infotext, Bewertung und Adresse auf der öffentlichen Route', () => {
     });
   });
 
+  it('accepts an optional Zahlenliste with only cleared boxes as empty', async () => {
+    const response = await submitTypes({
+      [ADDRESS]: FULL_ADDRESS,
+      [COUNTS]: { numbers: { fuexe: '', aktive: null } },
+    });
+
+    expect(response.status).toBe(200);
+
+    const stored = await app().prisma.response.findFirst({
+      orderBy: { submittedAt: 'desc' },
+    });
+    expect(stored?.answers).toStrictEqual({
+      [ADDRESS]: FULL_ADDRESS,
+      [COUNTS]: { numbers: {} },
+    });
+  });
+
   it.each([
     ['eine unbekannte Zeile', { gibtsnicht: 1 }],
     ['eine negative Zahl', { fuexe: -1 }],
     ['eine Kommazahl', { fuexe: 1.5 }],
+    ['Text statt Zahl', { fuexe: 'zwei' }],
+    ['mehr als der Höchstwert', { fuexe: 1_000_001 }],
   ])(
     'refuses %s in a Zahlenliste and stores nothing',
     async (_name, numbers) => {

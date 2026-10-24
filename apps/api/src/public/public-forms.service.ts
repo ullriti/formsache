@@ -262,11 +262,9 @@ function toStoredAnswers(
       // gives. A `0` is kept: it is an answer of this type, not the absence of
       // one.
       case 'numberlist': {
-        const numbers: Record<string, number> = {};
-        for (const [key, count] of numbersOf(shaped.value)) {
-          numbers[key] = count;
-        }
-        stored[questionId] = { numbers };
+        stored[questionId] = {
+          numbers: Object.fromEntries(numbersOf(shaped.value)),
+        };
         break;
       }
       default: {
