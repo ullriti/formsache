@@ -335,8 +335,9 @@ describe('answerChanges (what {{aenderungen}} is built from)', () => {
   });
 
   /**
-   * **Regression (a) of a 2026-07-29 review.** `true` is not a valid
-   * `AnswerValue` — a hand-edited or restored row. Deciding on
+   * **Regression (a) of a 2026-07-29 review.** A list is not a valid
+   * `AnswerValue` — a hand-edited or restored row. (It used to be `true`; that
+   * became the tick of a Bestätigung question and reads „Ja" now.) Deciding on
    * `formatAnswerCell`'s output would have parsed it to `null` and then read
    * it as blank, same as the empty string on the other side, and this row
    * would never have appeared even though the question really did carry a
@@ -346,7 +347,7 @@ describe('answerChanges (what {{aenderungen}} is built from)', () => {
    * values turns this red (verified while writing this fix, not re-run here).
    */
   it('reports a change when an unreadable value clears to blank', () => {
-    const context = contextOf({ [NAME]: '' }, { [NAME]: true });
+    const context = contextOf({ [NAME]: '' }, { [NAME]: ['unlesbar'] });
 
     expect(context.changes).toEqual([
       { questionId: NAME, label: 'Name', previous: '', current: '' },

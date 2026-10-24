@@ -4,6 +4,7 @@ import {
   ADDRESS_PARTS,
   DEFAULT_ADDRESS_COUNTRY,
   EVENT_SEATS_MAX,
+  NUMBERLIST_VALUE_MAX,
   otherLabelOf,
   otherPositionOf,
   seatsOf,
@@ -19,6 +20,8 @@ import type { UploadTarget } from '../api/public-form';
 import { asAddress } from './address-answer';
 import { rawSeatOf, withSeats } from './event-answer';
 import { FileField } from './FileField';
+import { InfoContent } from './InfoContent';
+import { numbersRecordOf, rawNumberOf, withNumber } from './numberlist-answer';
 import { asMatrix, pickedIn, toggleMatrixCell } from './matrix-answer';
 import { TableField } from './TableField';
 import {
@@ -124,9 +127,10 @@ export function FieldInput({
   if (question.type === 'info') {
     return (
       <div className="field__info">
-        {question.hint === null || question.hint === ''
-          ? question.label
-          : `${question.label} ${question.hint}`}
+        <p className="field__info-title">{question.label}</p>
+        {question.hint === null || question.hint === '' ? null : (
+          <InfoContent source={question.hint} />
+        )}
       </div>
     );
   }
@@ -305,6 +309,12 @@ function rendersAsGroup(question: Question): boolean {
     // question they belong to.
     case 'event':
       return true;
+    // The same for a Zahlenliste: one box per line, named once by the question.
+    case 'numberlist':
+      return true;
+    // One checkbox: the question's `<label htmlFor>` points straight at it.
+    case 'confirm':
+      return false;
     // `select` sits with the single controls: a dropdown is one control even
     // with the „Sonstiges" box next to it, because the `<select>` carries the
     // id the label points at.
@@ -799,6 +809,37 @@ function Control({
         />
       );
 
+    // The Bestätigung — one native checkbox. The question text above it is its
+    // `<label htmlFor>`; „Ja" beside it is only the visible caption of the tick.
+    // `null` rather than `false` when unticked: „nicht beantwortet" has one
+    // spelling in the answers, and the server stores no `false`.
+    case 'confirm':
+      return (
+        <label className="field__choice">
+          <input
+            {...shared}
+            type="checkbox"
+            checked={value === true}
+            onChange={(event) => {
+              onChange(event.target.checked ? true : null);
+            }}
+          />
+          <span>Ja</span>
+        </label>
+      );
+
+    // The Zahlenliste — a plain function component, no state to remember
+    // (unlike {@link EventField}, which has to know which boxes ever carried a
+    // number for its lock).
+    case 'numberlist':
+      return (
+        <NumberListField
+          question={question}
+          value={value}
+          onChange={onChange}
+        />
+      );
+
     // Never reached: `FieldInput` renders its own callout for `info` and
     // returns before `Control` is ever called — there is no control
     // for a question that takes no answer. Present only so this switch stays
@@ -994,6 +1035,60 @@ function EventField({
           </label>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * The Zahlenliste — **one labelled number box per line**, nothing else.
+ *
+ * The tile geometry is the Veranstaltung's (`.field__event`), so a form that
+ * mixes both reads as one family; what is missing is the point of the type: no
+ * Termin, no badge, no lock. The box takes a whole number from `0` — a `0` is
+ * an answer and is kept (`withNumber`).
+ *
+ * The line's text **wraps** and the box keeps its place beside it; a long
+ * caption never pushes the box onto a line of its own
+ * (`.field__numberlist-name`).
+ */
+function NumberListField({
+  question,
+  value,
+  onChange,
+}: {
+  readonly question: Extract<Question, { type: 'numberlist' }>;
+  readonly value: AnswerValue | undefined;
+  readonly onChange: (value: AnswerValue) => void;
+}): ReactElement {
+  return (
+    <div className="field__numberlist">
+      {question.items.map((item) => (
+        <label className="field__numberlist-row" key={item.key}>
+          <span className="field__numberlist-name">{item.label}</span>
+          <input
+            className="field__control field__numberlist-count"
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={NUMBERLIST_VALUE_MAX}
+            step={1}
+            // The wrapping `<label>` already names the box; stated explicitly
+            // so the accessible name is the caption alone, whatever the label
+            // may one day contain besides it.
+            aria-label={item.label}
+            value={rawNumberOf(value, item.key) ?? ''}
+            onChange={(event) => {
+              onChange(
+                withNumber(
+                  numbersRecordOf(value),
+                  item.key,
+                  event.target.value,
+                ),
+              );
+            }}
+          />
+        </label>
+      ))}
     </div>
   );
 }

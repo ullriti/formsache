@@ -2,6 +2,7 @@ import type { ReactElement } from 'react';
 import { useEffect, useRef } from 'react';
 import type { Question } from '@formsache/shared';
 
+import { InfoContent } from '../fill/InfoContent';
 import { useBuilderStore } from './builder-store';
 import type { ConditionMark } from './condition-status';
 import { QUESTION_TYPE_LABELS } from './question-defaults';
@@ -258,7 +259,12 @@ export function QuestionCard({
         </button>
       </div>
 
-      {question.hint === null || question.hint === '' ? null : (
+      {question.hint === null || question.hint === '' ? null : question.type ===
+        'info' ? (
+        // The body of an Infotext is rendered the way a participant gets it
+        // (simple HTML, tags outside the allow-list gone), not as source.
+        <InfoContent source={question.hint} className="q-card__info" />
+      ) : (
         <p className="q-card__hint">{question.hint}</p>
       )}
 

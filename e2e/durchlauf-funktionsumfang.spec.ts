@@ -1131,7 +1131,7 @@ test('Schritt 1 — ein Formular mit allen neuen Fragetypen über den Builder, a
 
   await addQuestion(admin, 'Infotext', Q.info);
   await admin
-    .getByLabel('Hinweistext')
+    .getByLabel('Text', { exact: true })
     .fill('Die Anmeldung ist bis zum Fristende änderbar.');
 
   await addQuestion(admin, 'Text', Q.name);

@@ -116,6 +116,13 @@ function sampleValue(question: Question): string {
     // „Sommerfest: 1" would read like a tick.
     case 'event':
       return question.events.map((entry) => `${entry.label}: 2`).join('; ');
+    // Folded the way `formatAnswerCell` folds a Zahlenliste, from **this**
+    // question's own lines, for the reason the Veranstaltung gives.
+    // What `formatAnswerCell` writes for a ticked box.
+    case 'confirm':
+      return 'Ja';
+    case 'numberlist':
+      return question.items.map((item) => `${item.label}: 2`).join('; ');
   }
 
   // Unreachable while the switch is exhaustive; a new question type narrows to
@@ -131,6 +138,9 @@ function sampleTableCell(column: TableColumn): string {
       return 'Beispieltext';
     case 'number':
       return '2';
+    // The notation `formatTableCell` writes for a date cell.
+    case 'date':
+      return '15.05.2026';
     // The first real entry, never an invented one: a Liste column whose
     // options an editor just typed is the one place a made-up value would be
     // noticed immediately — and rightly so.

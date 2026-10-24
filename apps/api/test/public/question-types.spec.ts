@@ -43,6 +43,8 @@ const TYPES_PAGE = '019ff100-0000-7000-8000-0000000000d0';
 const NOTICE = '019ff100-0000-7000-8000-0000000000d1';
 const RATING = '019ff100-0000-7000-8000-0000000000d2';
 const ADDRESS = '019ff100-0000-7000-8000-0000000000d3';
+const COUNTS = '019ff100-0000-7000-8000-0000000000d4';
+const TICK = '019ff100-0000-7000-8000-0000000000d5';
 
 function typesDefinition() {
   return {
@@ -79,6 +81,30 @@ function typesDefinition() {
             // as a whole.
             required: true,
             width: 'full',
+          },
+          // Optional for the same reason as the Zahlenliste below: no case above
+          // has to carry it.
+          {
+            id: TICK,
+            type: 'confirm',
+            label: 'Ich habe die Hinweise gelesen',
+            hint: null,
+            required: false,
+            width: 'full',
+          },
+          // **Optional**, so that no case above has to carry it: a Zahlenliste
+          // left alone is simply not in the stored answers.
+          {
+            id: COUNTS,
+            type: 'numberlist',
+            label: 'Aktivitas',
+            hint: null,
+            required: false,
+            width: 'full',
+            items: [
+              { key: 'fuexe', label: '1. Füxe' },
+              { key: 'aktive', label: '2. Aktive Burschen' },
+            ],
           },
         ],
       },
@@ -298,5 +324,107 @@ describe('Infotext, Bewertung und Adresse auf der öffentlichen Route', () => {
       [RATING]: 5,
       [ADDRESS]: FULL_ADDRESS,
     });
+  });
+
+  /**
+   * The Zahlenliste, on the public route — **a `0` is stored, and nothing the
+   * form does not name is.** The Veranstaltung drops a zero as „nicht
+   * angemeldet"; here it is an answer, and the column has to carry it or the
+   * export could not tell „null" from „nicht beantwortet".
+   */
+  it('stores the numbers of a Zahlenliste, a 0 included, and no stray key', async () => {
+    const response = await submitTypes({
+      [ADDRESS]: FULL_ADDRESS,
+      [COUNTS]: { numbers: { fuexe: 0, aktive: 4 }, evil: '<script>' },
+    });
+
+    expect(response.status).toBe(200);
+
+    const stored = await app().prisma.response.findFirst({
+      orderBy: { submittedAt: 'desc' },
+    });
+    expect(stored?.answers).toStrictEqual({
+      [ADDRESS]: FULL_ADDRESS,
+      [COUNTS]: { numbers: { fuexe: 0, aktive: 4 } },
+    });
+  });
+
+  it('accepts an optional Zahlenliste with only cleared boxes as empty', async () => {
+    const response = await submitTypes({
+      [ADDRESS]: FULL_ADDRESS,
+      [COUNTS]: { numbers: { fuexe: '', aktive: null } },
+    });
+
+    expect(response.status).toBe(200);
+
+    const stored = await app().prisma.response.findFirst({
+      orderBy: { submittedAt: 'desc' },
+    });
+    expect(stored?.answers).toStrictEqual({
+      [ADDRESS]: FULL_ADDRESS,
+      [COUNTS]: { numbers: {} },
+    });
+  });
+
+  it.each([
+    ['eine unbekannte Zeile', { gibtsnicht: 1 }],
+    ['eine negative Zahl', { fuexe: -1 }],
+    ['eine Kommazahl', { fuexe: 1.5 }],
+    ['Text statt Zahl', { fuexe: 'zwei' }],
+    ['mehr als der Höchstwert', { fuexe: 1_000_001 }],
+  ])(
+    'refuses %s in a Zahlenliste and stores nothing',
+    async (_name, numbers) => {
+      const before = await app().prisma.response.count();
+
+      const response = await submitTypes({
+        [ADDRESS]: FULL_ADDRESS,
+        [COUNTS]: { numbers },
+      });
+
+      expect(response.status).toBe(400);
+      expect(pathsOf(response).some((path) => path.startsWith(COUNTS))).toBe(
+        true,
+      );
+      expect(await app().prisma.response.count()).toBe(before);
+    },
+  );
+
+  it('stores a ticked Bestätigung as true and an unticked one not at all', async () => {
+    const ticked = await submitTypes({ [ADDRESS]: FULL_ADDRESS, [TICK]: true });
+    expect(ticked.status).toBe(200);
+    const first = await app().prisma.response.findFirst({
+      orderBy: { submittedAt: 'desc' },
+    });
+    expect(first?.answers).toStrictEqual({
+      [ADDRESS]: FULL_ADDRESS,
+      [TICK]: true,
+    });
+
+    const unticked = await submitTypes({
+      [ADDRESS]: FULL_ADDRESS,
+      [TICK]: false,
+    });
+    expect(unticked.status).toBe(200);
+    const second = await app().prisma.response.findFirst({
+      orderBy: { submittedAt: 'desc' },
+    });
+    expect(second?.answers).toStrictEqual({ [ADDRESS]: FULL_ADDRESS });
+  });
+
+  it.each([
+    ['den Text „ja"', 'ja'],
+    ['die Zahl 1', 1],
+  ])('refuses %s as a Bestätigung and stores nothing', async (_name, value) => {
+    const before = await app().prisma.response.count();
+
+    const response = await submitTypes({
+      [ADDRESS]: FULL_ADDRESS,
+      [TICK]: value,
+    });
+
+    expect(response.status).toBe(400);
+    expect(pathsOf(response)).toContain(TICK);
+    expect(await app().prisma.response.count()).toBe(before);
   });
 });

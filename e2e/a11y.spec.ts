@@ -137,6 +137,12 @@ test.beforeAll(async ({ browser }) => {
     for (const type of FURTHER_QUESTION_TYPES) {
       await addQuestion(page, type);
     }
+    // The last type of the list is the Checkbox, which starts as a Pflichtfeld
+    // (its reason to exist is a tick that has to be given). The guests below
+    // fill in only the first question, so a required tick would keep them from
+    // submitting and this preparation would wait for a confirmation that never
+    // comes. It is still selected here, so its toggle is the one on screen.
+    await page.getByLabel('Pflichtfeld').uncheck();
     await saveForm(page);
     const publicPath = await publishAndReadPath(page);
 

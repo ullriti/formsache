@@ -224,7 +224,11 @@ export function QuestionPreview({
                         ) : (
                           <input
                             className="q-preview__input"
-                            type={column.type === 'number' ? 'number' : 'text'}
+                            type={
+                              column.type === 'number' || column.type === 'date'
+                                ? column.type
+                                : 'text'
+                            }
                             disabled
                           />
                         )}
@@ -295,6 +299,35 @@ export function QuestionPreview({
      * caption instead: „Restplätze sichtbar" says which of the two badges a
      * participant will get.
      */
+    case 'confirm':
+      return (
+        <span className="q-preview__choice" aria-hidden>
+          <input type="checkbox" disabled />
+          <span>Ja</span>
+        </span>
+      );
+
+    // The Zahlenliste — the lines and a disabled number box each, the fill-in
+    // view's tile without anything a Veranstaltung adds (no Termin, no
+    // Obergrenze). `aria-hidden` on the dummy box for the reason the
+    // Veranstaltung's states: an unlabelled control is an axe finding.
+    case 'numberlist':
+      return (
+        <div className="q-preview__events">
+          {question.items.map((item) => (
+            <div className="q-preview__event" key={item.key}>
+              <span className="q-preview__event-name">{item.label}</span>
+              <input
+                className="q-preview__input q-preview__event-count"
+                type="number"
+                disabled
+                aria-hidden
+              />
+            </div>
+          ))}
+        </div>
+      );
+
     case 'event':
       return (
         <div className="q-preview__events">

@@ -28,6 +28,8 @@ export const QUESTION_TYPE_LABELS: Readonly<Record<QuestionType, string>> = {
   table: 'Tabelle',
   file: 'Datei-Upload',
   event: 'Veranstaltung',
+  numberlist: 'Zahlenliste',
+  confirm: 'Checkbox',
 };
 
 /**
@@ -83,6 +85,10 @@ export const QUESTION_TYPES = [
   // a new type arrived, and one more move at the end costs less than six
   // that each have to be undone.
   'event',
+  // Appended like the types before it: the Zahlenliste is the reduced
+  // Veranstaltung and has no place in the handoff's palette at all.
+  'numberlist',
+  'confirm',
 ] as const satisfies readonly QuestionType[];
 
 /** Types the palette does not list — `never` while it lists all of them. */
@@ -249,6 +255,27 @@ export function createQuestion(type: QuestionType, id: string): Question {
             capacity: 50,
             showRemaining: false,
           },
+        ],
+      };
+    case 'confirm':
+      // Required from the start: the reason to add a lone checkbox is a tick
+      // that has to be given (Einwilligung, Kenntnisnahme). An editor who wants
+      // an optional one switches „Pflichtfeld" off.
+      return {
+        ...base,
+        type,
+        label: 'Ich habe die Hinweise gelesen',
+        required: true,
+      };
+    case 'numberlist':
+      // Two lines, so the list is visibly a list; the editor renames them.
+      return {
+        ...base,
+        type,
+        label: 'Zahlenliste',
+        items: [
+          { key: 'zeile-1', label: 'Zeile 1' },
+          { key: 'zeile-2', label: 'Zeile 2' },
         ],
       };
   }

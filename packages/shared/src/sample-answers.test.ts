@@ -189,6 +189,22 @@ function everyTypeDefinition(): FormDefinition {
               },
             ],
           },
+          {
+            ...base,
+            id: id(18),
+            type: 'confirm',
+            label: 'Ich habe die Hinweise gelesen',
+          },
+          {
+            ...base,
+            id: id(17),
+            type: 'numberlist',
+            label: 'Aktivitas',
+            items: [
+              { key: 'fuexe', label: '1. Füxe' },
+              { key: 'aktive', label: '2. Aktive Burschen' },
+            ],
+          },
         ],
       },
     ],

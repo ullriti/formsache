@@ -1,4 +1,8 @@
-import { formDefinitionSchema, type FormDefinition } from '@formsache/shared';
+import {
+  HINT_MAX,
+  formDefinitionSchema,
+  type FormDefinition,
+} from '@formsache/shared';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
@@ -739,6 +743,34 @@ describe('builder store', () => {
         const ids = (page?.questions ?? []).map((entry) => entry.id);
         expect(ids).toStrictEqual([Q1, Q_NEW, Q3]);
         expect(page?.questions[1]?.type).toBe('number');
+        expectParses();
+      });
+
+      /**
+       * An Infotext's body may be 20 000 characters; every other type's hint is
+       * bounded at `HINT_MAX`. Switching away must not carry the long text over
+       * into a document the schema then refuses to save.
+       */
+      it('cuts a long Infotext body when the type is no longer an Infotext', () => {
+        const long = 'x'.repeat(5000);
+        const page = activePage(useBuilderStore.getState());
+        const old = page?.questions[1];
+        if (old === undefined) {
+          throw new Error('fixture has no second question');
+        }
+        useBuilderStore.getState().updateQuestion(Q2, {
+          id: old.id,
+          type: 'info',
+          label: old.label,
+          hint: long,
+          required: false,
+          width: old.width,
+        });
+
+        useBuilderStore.getState().changeQuestionType(Q2, 'number', Q_NEW);
+
+        const changed = activePage(useBuilderStore.getState())?.questions[1];
+        expect(changed?.hint?.length).toBe(HINT_MAX);
         expectParses();
       });
 

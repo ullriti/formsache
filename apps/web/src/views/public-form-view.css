@@ -649,6 +649,65 @@
   color: var(--color-text-muted);
 }
 
+.field__info-title {
+  margin: 0;
+  font-weight: var(--font-weight-bold);
+}
+
+/*
+ * The Infotext's body (`InfoContent`) — flows like a text, not like a form:
+ * paragraphs and lists keep the callout's colour and the spacing of the page
+ * rather than the browser's defaults, and a long unbroken string wraps instead
+ * of widening the card.
+ */
+.info-content {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: var(--line-height-body, 1.5);
+}
+
+.info-content > :first-child {
+  margin-top: 0;
+}
+
+.info-content > :last-child {
+  margin-bottom: 0;
+}
+
+.field__info-title + .info-content {
+  margin-top: var(--space-2);
+}
+
+.info-content p,
+.info-content ul,
+.info-content ol,
+.info-content blockquote {
+  margin: 0 0 var(--space-2);
+}
+
+.info-content ul,
+.info-content ol {
+  padding-left: var(--space-5);
+}
+
+.info-content h3,
+.info-content h4 {
+  margin: var(--space-3) 0 var(--space-1);
+  font-size: var(--font-size-body);
+  color: var(--color-text);
+}
+
+.info-content blockquote {
+  padding-left: var(--space-3);
+  border-left: 3px solid var(--color-hairline);
+}
+
+.info-content hr {
+  border: 0;
+  border-top: 1px solid var(--color-hairline);
+  margin: var(--space-3) 0;
+}
+
 .field__label {
   font-size: var(--font-size-body-sm);
   font-weight: var(--font-weight-bold);
@@ -781,6 +840,12 @@
  * It wraps on a narrow screen instead of scrolling: unlike the Matrix grid
  * there is nothing here that has to stay a table, and the badge dropping under
  * the name at 360 px costs nothing a participant needs.
+ *
+ * ⚠️ **What wraps is the tile's content, not the text.** The name's flex basis
+ * is a fixed floor (`.field__event-name`), not `auto`: with `auto` the basis is
+ * the text's single-line width, so a long name never fits next to the box and
+ * pushes it onto a line of its own — even on a wide screen — instead of
+ * breaking the text.
  */
 .field__events {
   display: flex;
@@ -816,8 +881,9 @@
 }
 
 .field__event-name {
-  flex: 1 1 auto;
+  flex: 1 1 12rem;
   min-width: 0;
+  overflow-wrap: anywhere;
   display: flex;
   flex-direction: column;
   font-weight: var(--font-weight-bold);
@@ -849,6 +915,42 @@
 .field__event-count {
   flex: none;
   width: 5rem;
+}
+
+/*
+ * Die Zahlenliste while filling in — the Veranstaltung's Kachel without
+ * anything a Veranstaltung adds: the line's text on the left, the number box on
+ * the right. **The text wraps, the box stays beside it** (the same rule as
+ * `.field__event-name`): a long caption never pushes the box onto a line of its
+ * own; only a really narrow screen does, below the floor the name keeps.
+ */
+.field__numberlist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.field__numberlist-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-field-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+
+.field__numberlist-name {
+  flex: 1 1 12rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: var(--font-weight-bold);
+}
+
+.field__numberlist-count {
+  flex: none;
+  width: 6rem;
 }
 
 /*

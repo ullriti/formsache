@@ -10,6 +10,8 @@ import {
   attachmentsOf,
   isAddressAnswer,
   isEventAnswer,
+  isNumberListAnswer,
+  numbersOf,
   isFileAnswer,
   isMatrixAnswer,
   isTableAnswer,
@@ -245,6 +247,10 @@ export function questionColumns(
   switch (question.type) {
     case 'phone':
       return [wholeAnswer(question, 'text')];
+    // „Ja" for a ticked box, an empty cell otherwise — produced here from the
+    // boolean, so it cannot be a formula, but it is text to a spreadsheet.
+    case 'confirm':
+      return [wholeAnswer(question, 'auto')];
     // The star count is a `number` answer (`response-validation.ts`), never a
     // formula: guarding it as text would make Excel sort „10" before „2" the
     // same way a phone number does not, which is exactly the defect this
@@ -357,6 +363,22 @@ export function questionColumns(
         render: (value: AnswerValue | undefined) => {
           const seats = new Map(seatsOf(value));
           const count = seats.get(event.key);
+          return count === undefined ? '' : String(count);
+        },
+      }));
+    // **One column per line, and in it stands a number** — the Veranstaltung's
+    // shape (`'number'` guard, summable, one column per entry) with the one
+    // difference of the type: a line somebody answered with `0` writes `0`,
+    // because `NumberListAnswer` stores a zero as an answer. An untouched line
+    // is an empty cell, which is how a Geschäftsstelle tells „null" from „nicht
+    // beantwortet".
+    case 'numberlist':
+      return question.items.map((item) => ({
+        key: `${question.id}${COLUMN_KEY_SEPARATOR}${item.key}`,
+        label: `${question.label}${COLUMN_LABEL_SEPARATOR}${item.label}`,
+        guard: 'number' as const,
+        render: (value: AnswerValue | undefined) => {
+          const count = new Map(numbersOf(value)).get(item.key);
           return count === undefined ? '' : String(count);
         },
       }));
@@ -513,11 +535,17 @@ function cellRows(answer: TableAnswer): readonly unknown[] {
  * only thing that knows what its cells can contain.
  *
  * A Haken renders as „Ja" and a Liste as an option label an editor typed;
- * both are `'auto'` for the same reason free text is. Only a Zahl column is
+ * both are `'auto'` for the same reason free text is. A Datum column is
+ * `'date'`, like the question of that name. Only a Zahl column is
  * `'number'`, and only because its cells are produced from numeric answers by
  * {@link formatTableCell} — the same claim `number` and `rating` make above.
  */
 function tableColumnGuard(column: TableColumn): CellGuard {
+  // A Datum column gets the guard of the Datum question for the same reason
+  // (`CellGuard`): the spreadsheet writes a real date cell and sorts by it.
+  if (column.type === 'date') {
+    return 'date';
+  }
   return column.type === 'number' ? 'number' : 'auto';
 }
 
@@ -542,6 +570,11 @@ function formatTableCell(column: TableColumn, cell: unknown): string {
     // German decimal comma, the rule `formatAnswerCell` applies to every other
     // number in the file.
     return String(cell).replace('.', ',');
+  }
+  // Same notation as a Datum question's cell: `TT.MM.JJJJ`, never the stored
+  // ISO form, so two date columns of one file do not read two ways.
+  if (column.type === 'date' && typeof cell === 'string') {
+    return formatIsoDate(cell);
   }
   if (column.type === 'select') {
     const option = column.options.find((candidate) => candidate.value === cell);
@@ -619,6 +652,12 @@ export function formatAnswerCell(
 ): string {
   if (value === undefined || value === null) {
     return '';
+  }
+
+  if (typeof value === 'boolean') {
+    // `true` is the only stored boolean; a `false` that got here anyway is not
+    // an answer and reads as an empty cell, never as „Nein".
+    return value ? 'Ja' : '';
   }
 
   if (typeof value === 'number') {
@@ -700,6 +739,21 @@ export function formatAnswerCell(
   if (isEventAnswer(value)) {
     return eventChips(question, value)
       .map((chip) => `${chip.label}: ${String(chip.seats)}`)
+      .join('; ');
+  }
+
+  // The **folded** Zahlenliste answer — „Füxe: 2; Aktive Burschen: 0", in the
+  // order of the question's lines, answered lines only. Checked before the
+  // choice branch for the reason the Veranstaltung is: disjoint keys are what
+  // keep the plain objects apart.
+  if (isNumberListAnswer(value)) {
+    if (question.type !== 'numberlist') {
+      return '';
+    }
+    const numbers = new Map(numbersOf(value));
+    return question.items
+      .filter((item) => numbers.has(item.key))
+      .map((item) => `${item.label}: ${String(numbers.get(item.key))}`)
       .join('; ');
   }
 

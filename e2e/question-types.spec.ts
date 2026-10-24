@@ -404,7 +404,9 @@ test.describe('Infotext', () => {
   }) => {
     const title = await newForm(page, 'Infotext Sichtbarkeit');
     await addQuestion(page, 'Infotext', 'Bitte lesen');
-    await page.getByLabel('Hinweistext').fill('Das ist nur ein Hinweis.');
+    await page
+      .getByLabel('Text', { exact: true })
+      .fill('Das ist nur ein Hinweis.');
     await addQuestion(page, 'Text', 'Vorname');
     await saveForm(page);
     const publicPath = await publishAndReadPath(page);

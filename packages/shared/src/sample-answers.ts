@@ -146,6 +146,8 @@ function firstValidCandidate(
 
 /** „Beispieltext" — the base material of every text ladder. */
 const SAMPLE_TEXT = 'Beispieltext';
+/** A fixed calendar date for a table's Datum column — any valid one will do. */
+const SAMPLE_DATE = '2026-05-15';
 
 /**
  * The text shapes the ladder tries through, in this order.
@@ -311,6 +313,8 @@ function tableCell(column: TableColumn): string | number | boolean {
       return SAMPLE_TEXT;
     case 'number':
       return 2;
+    case 'date':
+      return SAMPLE_DATE;
     // The first **real** entry, never an invented one: a list column accepts
     // only its own values (`checkTableCell`), and an invented one would be the
     // sure way into the finding instead of into the sample value.
@@ -447,6 +451,20 @@ function candidatesFor(question: AnswerableQuestion): AnswerValue[] {
             entry.capacity === null ? 2 : Math.min(2, entry.capacity),
         },
       }));
+    // Every line gets a number — a Zahlenliste has no bound to clamp to, and
+    // „mindestens eine Zeile" is its mandatory reading, so more than one line is
+    // simply a fuller sample. `1` rather than `0`: a zero is a valid answer
+    // here, but a sample that shows nothing would hide what the column holds.
+    case 'confirm':
+      return [true];
+    case 'numberlist':
+      return [
+        {
+          numbers: Object.fromEntries(
+            question.items.map((item) => [item.key, 1]),
+          ),
+        },
+      ];
   }
 
   // Unreachable as long as the switch is complete; a new question type

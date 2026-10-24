@@ -10,6 +10,7 @@ import { emailAddressSchema } from './auth.ts';
 import { visibleQuestionIds } from './condition.ts';
 import { fileNameSchema, isFileRef } from './file-types.ts';
 import {
+  NUMBERLIST_VALUE_MAX,
   answerableQuestions,
   isAnswerableQuestion,
   tableRowLimit,
@@ -270,6 +271,63 @@ export function seatsOf(value: unknown): [string, number][] {
   );
 }
 
+/**
+ * What a participant answered to a Zahlenliste question — a whole number per
+ * line, keyed by `NumberlistItem.key`.
+ *
+ * Sparse like {@link EventAnswer} (an untouched box is the absence of a key),
+ * and **different in the one respect that matters: `0` is an answer.** A seat
+ * count of zero is „nicht angemeldet"; „Auswärtige Burschen: 0" is a statement
+ * the organisation made, and the export has to be able to tell it from a line
+ * nobody filled in. Only an empty box is dropped ({@link canonicalAnswerValue}).
+ *
+ * Its own key (`numbers`) rather than `seats`, so the two shapes stay
+ * distinguishable by key like every other structured answer — and so the seat
+ * bookkeeping, which reads `seats`, cannot mistake a count of members for a
+ * registration.
+ */
+export interface NumberListAnswer {
+  readonly numbers: Readonly<Record<string, number>>;
+}
+
+/** Narrows an `AnswerValue` to a {@link NumberListAnswer} — `numbers` is its own key. */
+export function isNumberListAnswer(value: unknown): value is NumberListAnswer {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    'numbers' in value
+  );
+}
+
+/**
+ * The numbers of a value that is supposed to be a {@link NumberListAnswer} —
+ * **tolerantly**, and only the entries that are readable, `0` included.
+ *
+ * Reads like {@link seatsOf} (one damaged row must not take an export down),
+ * with the one difference the type has: a non-negative integer is kept, and so
+ * is zero.
+ */
+export function numbersOf(value: unknown): [string, number][] {
+  if (!isNumberListAnswer(value)) {
+    return [];
+  }
+  const numbers: unknown = value.numbers;
+  if (
+    typeof numbers !== 'object' ||
+    numbers === null ||
+    Array.isArray(numbers)
+  ) {
+    return [];
+  }
+  return Object.entries(numbers as Record<string, unknown>).filter(
+    (entry): entry is [string, number] =>
+      typeof entry[1] === 'number' &&
+      Number.isInteger(entry[1]) &&
+      entry[1] >= 0,
+  );
+}
+
 /** Narrows an `AnswerValue` to a {@link FileAnswer} — `files` is its own key. */
 export function isFileAnswer(value: unknown): value is FileAnswer {
   return (
@@ -351,12 +409,15 @@ export function isChoiceAnswer(value: unknown): value is ChoiceAnswer {
 export type AnswerValue =
   | string
   | number
+  // `true` only — the tick of a `confirm` question; `false` is no answer.
+  | boolean
   | ChoiceAnswer
   | AddressAnswer
   | MatrixAnswer
   | TableAnswer
   | FileAnswer
   | EventAnswer
+  | NumberListAnswer
   | null;
 
 /**
@@ -385,7 +446,8 @@ export type ShapedAnswer =
   | { readonly kind: 'matrix'; readonly value: MatrixAnswer }
   | { readonly kind: 'table'; readonly value: TableAnswer }
   | { readonly kind: 'file'; readonly value: FileAnswer }
-  | { readonly kind: 'event'; readonly value: EventAnswer };
+  | { readonly kind: 'event'; readonly value: EventAnswer }
+  | { readonly kind: 'numberlist'; readonly value: NumberListAnswer };
 
 /**
  * True exactly when `X` and `Y` are the **same** type — not merely assignable
@@ -455,6 +517,9 @@ export function structuredAnswerShape(value: StructuredAnswer): ShapedAnswer {
   if (isEventAnswer(value)) {
     return { kind: 'event', value };
   }
+  if (isNumberListAnswer(value)) {
+    return { kind: 'numberlist', value };
+  }
   return { kind: 'choice', value };
 }
 
@@ -523,6 +588,11 @@ const eventAnswerObjectSchema = z.object({
   seats: z.record(z.string(), z.number()),
 });
 
+/** The **shape** of a Zahlenliste answer — weak on purpose, like its neighbours. */
+const numberListAnswerObjectSchema = z.object({
+  numbers: z.record(z.string(), z.number()),
+});
+
 /**
  * The **shape** one stored answer may have — `AnswerValue` as a schema, without
  * any of the rules the question it belongs to imposes.
@@ -542,12 +612,14 @@ const eventAnswerObjectSchema = z.object({
 export const answerValueSchema = z.union([
   z.string(),
   z.number(),
+  z.boolean(),
   choiceAnswerObjectSchema,
   addressAnswerObjectSchema,
   matrixAnswerObjectSchema,
   tableAnswerObjectSchema,
   fileAnswerObjectSchema,
   eventAnswerObjectSchema,
+  numberListAnswerObjectSchema,
   z.null(),
 ]);
 
@@ -905,6 +977,13 @@ function checkTableCell(
         reject('Unbekannte Option.');
       }
       return;
+    // The format of the Datum question's answer, checked by the same Zod rule
+    // (`z.iso.date()`): `2026-02-30` is refused, not stored as text.
+    case 'date':
+      if (typeof value !== 'string' || !z.iso.date().safeParse(value).success) {
+        reject('Bitte ein gültiges Datum angeben.');
+      }
+      return;
     case 'checkbox':
       // `true` or nothing — see {@link TableCellValue}. A stored `false` is
       // refused rather than accepted and ignored, so „leer" keeps one spelling.
@@ -1161,6 +1240,75 @@ function eventAnswerSchema(
     });
 }
 
+/**
+ * A Zahlenliste answer, checked against the lines of *this* question.
+ *
+ * An unknown key is **rejected, not dropped**, for the reason
+ * {@link eventAnswerSchema} gives: „hat nichts eingetragen" and „hat etwas
+ * eingetragen, das wir weggeworfen haben" must not blur. Whole numbers from `0`
+ * to {@link NUMBERLIST_VALUE_MAX}; `0` is stored.
+ *
+ * **Pflicht reads „mindestens eine Zeile ausgefüllt"** — a typed `0` counts,
+ * because it is an answer. `enforceRequired` is threaded in like the other
+ * composites: a draft is not held to it.
+ */
+function numberListAnswerSchema(
+  question: Question & { type: 'numberlist' },
+  enforceRequired: boolean,
+) {
+  const known = new Set(question.items.map((item) => item.key));
+
+  return z
+    .object({
+      numbers: z.record(
+        z.string(),
+        z
+          .number()
+          .int({ error: 'Bitte eine ganze Zahl angeben.' })
+          .min(0, { error: 'Bitte keine negative Zahl angeben.' })
+          .max(NUMBERLIST_VALUE_MAX, {
+            error: `Höchstens ${String(NUMBERLIST_VALUE_MAX)}.`,
+          }),
+      ),
+    })
+    .superRefine((answer, ctx) => {
+      // One issue instead of one per stray key: this runs on the public route,
+      // and a body of thousands of unknown keys must not turn into thousands of
+      // issues in the 400. The question has `items.length` lines, so more keys
+      // than that cannot all be known.
+      if (Object.keys(answer.numbers).length > known.size) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['numbers'],
+          message: 'Mehr Einträge als Zeilen.',
+        });
+        return;
+      }
+
+      for (const key of Object.keys(answer.numbers)) {
+        if (!known.has(key)) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['numbers', key],
+            message: 'Unbekannte Zeile.',
+          });
+        }
+      }
+
+      if (
+        question.required &&
+        enforceRequired &&
+        Object.keys(answer.numbers).length === 0
+      ) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['numbers'],
+          message: 'Bitte mindestens eine Zeile ausfüllen.',
+        });
+      }
+    });
+}
+
 function numberAnswerSchema(question: Question & { type: 'number' }) {
   let schema = question.integer
     ? z.number().int({ error: 'Bitte eine ganze Zahl angeben.' })
@@ -1312,6 +1460,10 @@ export function isBlankAnswer(value: unknown): boolean {
   if (typeof value === 'number') {
     return false;
   }
+  // An unticked box is no answer: `false` is blank, `true` is the one answer.
+  if (typeof value === 'boolean') {
+    return !value;
+  }
   if (isAddressAnswer(value)) {
     // Blank means **all four** subfields are — Land included, even though it
     // is never required: a Land typed on its own (default overwritten, three
@@ -1363,6 +1515,18 @@ export function isBlankAnswer(value: unknown): boolean {
       seats !== null &&
       !Array.isArray(seats) &&
       Object.keys(seats).length === 0
+    );
+  }
+  // Blank means **no line carries a number** — read as defensively as the
+  // Veranstaltung above, and with the one difference of the type: a `0` is a
+  // number ({@link NumberListAnswer}), so it is *not* blank.
+  if (isNumberListAnswer(value)) {
+    const numbers: unknown = value.numbers;
+    return (
+      typeof numbers === 'object' &&
+      numbers !== null &&
+      !Array.isArray(numbers) &&
+      Object.keys(numbers).length === 0
     );
   }
   if (isChoiceAnswer(value)) {
@@ -1457,6 +1621,9 @@ export function canonicalAnswerValue(value: unknown): unknown {
   if ('seats' in value) {
     return canonicalSeats(value);
   }
+  if ('numbers' in value) {
+    return canonicalNumbers(value);
+  }
   if (!('other' in value)) {
     return value;
   }
@@ -1494,6 +1661,37 @@ function canonicalSeats(record: Record<string, unknown>): unknown {
       Object.entries(seats as Record<string, unknown>).filter(
         ([, count]) =>
           count !== 0 &&
+          count !== null &&
+          count !== undefined &&
+          !(typeof count === 'string' && count.trim() === ''),
+      ),
+    ),
+  };
+}
+
+/**
+ * The Zahlenliste's share of the canonical form: **an empty box is no key.**
+ *
+ * `''` (a cleared box) and `null` are the one spelling of „nicht ausgefüllt" and
+ * are removed. A `0` is **kept** — that is the difference to
+ * {@link canonicalSeats}, and the reason this type exists. Anything else that is
+ * not a number (a negative, a string, an object) is left for
+ * {@link numberListAnswerSchema} to refuse by name.
+ */
+function canonicalNumbers(record: Record<string, unknown>): unknown {
+  const numbers: unknown = record.numbers;
+  if (
+    typeof numbers !== 'object' ||
+    numbers === null ||
+    Array.isArray(numbers)
+  ) {
+    return record;
+  }
+  return {
+    ...record,
+    numbers: Object.fromEntries(
+      Object.entries(numbers as Record<string, unknown>).filter(
+        ([, count]) =>
           count !== null &&
           count !== undefined &&
           !(typeof count === 'string' && count.trim() === ''),
@@ -1586,6 +1784,13 @@ export function answerSchemaFor(
       return fileAnswerSchema(question);
     case 'event':
       return eventAnswerSchema(question, enforceRequired);
+    case 'numberlist':
+      return numberListAnswerSchema(question, enforceRequired);
+    // The tick is `true` or it is not an answer. A required box therefore never
+    // reaches here unticked — `isBlankAnswer` has already called it
+    // „Pflichtfeld" — and an optional one answers only with `true`.
+    case 'confirm':
+      return z.literal(true, { error: 'Bitte bestätigen.' });
     case 'info':
       // Never reached: `buildAnswersSchema` skips `info` questions before
       // either schema-builder function is called — an
@@ -1762,6 +1967,11 @@ function blankSchemaFor(question: Question): z.ZodType<AnswerValue> {
     // again.
     case 'event':
       return z.object({ seats: z.record(z.string(), z.never()) });
+    // The same shape one type further along: „leer" is the object with **no
+    // line in it**, once {@link canonicalAnswerValue} has taken the cleared
+    // boxes out. A `0` is not blank, so it never matches here.
+    case 'numberlist':
+      return z.object({ numbers: z.record(z.string(), z.never()) });
     case 'info':
       // The trap named: this switch has a `default`, so an `info`
       // left out here would silently inherit „leer heißt `'' | null`" — a
@@ -1791,6 +2001,11 @@ function blankSchemaFor(question: Question): z.ZodType<AnswerValue> {
     case 'email':
     case 'phone':
       return z.union([z.literal(''), z.null()]);
+    // An unticked box: the fill-in view sends `null`, a client that models
+    // „nein" explicitly may send `false`. Both are „nicht beantwortet" and
+    // neither is stored (`toStoredAnswers`).
+    case 'confirm':
+      return z.union([z.literal(''), z.null(), z.literal(false)]);
   }
 
   // Unreachable while the switch is exhaustive; a new question type narrows to

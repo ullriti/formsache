@@ -119,6 +119,11 @@ const SOURCE_QUESTIONS = {
       },
     ],
   },
+  confirm: base(SOURCE, 'confirm'),
+  numberlist: {
+    ...base(SOURCE, 'numberlist'),
+    items: [{ key: 'fuexe', label: 'Füxe' }],
+  },
   info: base(SOURCE, 'info'),
   file: { ...base(SOURCE, 'file'), maxFiles: 1 },
   table: {
@@ -315,7 +320,14 @@ const CASES = {
     filled: { hit: { seats: { stadtfest: 2 } }, miss: { seats: {} } },
     empty: { hit: { seats: {} }, miss: { seats: { stadtfest: 2 } } },
   },
+  confirm: {
+    equals: { value: 'true', hit: true, miss: null },
+    notEquals: { value: 'true', hit: null, miss: true },
+    filled: { hit: true, miss: null },
+    empty: { hit: null, miss: true },
+  },
   info: {},
+  numberlist: {},
   file: {},
   table: {},
   matrix: {},
@@ -340,13 +352,13 @@ describe('Welche Operatoren ein Quelltyp anbietet ', () => {
    * not in production code, because there it would be a second list beside the
    * operator table — and the one nobody maintains is the one that decides.
    */
-  it('schließt genau die fünf Typen des Handoffs als Quelle aus', () => {
+  it('schließt genau die fünf Typen des Handoffs und die Zahlenliste als Quelle aus', () => {
     const excluded = questionTypeSchema.options.filter(
       (type) => !canBeConditionSource(type),
     );
 
     expect([...excluded].sort()).toStrictEqual(
-      ['address', 'file', 'info', 'matrix', 'table'].sort(),
+      ['address', 'file', 'info', 'matrix', 'numberlist', 'table'].sort(),
     );
   });
 

@@ -23,6 +23,7 @@ import {
   exhaustedPosition,
   formDefinitionSchema,
   needsResponseCount,
+  numbersOf,
   parseStoredFormPrivacyNotice,
   publicAvailability,
   publicEventSeats,
@@ -165,10 +166,15 @@ function toStoredAnswers(
   const stored: Record<string, Prisma.InputJsonValue> = {};
 
   for (const [questionId, value] of Object.entries(answers)) {
-    if (value === undefined || value === null) {
+    // `false` is an unticked box — no answer, so no key (`confirm`).
+    if (value === undefined || value === null || value === false) {
       continue;
     }
-    if (typeof value === 'string' || typeof value === 'number') {
+    if (
+      typeof value === 'string' ||
+      typeof value === 'number' ||
+      typeof value === 'boolean'
+    ) {
       stored[questionId] = value;
       continue;
     }
@@ -254,6 +260,16 @@ function toStoredAnswers(
           seats[key] = count;
         }
         stored[questionId] = { seats };
+        break;
+      }
+      // The numbers of a Zahlenliste — rebuilt line by line through
+      // `numbersOf`, the shared reader, for the reason the Veranstaltung above
+      // gives. A `0` is kept: it is an answer of this type, not the absence of
+      // one.
+      case 'numberlist': {
+        stored[questionId] = {
+          numbers: Object.fromEntries(numbersOf(shaped.value)),
+        };
         break;
       }
       default: {

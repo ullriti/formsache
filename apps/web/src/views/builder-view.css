@@ -749,6 +749,27 @@
   color: var(--color-text-subtle);
 }
 
+.q-card__info {
+  font-size: var(--font-size-label);
+  color: var(--color-text-subtle);
+  overflow-wrap: anywhere;
+}
+
+.q-card__info > :first-child {
+  margin-top: 0;
+}
+
+.q-card__info p,
+.q-card__info ul,
+.q-card__info ol {
+  margin: 0 0 var(--space-1);
+}
+
+.q-card__info ul,
+.q-card__info ol {
+  padding-left: var(--space-5);
+}
+
 .q-card__split-hint {
   position: absolute;
   top: var(--space-1);

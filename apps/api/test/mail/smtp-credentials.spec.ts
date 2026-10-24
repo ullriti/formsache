@@ -412,8 +412,11 @@ describe('SMTP credentials', () => {
       // The beginning of the sentence, not the whole one: the payload is JSON,
       // and the typographic quotation marks in it are escaped.
       expect(payload).toContain(MAIL_CATEGORY_AUTH.split('.')[0]);
-      // And the wording of the server is **not** in it.
-      expect(payload).not.toContain('535');
+      // And the wording of the server is **not** in it. The *code* as a whole
+      // word, not as a substring: the payload also carries random UUIDs and
+      // timestamps, and „535" turns up inside those by chance now and then —
+      // which made this assertion fail on runs where nothing had leaked.
+      expect(payload).not.toMatch(/\b535\b/u);
 
       for (const secret of [password, user]) {
         for (const { label, value } of spellings(secret)) {

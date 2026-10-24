@@ -158,27 +158,35 @@ async function run(generator: AiFormGenerator): Promise<AiFormOutcome> {
 }
 
 describe.each(SUBJECTS)('$name — the shared contract', (subject) => {
-  it.each(CONTRACT_ROWS)('$name', async (row) => {
-    const arranged = subject.arrange(row);
+  it.each(CONTRACT_ROWS)(
+    '$name',
+    async (row) => {
+      const arranged = subject.arrange(row);
 
-    // **A result, never an exception** (ADR-0015 no. 2). `generate` is awaited
-    // without a `try`, so an implementation that throws fails this line rather
-    // than being caught into a passing assertion.
-    const outcome = await run(arranged.generator);
+      // **A result, never an exception** (ADR-0015 no. 2). `generate` is awaited
+      // without a `try`, so an implementation that throws fails this line rather
+      // than being caught into a passing assertion.
+      const outcome = await run(arranged.generator);
 
-    if (row.expected === 'ok') {
-      expect(outcome.ok).toBe(true);
-    } else {
-      expect(outcome).toMatchObject({ ok: false, failure: row.expected });
-    }
+      if (row.expected === 'ok') {
+        expect(outcome.ok).toBe(true);
+      } else {
+        expect(outcome).toMatchObject({ ok: false, failure: row.expected });
+      }
 
-    // **Exactly one attempt, always** (ADR-0015 no. 6, assumption A4). This is
-    // where the two SDKs' own retry defaults are *measured* rather than
-    // believed: the `rate_limited` row answers 429 once and a usable draft on
-    // every later attempt, so an adapter that repeated would report `ok` here
-    // and fail the assertion above as well.
-    expect(arranged.attempts()).toBe(1);
-  });
+      // **Exactly one attempt, always** (ADR-0015 no. 6, assumption A4). This is
+      // where the two SDKs' own retry defaults are *measured* rather than
+      // believed: the `rate_limited` row answers 429 once and a usable draft on
+      // every later attempt, so an adapter that repeated would report `ok` here
+      // and fail the assertion above as well.
+      expect(arranged.attempts()).toBe(1);
+      // The row itself is quick (the `timeout` row waits `TEST_DEADLINE_MS`), but
+      // the first row of a file also pays for loading the SDK — on a loaded CI
+      // runner that exceeded vitest's default 5 s and failed a run in which
+      // nothing about the contract had changed.
+    },
+    30_000,
+  );
 
   it('sends the free text, the language and the derived schema — and buys no capability', async () => {
     const row = CONTRACT_ROWS[0];
