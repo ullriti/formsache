@@ -124,6 +124,16 @@ export class AnthropicFormGenerator extends AiFormGenerator {
        * API may answer differently tomorrow.
        */
       defaultHeaders: {
+        /**
+         * **The credential travels as `x-api-key`, as before SDK 1.x.** From
+         * 1.0 the SDK sends a plain `apiKey` as `Authorization: Bearer …`.
+         * `key-confinement.spec.ts` pins the wire format (our key in
+         * `x-api-key`, no `Authorization` header at all), so both are set
+         * explicitly here instead of trusting the library default; `null`
+         * removes a header in the SDK's header builder.
+         */
+        'x-api-key': config.apiKey,
+        Authorization: null,
         'X-Stainless-OS': null,
         'X-Stainless-Arch': null,
         'X-Stainless-Runtime-Version': null,
