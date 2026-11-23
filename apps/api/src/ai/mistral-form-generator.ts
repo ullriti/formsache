@@ -14,7 +14,11 @@ import {
   AI_SYSTEM_INSTRUCTION,
   aiUserMessage,
 } from './ai-prompt';
-import { AiFormGenerator, type ProviderTransport } from './ai-form-generator';
+import {
+  AiFormGenerator,
+  type ProviderTransport,
+  withinDeadline,
+} from './ai-form-generator';
 import { pinnedMistralModelInList } from './mistral-model-alias';
 import { parseModelJson } from './model-json';
 
@@ -156,9 +160,10 @@ export class MistralFormGenerator extends AiFormGenerator {
    */
   async resolveModel(signal: AbortSignal): Promise<string | null> {
     try {
-      const list = await this.client.models.list(undefined, {
-        fetchOptions: { signal },
-      });
+      const list = await withinDeadline(
+        this.client.models.list(undefined, { fetchOptions: { signal } }),
+        signal,
+      );
       return pinnedMistralModelInList(list, this.model);
     } catch {
       return null;
@@ -171,47 +176,50 @@ export class MistralFormGenerator extends AiFormGenerator {
   ): Promise<AiFormOutcome> {
     let response: Awaited<ReturnType<Mistral['chat']['complete']>>;
     try {
-      response = await this.client.chat.complete(
-        {
-          model: this.model,
-          maxTokens: AI_MAX_OUTPUT_TOKENS,
-          messages: [
-            { role: 'system', content: AI_SYSTEM_INSTRUCTION },
-            { role: 'user', content: aiUserMessage(request) },
-          ],
-          /**
-           * **Structured output, the Mistral way** .
-           *
-           * The same derived schema the Anthropic adapter puts in its tool
-           * (`ai-form-json-schema.ts`) — one rendering, two providers, and the
-           * shared contract table asserts both of them actually send it.
-           *
-           * **No `tools` key here, and that is not an oversight:** this API
-           * carries a `response_format`, so the schema travels without the
-           * request growing a tool surface at all. The assertion for this
-           * column is therefore still the strict one — `tools` absent.
-           *
-           * ⚠️ **`strict: false`, written out rather than left to a default.**
-           * Strict mode on this API is the OpenAI-shaped one: every object
-           * closed with `additionalProperties: false` and every property in
-           * `required`. The derived form has genuinely optional fields and
-           * carries length and range bounds, so `strict: true` would be a
-           * rejected request on every call rather than a validated one — and
-           * with the provider documentation unreachable from here (HTTP 403,
-           * 2026-08-06) and no key to measure with, guessing otherwise would
-           * trade a working hint for a broken adapter. The judge is
-           * `adoptAiFormDraft` either way.
-           */
-          responseFormat: {
-            type: 'json_schema',
-            jsonSchema: {
-              name: AI_FORM_TOOL_NAME,
-              schemaDefinition: AI_FORM_JSON_SCHEMA,
-              strict: false,
+      response = await withinDeadline(
+        this.client.chat.complete(
+          {
+            model: this.model,
+            maxTokens: AI_MAX_OUTPUT_TOKENS,
+            messages: [
+              { role: 'system', content: AI_SYSTEM_INSTRUCTION },
+              { role: 'user', content: aiUserMessage(request) },
+            ],
+            /**
+             * **Structured output, the Mistral way** .
+             *
+             * The same derived schema the Anthropic adapter puts in its tool
+             * (`ai-form-json-schema.ts`) — one rendering, two providers, and the
+             * shared contract table asserts both of them actually send it.
+             *
+             * **No `tools` key here, and that is not an oversight:** this API
+             * carries a `response_format`, so the schema travels without the
+             * request growing a tool surface at all. The assertion for this
+             * column is therefore still the strict one — `tools` absent.
+             *
+             * ⚠️ **`strict: false`, written out rather than left to a default.**
+             * Strict mode on this API is the OpenAI-shaped one: every object
+             * closed with `additionalProperties: false` and every property in
+             * `required`. The derived form has genuinely optional fields and
+             * carries length and range bounds, so `strict: true` would be a
+             * rejected request on every call rather than a validated one — and
+             * with the provider documentation unreachable from here (HTTP 403,
+             * 2026-08-06) and no key to measure with, guessing otherwise would
+             * trade a working hint for a broken adapter. The judge is
+             * `adoptAiFormDraft` either way.
+             */
+            responseFormat: {
+              type: 'json_schema',
+              jsonSchema: {
+                name: AI_FORM_TOOL_NAME,
+                schemaDefinition: AI_FORM_JSON_SCHEMA,
+                strict: false,
+              },
             },
           },
-        },
-        { signal, retries: { strategy: 'none' } },
+          { signal, retries: { strategy: 'none' } },
+        ),
+        signal,
       );
     } catch (error: unknown) {
       return { ok: false, failure: classify(error, signal), usage: null };

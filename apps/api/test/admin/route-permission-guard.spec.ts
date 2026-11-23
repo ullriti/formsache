@@ -165,7 +165,7 @@ class UnguardedProbeController {
  * instance to exist.
  */
 @Controller('tenant/instance-guard-probe')
-@UseGuards(new TenantScopeGuard({} as TenantScopeFactory))
+@UseGuards(new TenantScopeGuard({} as unknown as TenantScopeFactory))
 class InstanceGuardedProbeController {
   @Get()
   read(): Record<string, never> {

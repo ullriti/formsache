@@ -204,10 +204,8 @@
     "f02e65819ea320eb": "Copyright (c) 2015, Scott Motte\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without\nmodification, are permitted provided that the following conditions are met:\n\n* Redistributions of source code must retain the above copyright notice, this\n  list of conditions and the following disclaimer.\n\n* Redistributions in binary form must reproduce the above copyright notice,\n  this list of conditions and the following disclaimer in the documentation\n  and/or other materials provided with the distribution.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\"\nAND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE\nIMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\nDISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE\nFOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL\nDAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR\nSERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER\nCAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,\nOR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE\nOF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.",
     "f25d2af75b3e4127": "# Copyright (c) 2015 Calvin Metcalf\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\n**THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.**",
     "f2fde84e6c1f1776": "The MIT License (MIT)\n\nCopyright (c) 2015-2021 Evgeny Poberezkin\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.",
-    "f36bc543857c5007": "The MIT License (MIT)\r\n\r\nCopyright © 2025 Borewit\r\n\r\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\r\n\r\nThe above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\r\n\r\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.",
     "f3d11cfcc878ed0b": "The ISC License\n\nCopyright (c) Isaac Z. Schlueter and Contributors\n\nPermission to use, copy, modify, and/or distribute this software for any\npurpose with or without fee is hereby granted, provided that the above\ncopyright notice and this permission notice appear in all copies.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\" AND THE AUTHOR DISCLAIMS ALL WARRANTIES\nWITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF\nMERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR\nANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES\nWHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN\nACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR\nIN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.\n\n----\n\nThis library bundles a version of the `fs.realpath` and `fs.realpathSync`\nmethods from Node.js v0.10 under the terms of the Node.js MIT license.\n\nNode's license follows, also included at the header of `old.js` which contains\nthe licensed code:\n\n  Copyright Joyent, Inc. and other Node contributors.\n\n  Permission is hereby granted, free of charge, to any person obtaining a\n  copy of this software and associated documentation files (the \"Software\"),\n  to deal in the Software without restriction, including without limitation\n  the rights to use, copy, modify, merge, publish, distribute, sublicense,\n  and/or sell copies of the Software, and to permit persons to whom the\n  Software is furnished to do so, subject to the following conditions:\n\n  The above copyright notice and this permission notice shall be included in\n  all copies or substantial portions of the Software.\n\n  THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\n  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\n  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\n  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\n  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING\n  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER\n  DEALINGS IN THE SOFTWARE.",
     "f48fea67bde19a53": "Copyright (c) 2012 Barnesandnoble.com, llc, Donavon West, Domenic Denicola, Brian Cavalier\n\nPermission is hereby granted, free of charge, to any person obtaining\na copy of this software and associated documentation files (the\n\"Software\"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to\npermit persons to whom the Software is furnished to do so, subject to\nthe following conditions:\n\nThe above copyright notice and this permission notice shall be\nincluded in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\nNONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\nLIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\nOF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\nWITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.",
-    "f49fbfe3129f5930": "The MIT License (MIT)\r\n\r\nCopyright © 2026 Borewit\r\n\r\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\r\n\r\nThe above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\r\n\r\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.",
     "f4b733956caae262": "(The MIT License)\n\nCopyright (c) 2012 TJ Holowaychuk\nCopyright (c) 2014-2022 Douglas Christopher Wilson\n\nPermission is hereby granted, free of charge, to any person obtaining\na copy of this software and associated documentation files (the\n'Software'), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to\npermit persons to whom the Software is furnished to do so, subject to\nthe following conditions:\n\nThe above copyright notice and this permission notice shall be\nincluded in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.\nIN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY\nCLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,\nTORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE\nSOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.",
     "f4bb8f655fdb4d11": "Copyright 2021 Mike Bostock\n\nPermission to use, copy, modify, and/or distribute this software for any purpose\nwith or without fee is hereby granted, provided that the above copyright notice\nand this permission notice appear in all copies.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH\nREGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND\nFITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,\nINDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS\nOF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER\nTORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF\nTHIS SOFTWARE.",
     "f57e3a2cabf2b43a": "Copyright 2010-2023 Mike Bostock\n\nPermission to use, copy, modify, and/or distribute this software for any purpose\nwith or without fee is hereby granted, provided that the above copyright notice\nand this permission notice appear in all copies.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH\nREGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND\nFITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,\nINDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS\nOF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER\nTORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF\nTHIS SOFTWARE.",
@@ -227,7 +225,7 @@
   "packages": [
     {
       "name": "@anthropic-ai/sdk",
-      "version": "1.2.0",
+      "version": "1.11.0",
       "spdx": "Apache-2.0",
       "author": "Anthropic",
       "homepage": "https://github.com/anthropics/anthropic-sdk-typescript#readme",
@@ -240,14 +238,6 @@
       "author": "The Babel Team",
       "homepage": "https://babel.dev/docs/en/next/babel-runtime",
       "text": "8f08c824b2bb54ed"
-    },
-    {
-      "name": "@borewit/text-codec",
-      "version": "0.2.2",
-      "spdx": "MIT",
-      "author": "Borewit",
-      "homepage": "https://github.com/Borewit/text-codec#readme",
-      "text": "f36bc543857c5007"
     },
     {
       "name": "@borewit/text-codec",
@@ -315,7 +305,7 @@
     },
     {
       "name": "@mistralai/mistralai",
-      "version": "3.1.0",
+      "version": "3.5.0",
       "spdx": "Apache-2.0",
       "author": "Mistral AI",
       "homepage": "https://github.com/mistralai/client-ts#readme",
@@ -331,7 +321,7 @@
     },
     {
       "name": "@nestjs/common",
-      "version": "12.4.0",
+      "version": "12.6.0",
       "spdx": "MIT",
       "author": "Kamil Mysliwiec",
       "homepage": "https://nestjs.com",
@@ -339,7 +329,7 @@
     },
     {
       "name": "@nestjs/core",
-      "version": "12.4.0",
+      "version": "12.6.0",
       "spdx": "MIT",
       "author": "Kamil Mysliwiec",
       "homepage": "https://nestjs.com",
@@ -347,7 +337,7 @@
     },
     {
       "name": "@nestjs/platform-express",
-      "version": "12.4.0",
+      "version": "12.6.0",
       "spdx": "MIT",
       "author": "Kamil Mysliwiec",
       "homepage": "https://nestjs.com",
@@ -355,7 +345,7 @@
     },
     {
       "name": "@nestjs/throttler",
-      "version": "6.7.1",
+      "version": "6.8.0",
       "spdx": "MIT",
       "author": "Jay McDoniel",
       "homepage": "https://github.com/nestjs/throttler#readme",
@@ -603,7 +593,7 @@
     },
     {
       "name": "@tanstack/query-core",
-      "version": "5.107.1",
+      "version": "5.108.4",
       "spdx": "MIT",
       "author": "tannerlinsley",
       "homepage": "https://tanstack.com/query",
@@ -611,7 +601,7 @@
     },
     {
       "name": "@tanstack/react-query",
-      "version": "5.107.1",
+      "version": "5.108.4",
       "spdx": "MIT",
       "author": "tannerlinsley",
       "homepage": "https://tanstack.com/query",
@@ -1123,14 +1113,6 @@
     },
     {
       "name": "content-disposition",
-      "version": "1.1.0",
-      "spdx": "MIT",
-      "author": "Douglas Christopher Wilson",
-      "homepage": "https://github.com/jshttp/content-disposition#readme",
-      "text": "0696190d4967590d"
-    },
-    {
-      "name": "content-disposition",
       "version": "2.0.1",
       "spdx": "MIT",
       "author": "Douglas Christopher Wilson",
@@ -1512,14 +1494,6 @@
       "author": "Guyon Roche",
       "homepage": "https://github.com/exceljs/exceljs#readme",
       "text": "331d56dfd480b823"
-    },
-    {
-      "name": "express",
-      "version": "5.2.1",
-      "spdx": "MIT",
-      "author": "TJ Holowaychuk",
-      "homepage": "https://expressjs.com/",
-      "text": "93321073ebe5acc4"
     },
     {
       "name": "express",
@@ -1915,7 +1889,7 @@
     },
     {
       "name": "jose",
-      "version": "6.2.12",
+      "version": "6.2.17",
       "spdx": "MIT",
       "author": "Filip Skokan",
       "homepage": "https://github.com/panva/jose",
@@ -1923,7 +1897,7 @@
     },
     {
       "name": "jose",
-      "version": "6.2.17",
+      "version": "6.2.18",
       "spdx": "MIT",
       "author": "Filip Skokan",
       "homepage": "https://github.com/panva/jose",
@@ -2259,7 +2233,7 @@
     },
     {
       "name": "nodemailer",
-      "version": "10.3.1",
+      "version": "10.6.1",
       "spdx": "MIT-0",
       "author": "Andris Reinman",
       "homepage": "https://nodemailer.com/",
@@ -2275,7 +2249,7 @@
     },
     {
       "name": "oauth4webapi",
-      "version": "3.8.8",
+      "version": "3.8.9",
       "spdx": "MIT",
       "author": "Filip Skokan",
       "homepage": "https://github.com/panva/oauth4webapi",
@@ -2323,7 +2297,7 @@
     },
     {
       "name": "openid-client",
-      "version": "6.8.9",
+      "version": "6.9.1",
       "spdx": "MIT",
       "author": "Filip Skokan",
       "homepage": "https://github.com/panva/openid-client",
@@ -2547,14 +2521,6 @@
     },
     {
       "name": "proxy-addr",
-      "version": "2.0.7",
-      "spdx": "MIT",
-      "author": "Douglas Christopher Wilson",
-      "homepage": "https://github.com/jshttp/proxy-addr#readme",
-      "text": "49fa72ab1de52693"
-    },
-    {
-      "name": "proxy-addr",
       "version": "2.0.8",
       "spdx": "MIT",
       "author": "Douglas Christopher Wilson",
@@ -2568,14 +2534,6 @@
       "author": "Nicolas DUBIEN",
       "homepage": "https://github.com/dubzzz/pure-rand#readme",
       "text": "c90820850e2f2e02"
-    },
-    {
-      "name": "qs",
-      "version": "6.15.3",
-      "spdx": "BSD-3-Clause",
-      "author": null,
-      "homepage": "https://github.com/ljharb/qs",
-      "text": "14d069c68fe75baa"
     },
     {
       "name": "qs",
@@ -2968,14 +2926,6 @@
       "author": "Douglas Christopher Wilson",
       "homepage": "https://github.com/component/toidentifier#readme",
       "text": "8d512baec1ac13c1"
-    },
-    {
-      "name": "token-types",
-      "version": "6.1.2",
-      "spdx": "MIT",
-      "author": "Borewit",
-      "homepage": "https://github.com/Borewit/token-types#readme",
-      "text": "f49fbfe3129f5930"
     },
     {
       "name": "token-types",

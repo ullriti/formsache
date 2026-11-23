@@ -98,7 +98,9 @@ export class AiFormsService {
     // **Our** deadline, minted here and handed straight through (ADR-0015
     // no. 6) — never the SDK's, whose default is ten minutes. `AbortSignal`
     // rather than a `Promise.race`: it has to reach the HTTP request itself,
-    // or a call we stopped waiting for keeps running and keeps costing.
+    // or a call we stopped waiting for keeps running and keeps costing. The
+    // adapters additionally race the call against it (`withinDeadline`),
+    // because the SDKs' derived requests can lose the link to this signal.
     const signal = AbortSignal.timeout(config.timeoutMs);
 
     const spent = await this.usage.spend<AiFormDraftResult>(

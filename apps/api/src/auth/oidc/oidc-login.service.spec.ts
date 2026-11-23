@@ -120,12 +120,14 @@ function harness(rows: readonly OfferableTenant[]) {
   );
 
   const login = new OidcLoginService(
-    { findOfferable: () => Promise.resolve(rows) } as OidcTenantsService,
+    {
+      findOfferable: () => Promise.resolve(rows),
+    } as unknown as OidcTenantsService,
     config,
     secrets,
-    {} as OidcProviderService,
-    {} as OidcIdentityService,
-    {} as SessionService,
+    {} as unknown as OidcProviderService,
+    {} as unknown as OidcIdentityService,
+    {} as unknown as SessionService,
     { OIDC_ISSUER_ALLOWLIST: undefined } as unknown as ApiEnv,
   );
 
