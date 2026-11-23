@@ -17,7 +17,11 @@ import {
   AI_SYSTEM_INSTRUCTION,
   aiUserMessage,
 } from './ai-prompt';
-import { AiFormGenerator, type ProviderTransport } from './ai-form-generator';
+import {
+  AiFormGenerator,
+  type ProviderTransport,
+  withinDeadline,
+} from './ai-form-generator';
 import { parseModelJson, type ParsedModelJson } from './model-json';
 
 /**
@@ -178,57 +182,60 @@ export class AnthropicFormGenerator extends AiFormGenerator {
   ): Promise<AiFormOutcome> {
     let message: Anthropic.Message;
     try {
-      message = await this.client.messages.create(
-        {
-          model: this.model,
-          max_tokens: AI_MAX_OUTPUT_TOKENS,
-          system: AI_SYSTEM_INSTRUCTION,
-          messages: [{ role: 'user', content: aiUserMessage(request) }],
-          /**
-           * **Structured output, the Anthropic way** .
-           *
-           * There is exactly **one** tool and it grants no capability: it is
-           * the shape of the answer, not something the model may *do*. Its
-           * `input_schema` is `aiFormDraftSchema` rendered to JSON Schema
-           * (`ai-form-json-schema.ts`) — derived, never written twice.
-           *
-           * The promise „der Freitext kauft keine Fähigkeiten"  is therefore no longer „the payload has no `tools`
-           * key" but the sharper statement the tests now measure: the payload
-           * carries this one tool, its schema is the derived one, and **no**
-           * entry carries a `type` — every server-side tool of this API
-           * (`web_search_*`, `code_execution_*`, `mcp_toolset`, …) is
-           * identified by exactly that field. Adding one still turns the
-           * structural assertion red.
-           */
-          tools: [
-            {
+      message = await withinDeadline(
+        this.client.messages.create(
+          {
+            model: this.model,
+            max_tokens: AI_MAX_OUTPUT_TOKENS,
+            system: AI_SYSTEM_INSTRUCTION,
+            messages: [{ role: 'user', content: aiUserMessage(request) }],
+            /**
+             * **Structured output, the Anthropic way** .
+             *
+             * There is exactly **one** tool and it grants no capability: it is
+             * the shape of the answer, not something the model may *do*. Its
+             * `input_schema` is `aiFormDraftSchema` rendered to JSON Schema
+             * (`ai-form-json-schema.ts`) — derived, never written twice.
+             *
+             * The promise „der Freitext kauft keine Fähigkeiten"  is therefore no longer „the payload has no `tools`
+             * key" but the sharper statement the tests now measure: the payload
+             * carries this one tool, its schema is the derived one, and **no**
+             * entry carries a `type` — every server-side tool of this API
+             * (`web_search_*`, `code_execution_*`, `mcp_toolset`, …) is
+             * identified by exactly that field. Adding one still turns the
+             * structural assertion red.
+             */
+            tools: [
+              {
+                name: AI_FORM_TOOL_NAME,
+                description: AI_FORM_TOOL_DESCRIPTION,
+                input_schema: AI_FORM_JSON_SCHEMA,
+              },
+            ],
+            /**
+             * Forced, and forced to **one**: `tool_choice: { type: 'tool' }`
+             * makes the tool the only way to answer, and
+             * `disable_parallel_tool_use` means the model emits a single
+             * `tool_use` block rather than several. Two blocks would raise the
+             * question which of them is the form, and the answer would be a
+             * heuristic in an adapter — the kind of guess this seam exists to
+             * avoid.
+             *
+             * ⚠️ **`strict` is deliberately absent** — see
+             * `ai-form-json-schema.ts` for the reasoning: the derived schema
+             * carries optional properties and length/range bounds that strict
+             * mode rejects, so switching it on would fail every call rather than
+             * validate one. The judge is `adoptAiFormDraft`, unchanged.
+             */
+            tool_choice: {
+              type: 'tool',
               name: AI_FORM_TOOL_NAME,
-              description: AI_FORM_TOOL_DESCRIPTION,
-              input_schema: AI_FORM_JSON_SCHEMA,
+              disable_parallel_tool_use: true,
             },
-          ],
-          /**
-           * Forced, and forced to **one**: `tool_choice: { type: 'tool' }`
-           * makes the tool the only way to answer, and
-           * `disable_parallel_tool_use` means the model emits a single
-           * `tool_use` block rather than several. Two blocks would raise the
-           * question which of them is the form, and the answer would be a
-           * heuristic in an adapter — the kind of guess this seam exists to
-           * avoid.
-           *
-           * ⚠️ **`strict` is deliberately absent** — see
-           * `ai-form-json-schema.ts` for the reasoning: the derived schema
-           * carries optional properties and length/range bounds that strict
-           * mode rejects, so switching it on would fail every call rather than
-           * validate one. The judge is `adoptAiFormDraft`, unchanged.
-           */
-          tool_choice: {
-            type: 'tool',
-            name: AI_FORM_TOOL_NAME,
-            disable_parallel_tool_use: true,
           },
-        },
-        { signal },
+          { signal },
+        ),
+        signal,
       );
     } catch (error: unknown) {
       return { ok: false, failure: this.classify(error, signal), usage: null };

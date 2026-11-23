@@ -128,6 +128,14 @@ Kategorien je Eintrag: **Added** · **Changed** · **Deprecated** · **Removed**
 
 ### Fixed
 
+- **KI-Formularentwurf: Die Zeitgrenze greift verlässlich.** Beide
+  KI-Anbindungen setzen die eigene Frist jetzt selbst durch, statt sich darauf
+  zu verlassen, dass das Abbruchsignal durch das Anbieter-SDK hindurch
+  ankommt. Mit dem Mistral-SDK 3.5 konnte eine Speicherbereinigung zur falschen
+  Zeit die Verbindung kappen; die Anfrage wartete dann unbegrenzt statt nach
+  der Frist mit „Zeitüberschreitung" zu enden. Ein Test erzwingt diese
+  Speicherbereinigung für beide Anbieter.
+
 - **Veranstaltung: langer Text bricht um, statt das Zahlenfeld zu verdrängen.**
   Bei einem langen Namen rutschte das Eingabefeld in der Ausfüllmaske auf eine
   eigene Zeile, auch auf breiten Bildschirmen. Jetzt wird der Text umbrochen

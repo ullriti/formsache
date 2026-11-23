@@ -187,6 +187,10 @@ function pathOf(url: string | undefined): string {
  * at all: two bootstraps that configure the application by hand drift apart,
  * and the one that drifts is never the one under test.
  */
+// Nest declares `NestApplicationContextOptions` (the base of
+// `NestApplicationOptions`) as a class, but it is a plain options bag: Nest
+// never instantiates it and its own documentation passes object literals.
+// eslint-disable-next-line @typescript-eslint/no-unsafe-class-instance-assignment -- see above
 export const APP_OPTIONS: NestApplicationOptions = {
   /**
    * **No body parser from Nest** — `configureApp` registers a JSON one below,

@@ -1,3 +1,6 @@
+import { setFlagsFromString } from 'node:v8';
+import { runInNewContext } from 'node:vm';
+
 import { describe, expect, it } from 'vitest';
 import {
   buildAiFormRequest,
@@ -273,5 +276,54 @@ describe('the success row in detail', () => {
       const outcome = await run(build());
       expect(outcome).toEqual({ ok: true, draft: RECORDED_DRAFT, usage });
     },
+  );
+});
+
+/**
+ * **The deadline must not depend on the garbage collector** (ADR-0015 no. 6).
+ *
+ * Both SDKs send a request derived from the one that carries our signal
+ * (Mistral 3.5 a literal `request.clone()`), and in Node the derived one only
+ * hears the abort while its source object is alive. A collection at the wrong
+ * moment therefore left the `timeout` row waiting forever — on CI it hit the
+ * 30-second limit, locally it passed, because nothing collected in 120 ms.
+ * Forcing the collection turns that luck into a deterministic row: without
+ * `withinDeadline` (`ai-form-generator.ts`) both adapters hang here.
+ */
+describe('the deadline survives a garbage collection', () => {
+  // `--expose-gc` set at runtime, then `gc` fetched from a fresh context —
+  // the global of the current one was created before the flag existed.
+  setFlagsFromString('--expose-gc');
+  const collect = runInNewContext('gc') as () => void;
+
+  const timeoutRow = CONTRACT_ROWS.find(
+    (row) =>
+      row.expected === 'timeout' &&
+      row.anthropic.kind === 'hang' &&
+      row.mistral.kind === 'hang',
+  );
+
+  it.each(SUBJECTS.filter((subject) => subject.wire !== undefined))(
+    '$name answers `timeout` on time',
+    async (subject) => {
+      expect(timeoutRow).toBeDefined();
+      if (timeoutRow === undefined) {
+        return;
+      }
+      const arranged = subject.arrange(timeoutRow);
+      const outcome = run(arranged.generator);
+
+      // Collect only once the provider is "silent", i.e. the attempt is out
+      // and every SDK-internal object it no longer needs is unreachable.
+      await expect.poll(() => arranged.attempts()).toBe(1);
+      collect();
+      collect();
+
+      await expect(outcome).resolves.toMatchObject({
+        ok: false,
+        failure: 'timeout',
+      });
+    },
+    10_000,
   );
 });

@@ -146,3 +146,45 @@ export abstract class AiFormGeneratorFactory {
  * real measurement is the acceptance run with a configured key.
  */
 export type ProviderTransport = (request: Request) => Promise<Response>;
+
+/**
+ * **Our deadline, enforced by the adapter rather than delegated to the SDK**
+ * (ADR-0015 no. 6). Both adapters wrap their provider call in it.
+ *
+ * Both SDKs hand our signal to a `Request` and then send a *derived* one —
+ * Mistral's since 3.5 literally a `request.clone()`. In Node a derived
+ * request's signal follows its source only while the source object is alive:
+ * undici links them through a weak reference. Once nothing holds the source
+ * any more, a garbage collection cuts the link and the abort never reaches
+ * the attempt — the call keeps waiting. Measured: the contract table's
+ * `timeout` row hit vitest's 30-second limit on CI with Mistral 3.5, and with
+ * a collection forced while the provider is silent it hangs every time, for
+ * both SDKs (`test/ai/provider-contract.spec.ts`, "the deadline survives a
+ * garbage collection").
+ *
+ * The signal still goes to the SDK, so the HTTP request is cancelled wherever
+ * the link holds; this race only guarantees that *our* answer arrives on time
+ * either way.
+ */
+export async function withinDeadline<T>(
+  work: PromiseLike<T>,
+  signal: AbortSignal,
+): Promise<T> {
+  let abort = (): void => undefined;
+  const aborted = new Promise<never>((_resolve, reject) => {
+    abort = () => {
+      reject(new DOMException('The operation was aborted.', 'AbortError'));
+    };
+  });
+  if (signal.aborted) {
+    abort();
+  } else {
+    signal.addEventListener('abort', abort, { once: true });
+  }
+  try {
+    // `race` subscribes to both, so a late rejection of `work` is handled.
+    return await Promise.race([work, aborted]);
+  } finally {
+    signal.removeEventListener('abort', abort);
+  }
+}
