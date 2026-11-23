@@ -516,7 +516,7 @@ jobs:
       # into this one — but this job was its only consumer, so the extra job
       # (and the coordination it required) bought nothing. It moved here as
       # plain steps instead.
-      - uses: gittools/actions/gitversion/setup@v4.7.0
+      - uses: gittools/actions/gitversion/setup@v5.0.0
         if: steps.docs-only.outputs.docs_only != 'true'
         with:
           versionSpec: '6.x'
@@ -1161,7 +1161,7 @@ jobs:
         env:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
 
-      - uses: gittools/actions/gitversion/setup@v4.7.0
+      - uses: gittools/actions/gitversion/setup@v5.0.0
         if: steps.docs-only.outputs.docs_only != 'true'
         with:
           versionSpec: '6.x'
