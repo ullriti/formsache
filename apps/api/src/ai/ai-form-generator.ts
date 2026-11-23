@@ -173,7 +173,9 @@ export async function withinDeadline<T>(
   let abort = (): void => undefined;
   const aborted = new Promise<never>((_resolve, reject) => {
     abort = () => {
-      reject(new DOMException('The operation was aborted.', 'AbortError'));
+      // The signal's own reason (`TimeoutError` from `AbortSignal.timeout`);
+      // both `classify` read `signal.aborted` first either way.
+      reject(signal.reason as Error);
     };
   });
   if (signal.aborted) {

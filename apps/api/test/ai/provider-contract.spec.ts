@@ -1,7 +1,7 @@
 import { setFlagsFromString } from 'node:v8';
 import { runInNewContext } from 'node:vm';
 
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import {
   buildAiFormRequest,
   type AiFormOutcome,
@@ -292,9 +292,13 @@ describe('the success row in detail', () => {
  */
 describe('the deadline survives a garbage collection', () => {
   // `--expose-gc` set at runtime, then `gc` fetched from a fresh context —
-  // the global of the current one was created before the flag existed.
-  setFlagsFromString('--expose-gc');
-  const collect = runInNewContext('gc') as () => void;
+  // the global of the current one was created before the flag existed. In
+  // `beforeAll` so that only a run that reaches these cases touches V8 flags.
+  let collect: () => void = () => undefined;
+  beforeAll(() => {
+    setFlagsFromString('--expose-gc');
+    collect = runInNewContext('gc') as () => void;
+  });
 
   const timeoutRow = CONTRACT_ROWS.find(
     (row) =>
@@ -326,4 +330,31 @@ describe('the deadline survives a garbage collection', () => {
     },
     10_000,
   );
+
+  // `resolveModel` takes the same signal and the same wrapper; it swallows
+  // every failure into `null`, so "on time" is the whole promise here.
+  it('MistralFormGenerator.resolveModel gives up on time', async () => {
+    expect(timeoutRow).toBeDefined();
+    if (timeoutRow === undefined) {
+      return;
+    }
+    const recorded = recordedTransport(timeoutRow.mistral);
+    const generator = new MistralFormGenerator(
+      { ...CONFIG, provider: 'mistral', model: 'mistral-recorded-0000' },
+      recorded.transport,
+    );
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      controller.abort();
+    }, TEST_DEADLINE_MS);
+    try {
+      const model = generator.resolveModel(controller.signal);
+      await expect.poll(() => recorded.attempts()).toBe(1);
+      collect();
+      collect();
+      await expect(model).resolves.toBeNull();
+    } finally {
+      clearTimeout(timer);
+    }
+  }, 10_000);
 });

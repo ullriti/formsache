@@ -516,10 +516,10 @@ jobs:
       # into this one — but this job was its only consumer, so the extra job
       # (and the coordination it required) bought nothing. It moved here as
       # plain steps instead.
-      - uses: gittools/actions/gitversion/setup@v5.0.0
+      - uses: gittools/actions/gitversion/setup@v4.7.0
         if: steps.docs-only.outputs.docs_only != 'true'
         with:
-          versionSpec: '7.0.x'
+          versionSpec: '6.x'
       # The tool itself rather than `gitversion/execute`. That action calls the
       # same binary with `/l console`, which writes GitVersion's log lines into
       # the stream it then parses as JSON — one warning from the tool and the
@@ -1161,10 +1161,10 @@ jobs:
         env:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
 
-      - uses: gittools/actions/gitversion/setup@v5.0.0
+      - uses: gittools/actions/gitversion/setup@v4.7.0
         if: steps.docs-only.outputs.docs_only != 'true'
         with:
-          versionSpec: '7.0.x'
+          versionSpec: '6.x'
       # Word for word the same as in the `stack` job, for the same reason
       # (see there): the tool itself instead of `gitversion/execute`, because
       # its `/l console` writes log lines into the stream it reads as JSON.

@@ -441,6 +441,15 @@ Nachschlagens.
   Minuten und skaliert bei großen Ausgabegrenzen noch nach oben. Derselbe Schnitt
   wie in [ADR-0014 Nr. 14](0014-datei-upload.md): der Zähler und der Abbruch
   bleiben unsere, statt eine Bibliothekseigenschaft zu sein.
+- **Der Adapter setzt die Frist zusätzlich selbst durch** (`withinDeadline` in
+  `apps/api/src/ai/ai-form-generator.ts`, nachgetragen 2026-11-23). Das Signal
+  geht weiter an das SDK, damit die HTTP-Anfrage abgebrochen wird. Beide SDKs
+  senden aber einen aus unserem abgeleiteten `Request` (Mistral ab 3.5 ein
+  `request.clone()`), und in Node hört dessen Signal den Abbruch nur, solange
+  das Quellobjekt lebt — undici koppelt beide über eine schwache Referenz. Eine
+  Speicherbereinigung zur falschen Zeit ließ den Aufruf so unbegrenzt warten.
+  *Nachweis:* `provider-contract.spec.ts` erzwingt diese Speicherbereinigung,
+  während der Anbieter schweigt, und erwartet `timeout` für beide Adapter.
 - **Der Adapter wiederholt nicht.** `maxRetries: 0` (bzw. das Gegenstück beim
   zweiten SDK). Beide SDKs wiederholen von sich aus — beim Anthropic-Client
   standardmäßig zweimal, bei 408/409/429/5xx und Verbindungsfehlern —, und
